@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Light Mode (Padrão) */
+:root {
+  --bg-primary: #F8FAFC;       /* Off-white / Slate 50 */
+  --bg-surface: #FFFFFF;       /* Cards e Modais */
+  --border-color: #E2E8F0;    /* Linhas suaves / Slate 200 */
+  --text-primary: #0F172A;    /* Texto principal / Slate 900 */
+  --text-secondary: #64748B;  /* Legendas / Slate 500 */
+  --brand-primary: #2563EB;   /* Azul Ação / Blue 600 */
+  --brand-accent: #16A34A;    /* Pix / Confirmações / Green 600 */
+}
+
+/* Dark Mode (Opcional via Toggle) */
+[data-theme="dark"] {
+  --bg-primary: #0B0F17;
+  --bg-surface: #1E293B;
+  --border-color: #334155;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --brand-primary: #3B82F6;
+  --brand-accent: #22C55E;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  transition: background-color 0.25s ease-in-out, color 0.25s ease-in-out;
+  min-height: 100vh;
+}
+
+/* Ocultar Barra de Rolagem Nativa mantendo a rolagem ativa */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
