@@ -316,6 +316,13 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
           if (tvData.tvConfig.radioIndoorConfig) {
             setRadioConfig(tvData.tvConfig.radioIndoorConfig);
           }
+
+          if (typeof window !== "undefined") {
+            const stored = localStorage.getItem("captive_hub_tv_configs");
+            const currentConfigs = stored ? JSON.parse(stored) : {};
+            currentConfigs[tenantId] = tvData.tvConfig;
+            localStorage.setItem("captive_hub_tv_configs", JSON.stringify(currentConfigs));
+          }
         }
 
         const portalData = await portalRes.json();
@@ -512,22 +519,59 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
   const handleFileUpload = async (file: File, target: "tvMedia" | "banner") => {
     if (!file) return;
     setIsUploadingFile(true);
-    setUploadProgressText(`Enviando ${file.name} para o Cloudflare R2...`);
+    setUploadProgressText(`Gerando link direto de gravação no Cloudflare R2...`);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("folder", target === "tvMedia" ? "tv-playlist" : "banners");
+      const folder = target === "tvMedia" ? "tv-playlist" : "banners";
+      
+      // 1. Solicita URL de upload presignada (Evita HTTP 413 Vercel Payload Limit)
+      const presignedRes = await fetch(
+        `/api/upload?fileName=${encodeURIComponent(file.name)}&mimeType=${encodeURIComponent(file.type || "video/mp4")}&folder=${folder}`
+      );
+      const presignedData = await presignedRes.json();
 
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
+      let finalUrl = "";
 
-      const data = await res.json();
-      if (data.success && data.url) {
+      if (presignedData.success && presignedData.uploadUrl) {
+        setUploadProgressText(`Enviando ${file.name} em alta velocidade para o Cloudflare R2...`);
+        
+        // 2. Transmissão direta Navegador -> Cloudflare R2 via HTTP PUT
+        const uploadRes = await fetch(presignedData.uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": file.type || "video/mp4",
+          },
+          body: file,
+        });
+
+        if (uploadRes.ok) {
+          finalUrl = presignedData.publicUrl;
+        }
+      }
+
+      // Fallback para POST se a URL presignada não estiver disponível
+      if (!finalUrl) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("folder", folder);
+
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (data.success && data.url) {
+          finalUrl = data.url;
+        } else {
+          showToastNotification(`❌ Erro no upload: ${data.error || "Não foi possível enviar o arquivo."}`);
+          return;
+        }
+      }
+
+      if (finalUrl) {
         if (target === "tvMedia") {
-          setNewTvMediaUrl(data.url);
+          setNewTvMediaUrl(finalUrl);
           if (!newTvMediaTitle) {
             const baseName = file.name.replace(/\.[^/.]+$/, "");
             setNewTvMediaTitle(baseName);
@@ -538,18 +582,17 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
             setNewTvMediaType("image");
           }
         } else {
-          setNewImageUrl(data.url);
+          setNewImageUrl(finalUrl);
           if (!newTitle) {
             const baseName = file.name.replace(/\.[^/.]+$/, "");
             setNewTitle(baseName);
           }
         }
-        showToastNotification("✅ Arquivo enviado com sucesso para o Cloudflare R2!");
-      } else {
-        showToastNotification(`❌ Erro no upload: ${data.error || "Não foi possível enviar o arquivo."}`);
+        showToastNotification("✅ Arquivo gravado com sucesso no Cloudflare R2!");
       }
     } catch (err) {
-      showToastNotification("❌ Erro de conexão ao enviar arquivo para o R2.");
+      console.error("Erro no upload R2:", err);
+      showToastNotification("❌ Erro ao enviar arquivo para o Cloudflare R2.");
     } finally {
       setIsUploadingFile(false);
       setUploadProgressText(null);
@@ -672,15 +715,22 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
     showNotification("Configurações do link salvas com sucesso!");
   };
 
-  const handleAddTvMedia = (e: React.FormEvent) => {
+  const handleAddTvMedia = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTvMediaTitle || !newTvMediaUrl) return;
+    if (!newTvMediaTitle || !newTvMediaTitle.trim()) {
+      showNotification("⚠️ Digite um título para a mídia antes de salvar.");
+      return;
+    }
+    if (!newTvMediaUrl || !newTvMediaUrl.trim()) {
+      showNotification("⚠️ Busque um arquivo no computador ou informe a URL da mídia.");
+      return;
+    }
 
     const newMedia: TvMediaItem = {
       id: `tv_${Date.now()}`,
-      title: newTvMediaTitle,
+      title: newTvMediaTitle.trim(),
       type: newTvMediaType,
-      url: newTvMediaUrl,
+      url: newTvMediaUrl.trim(),
       durationSeconds: newTvMediaType === "image" ? Number(newTvMediaDuration) || 10 : undefined,
       muteVideoKeepRadio: newTvMediaType === "video" ? newTvMediaMuteVideoKeepRadio : undefined,
       active: true,
@@ -699,12 +749,23 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
       localStorage.setItem("captive_hub_tv_configs", JSON.stringify(currentConfigs));
     }
 
+    // Persiste permanentemente no banco de dados Firestore
+    try {
+      await fetch(`/api/tv/${tenantId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playlist: updatedPlaylist }),
+      });
+    } catch (err) {
+      console.error("Erro ao salvar mídia na TV:", err);
+    }
+
     setNewTvMediaTitle("");
     setNewTvMediaUrl("");
     setNewTvMediaDuration(10);
     setNewTvMediaMuteVideoKeepRadio(false);
     setShowAddTvMediaModal(false);
-    showNotification("Nova mídia adicionada à playlist da TV!");
+    showNotification("✨ Nova mídia salva na TV e sincronizada no banco!");
   };
 
   const handleSaveTvOverlaySettings = async () => {
@@ -759,7 +820,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
     }
   };
 
-  const handleDeleteTvMedia = (id: string) => {
+  const handleDeleteTvMedia = async (id: string) => {
     const updatedPlaylist = tvPlaylist.filter((item) => item.id !== id);
     setTvPlaylist(updatedPlaylist);
 
@@ -772,7 +833,17 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
       };
       localStorage.setItem("captive_hub_tv_configs", JSON.stringify(currentConfigs));
     }
-    showNotification("Mídia removida da TV.");
+
+    try {
+      await fetch(`/api/tv/${tenantId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playlist: updatedPlaylist }),
+      });
+    } catch (err) {
+      console.error("Erro ao excluir mídia da TV:", err);
+    }
+    showNotification("Mídia removida da TV e atualizada no banco.");
   };
 
   const openCheckoutForAddon = (addonId: AddonModuleId) => {

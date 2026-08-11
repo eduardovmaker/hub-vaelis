@@ -87,7 +87,7 @@ export interface TenantTvConfig {
   asaasPaymentId?: string;
   autoRenew?: boolean;
 
-  addonStates: Record<AddonModuleId, AddonConfigState>;
+  addonStates: Partial<Record<AddonModuleId, AddonConfigState>>;
   radioIndoorConfig?: RadioIndoorConfig;
   googleReviewsConfig?: GoogleReviewsConfig;
   whatsappBotConfig?: WhatsappBotConfig;
@@ -153,18 +153,7 @@ export const INITIAL_TV_CONFIGS: Record<string, TenantTvConfig> = {
     asaasPaymentId: 'pay_asaas_849201',
     autoRenew: true,
 
-    addonStates: {
-      'captive-portal': { active: true, paymentStatus: 'PAID', planCycle: 'MENSAL' },
-      'midia-indoor': { active: true, paymentStatus: 'PAID', planCycle: 'MENSAL', subscriptionExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() },
-      'radio-indoor': { active: true, paymentStatus: 'PAID', planCycle: 'MENSAL', subscriptionExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() },
-      'google-reviews': { active: true, paymentStatus: 'PAID', planCycle: 'MENSAL', subscriptionExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() },
-      'whatsapp-bot': { active: false, paymentStatus: 'PENDING' },
-      'roleta-da-sorte': { active: true, paymentStatus: 'PAID', planCycle: 'MENSAL', subscriptionExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() },
-      'loja-produtos': { active: true, paymentStatus: 'PAID', planCycle: 'MENSAL', subscriptionExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() },
-      'web-guard': { active: false, paymentStatus: 'PENDING' },
-      'multi-unidades': { active: false, paymentStatus: 'PENDING' },
-      'wifi-vip': { active: false, paymentStatus: 'PENDING' },
-    },
+    addonStates: {},
 
     radioIndoorConfig: {
       provider: 'spotify',

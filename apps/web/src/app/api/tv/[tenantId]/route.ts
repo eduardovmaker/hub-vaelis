@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db, COLLECTIONS } from "@/lib/db";
 import { INITIAL_TV_CONFIGS, TenantTvConfig } from "@/mocks/tv";
 
-async function withDbTimeout<T>(promise: Promise<T>, timeoutMs = 250): Promise<T> {
+async function withDbTimeout<T>(promise: Promise<T>, timeoutMs = 3000): Promise<T> {
   let timer: NodeJS.Timeout;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new Error("DB Timeout")), timeoutMs);
@@ -10,7 +10,7 @@ async function withDbTimeout<T>(promise: Promise<T>, timeoutMs = 250): Promise<T
   return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
 }
 
-const memoryTvConfigs: Record<string, TenantTvConfig> = { ...INITIAL_TV_CONFIGS };
+const memoryTvConfigs: Record<string, TenantTvConfig> = {};
 
 export async function GET(
   request: Request,
@@ -28,7 +28,7 @@ export async function GET(
         return null;
       })();
 
-      const config = await withDbTimeout(getTvPromise, 250);
+      const config = await withDbTimeout(getTvPromise, 3000);
       if (config) {
         return NextResponse.json({
           success: true,
@@ -52,7 +52,7 @@ export async function GET(
     tenantId,
     tenantName: readableName || tenantId,
     pairingCode: `TV-${Math.floor(1000 + Math.random() * 9000)}`,
-    addonActive: true,
+    addonActive: false,
     showQrOverlay: true,
     showClockOverlay: true,
     showRadioBadge: true,
@@ -61,11 +61,7 @@ export async function GET(
     planCycle: "MENSAL",
     paymentStatus: "PAID",
     playlist: [],
-    addonStates: {
-      "midia-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
-      "radio-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
-      "google-reviews": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
-    },
+    addonStates: {},
   };
 
   return NextResponse.json({
@@ -93,7 +89,7 @@ export async function PUT(
       if (db) {
         await withDbTimeout(
           db.collection(COLLECTIONS.TV_CONFIGS).doc(tenantId).set(body, { merge: true }),
-          300
+          3000
         );
       }
     } catch (dbErr) {}

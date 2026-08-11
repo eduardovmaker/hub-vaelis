@@ -1,5 +1,34 @@
 import { NextResponse } from "next/server";
-import { uploadFileToR2 } from "@/lib/r2";
+import { uploadFileToR2, getPresignedR2UploadUrl } from "@/lib/r2";
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const fileName = searchParams.get("fileName") || "file.mp4";
+    const mimeType = searchParams.get("mimeType") || "video/mp4";
+    const folder = searchParams.get("folder") || "midia";
+
+    const presigned = await getPresignedR2UploadUrl({
+      fileName,
+      mimeType,
+      folder,
+    });
+
+    return NextResponse.json({
+      success: true,
+      uploadUrl: presigned.uploadUrl,
+      publicUrl: presigned.publicUrl,
+      key: presigned.key,
+      isMock: presigned.isMock || false,
+    });
+  } catch (error: any) {
+    console.error("Erro ao gerar URL presignada no R2:", error);
+    return NextResponse.json(
+      { success: false, error: error.message || "Erro ao gerar URL presignada." },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request: Request) {
   try {

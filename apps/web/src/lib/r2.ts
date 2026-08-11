@@ -107,3 +107,46 @@ export async function uploadFileToR2({
     throw new Error(`Falha no upload para o Cloudflare R2: ${error.message || error}`);
   }
 }
+
+export async function getPresignedR2UploadUrl({
+  fileName,
+  mimeType,
+  folder = "midia",
+}: {
+  fileName: string;
+  mimeType: string;
+  folder?: string;
+}): Promise<{ uploadUrl: string; publicUrl: string; key: string; isMock?: boolean }> {
+  const extension = path.extname(fileName) || "";
+  const sanitizedBaseName = path.basename(fileName, extension).toLowerCase().replace(/[^a-z0-9]/g, "_");
+  const uniqueKey = `${folder}/${Date.now()}_${sanitizedBaseName}${extension}`;
+
+  const { client, bucketName, publicUrlBase } = getR2Client();
+
+  if (!client) {
+    return {
+      uploadUrl: "",
+      publicUrl: `https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1920&q=80`,
+      key: uniqueKey,
+      isMock: true,
+    };
+  }
+
+  try {
+    const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
+    const command = new PutObjectCommand({
+      Bucket: bucketName,
+      Key: uniqueKey,
+      ContentType: mimeType,
+      CacheControl: "public, max-age=31536000, immutable",
+    });
+
+    const uploadUrl = await getSignedUrl(client, command, { expiresIn: 3600 });
+    const publicUrl = `${publicUrlBase.replace(/\/$/, "")}/${uniqueKey}`;
+
+    return { uploadUrl, publicUrl, key: uniqueKey };
+  } catch (err: any) {
+    console.error("[Cloudflare R2] Erro ao gerar URL presignada:", err);
+    throw new Error(`Falha ao gerar URL de upload presignada: ${err.message || err}`);
+  }
+}
