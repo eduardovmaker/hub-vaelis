@@ -756,7 +756,11 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
       await fetch(`/api/tv/${tenantId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playlist: updatedPlaylist }),
+        body: JSON.stringify({
+          playlist: updatedPlaylist,
+          addonActive: true,
+          tenantName: displayTenantName,
+        }),
       });
     } catch (err) {
       console.error("Erro ao salvar mídia na TV:", err);
@@ -801,6 +805,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          tenantName: displayTenantName,
           showQrOverlay,
           showClockOverlay,
           showRadioBadge,
@@ -840,7 +845,11 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
       await fetch(`/api/tv/${tenantId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playlist: updatedPlaylist }),
+        body: JSON.stringify({
+          playlist: updatedPlaylist,
+          addonActive: tvPlaylist.length > 1,
+          tenantName: displayTenantName,
+        }),
       });
     } catch (err) {
       console.error("Erro ao excluir mídia da TV:", err);

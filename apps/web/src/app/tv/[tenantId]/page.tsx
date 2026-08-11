@@ -26,10 +26,31 @@ import {
 export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: string }> }) {
   const resolvedParams = use(params);
   const tenantId = resolvedParams.tenantId || "tenant_bar_01";
+  // Nome derivado do tenantId para uso antes da API responder
+  const derivedName = tenantId
+    .replace(/^tenant_/, "")
+    .replace(/_\d+$/, "")
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 
-  // Obter configurações atualizadas diretamente do banco de dados PostgreSQL
+  // Estado inicial genérico — dados reais vêm da API (Firebase)
   const [tvConfig, setTvConfig] = useState<TenantTvConfig>(
-    INITIAL_TV_CONFIGS[tenantId] || INITIAL_TV_CONFIGS["tenant_bar_01"]
+    INITIAL_TV_CONFIGS[tenantId] || {
+      tenantId,
+      tenantName: derivedName,
+      pairingCode: "",
+      addonActive: false,
+      showQrOverlay: true,
+      showClockOverlay: true,
+      showRadioBadge: true,
+      showTitleOverlay: true,
+      showHeaderLogo: true,
+      planCycle: "MENSAL",
+      paymentStatus: "PAID",
+      playlist: [],
+      addonStates: {},
+    }
   );
 
   useEffect(() => {
