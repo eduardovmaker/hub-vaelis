@@ -1723,14 +1723,26 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 </p>
               </div>
 
-              <a
-                href={`/tv/${tenantId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-2 shadow-md"
-              >
-                <Tv className="w-4 h-4" /> Lançar TV Player em Nova Aba
-              </a>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const tvUrl = `${window.location.origin}/tv/${tenantId}`;
+                    navigator.clipboard.writeText(tvUrl);
+                    showNotification("📋 URL da Mídia Indoor copiada com sucesso!");
+                  }}
+                  className="px-3.5 py-2.5 rounded-xl border border-purple-500/40 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 font-bold text-xs flex items-center gap-2 transition-all"
+                >
+                  <Copy className="w-4 h-4" /> Copiar URL da TV
+                </button>
+                <a
+                  href={`/tv/${tenantId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all"
+                >
+                  <Tv className="w-4 h-4" /> Lançar TV Player em Nova Aba
+                </a>
+              </div>
             </div>
 
             <div className="rounded-2xl border p-6 shadow-sm space-y-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
