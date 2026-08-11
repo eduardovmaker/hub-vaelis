@@ -26,6 +26,8 @@ export async function GET() {
               tenantId: doc.id,
               tenantName: data.tenantName,
               pairingCode: data.pairingCode,
+              paymentStatus: data.paymentStatus || "PAID",
+              subscriptionExpiresAt: data.subscriptionExpiresAt,
               addonActive: data.addonStates?.["midia-indoor"]?.active || false,
               addonStates: data.addonStates || {},
             };
@@ -34,14 +36,14 @@ export async function GET() {
         return null;
       })();
 
-      const tenants = await withDbTimeout(getTenantsPromise, 250);
-      return NextResponse.json({ success: true, tenants: tenants || [] });
+      const tenants = await withDbTimeout(getTenantsPromise, 600);
+      if (tenants && tenants.length > 0) {
+        return NextResponse.json({ success: true, tenants });
+      }
     }
-  } catch (error: any) {
-    // Retorno gracioso
-  }
+  } catch (error: any) {}
 
-  return NextResponse.json({ success: true, tenants: [] });
+  return NextResponse.json({ success: true, tenants: Object.values(memoryTenants) });
 }
 
 export async function POST(request: Request) {
@@ -203,7 +205,6 @@ export async function PATCH(request: Request) {
                 },
               },
             },
-            { merge: true }
           ),
           300
         );
@@ -219,5 +220,47 @@ export async function PATCH(request: Request) {
       { success: false, error: "Erro ao atualizar status do add-on." },
       { status: 500 }
     );
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { tenantId, addonStates, paymentStatus, subscriptionExpiresAt } = body;
+
+    if (!tenantId) {
+      return NextResponse.json({ success: false, error: "tenantId é obrigatório." }, { status: 400 });
+    }
+
+    if (memoryTenants[tenantId]) {
+      memoryTenants[tenantId] = {
+        ...memoryTenants[tenantId],
+        ...body,
+      };
+    }
+
+    if (db) {
+      const updateData: Record<string, any> = { updatedAt: new Date().toISOString() };
+      if (addonStates) updateData.addonStates = addonStates;
+      if (paymentStatus) updateData.paymentStatus = paymentStatus;
+      if (subscriptionExpiresAt) updateData.subscriptionExpiresAt = subscriptionExpiresAt;
+
+      const batch = db.batch();
+      const tenantRef = db.collection(COLLECTIONS.TENANTS).doc(tenantId);
+      const tvRef = db.collection(COLLECTIONS.TV_CONFIGS).doc(tenantId);
+
+      batch.set(tenantRef, updateData, { merge: true });
+      batch.set(tvRef, updateData, { merge: true });
+
+      await withDbTimeout(batch.commit(), 500);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Configurações do tenant atualizadas com sucesso no Firestore!",
+    });
+  } catch (error: any) {
+    console.error("Erro na rota PUT /api/tenants:", error);
+    return NextResponse.json({ success: false, error: "Erro ao atualizar tenant." }, { status: 500 });
   }
 }

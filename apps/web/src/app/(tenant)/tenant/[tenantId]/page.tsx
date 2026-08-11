@@ -333,7 +333,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
       tenantId,
       tenantName: derivedTenantName,
       pairingCode: `TV-${Math.floor(1000 + Math.random() * 9000)}`,
-      addonActive: true,
+      addonActive: false,
       showQrOverlay: true,
       showClockOverlay: true,
       showRadioBadge: true,
@@ -343,9 +343,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
       paymentStatus: "PAID",
       playlist: [],
       addonStates: {
-        "midia-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
-        "radio-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
-        "google-reviews": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
+        "captive-portal": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
       },
     };
   });
@@ -1087,7 +1085,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
               <span>Início (Dashboard)</span>
             </button>
 
-            {(addonStates["midia-indoor"]?.active || tvConfig.addonActive) && (
+            {addonStates["midia-indoor"]?.active && (
               <button
                 onClick={() => setActiveTab("midia-indoor")}
                 className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
@@ -1147,7 +1145,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
               </button>
             )}
 
-            {(addonStates["loja-produtos"]?.active ?? true) && (
+            {addonStates["loja-produtos"]?.active && (
               <button
                 onClick={() => setActiveTab("loja-produtos")}
                 className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
@@ -1165,18 +1163,20 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
               </button>
             )}
 
-            <button
-              onClick={() => setActiveTab("carrossel")}
-              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
-                activeTab === "carrossel"
-                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
-                  : "hover:bg-slate-100 dark:hover:bg-slate-800"
-              }`}
-              style={{ color: activeTab === "carrossel" ? "#ffffff" : "var(--text-primary)" }}
-            >
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              <span>Anúncios & Banners</span>
-            </button>
+            {(addonStates["midia-indoor"]?.active || addonStates["captive-portal"]?.active) && (
+              <button
+                onClick={() => setActiveTab("carrossel")}
+                className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
+                  activeTab === "carrossel"
+                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
+                    : "hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+                style={{ color: activeTab === "carrossel" ? "#ffffff" : "var(--text-primary)" }}
+              >
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span>Anúncios & Banners</span>
+              </button>
+            )}
 
             {(addonStates["captive-portal"]?.active ?? true) && (
               <button
@@ -1460,43 +1460,51 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
               </a>
             </div>
 
-            {/* Grid de 4 Cards Principais de Estatística do Estabelecimento */}
+            {/* Grid de Cards Principais de Estatística do Estabelecimento (Apenas Módulos Ativos) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-5 rounded-2xl border shadow-sm space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Leads & Contatos</span>
-                  <MessageSquare className="w-5 h-5 text-emerald-600" />
+              {(addonStates["whatsapp-bot"]?.active || addonStates["captive-portal"]?.active) && (
+                <div className="p-5 rounded-2xl border shadow-sm space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Leads & Contatos</span>
+                    <MessageSquare className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <p className="text-2xl font-extrabold text-emerald-600">1.240 Clientes</p>
+                  <p className="text-xs text-emerald-600 font-medium">Capturados via WhatsApp/Wi-Fi</p>
                 </div>
-                <p className="text-2xl font-extrabold text-emerald-600">1.240 Clientes</p>
-                <p className="text-xs text-emerald-600 font-medium">Capturados via WhatsApp/Wi-Fi</p>
-              </div>
+              )}
 
-              <div className="p-5 rounded-2xl border shadow-sm space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Reputação Google</span>
-                  <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+              {addonStates["google-reviews"]?.active && (
+                <div className="p-5 rounded-2xl border shadow-sm space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Reputação Google</span>
+                    <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+                  </div>
+                  <p className="text-2xl font-extrabold text-amber-500">4.9 ★ (384 Votos)</p>
+                  <p className="text-xs font-medium text-amber-600">Pesquisa NPS em Dia</p>
                 </div>
-                <p className="text-2xl font-extrabold text-amber-500">4.9 ★ (384 Votos)</p>
-                <p className="text-xs font-medium text-amber-600">Pesquisa NPS em Dia</p>
-              </div>
+              )}
 
-              <div className="p-5 rounded-2xl border shadow-sm space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Mídia TV & Exibições</span>
-                  <Tv className="w-5 h-5 text-purple-600" />
+              {addonStates["midia-indoor"]?.active && (
+                <div className="p-5 rounded-2xl border shadow-sm space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Mídia TV & Exibições</span>
+                    <Tv className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <p className="text-2xl font-extrabold text-purple-600">1.450 Telas</p>
+                  <p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Exibições nas Smart TVs</p>
                 </div>
-                <p className="text-2xl font-extrabold text-purple-600">1.450 Telas</p>
-                <p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Exibições nas Smart TVs</p>
-              </div>
+              )}
 
-              <div className="p-5 rounded-2xl border shadow-sm space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Módulo Wi-Fi Hotspot</span>
-                  <Wifi className="w-5 h-5 text-blue-600" />
+              {(addonStates["captive-portal"]?.active ?? true) && (
+                <div className="p-5 rounded-2xl border shadow-sm space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Módulo Wi-Fi Hotspot</span>
+                    <Wifi className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <p className="text-2xl font-extrabold text-blue-600">{connectedDevices.length} Online</p>
+                  <p className="text-xs font-medium text-blue-600">R$ 240,00 vendas Pix hoje</p>
                 </div>
-                <p className="text-2xl font-extrabold text-blue-600">{connectedDevices.length} Online</p>
-                <p className="text-xs font-medium text-blue-600">R$ 240,00 vendas Pix hoje</p>
-              </div>
+              )}
             </div>
 
             {/* BARRA DE AÇÕES RÁPIDAS DO ESTABELECIMENTO */}
@@ -1505,53 +1513,61 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 <Sparkles className="w-4 h-4 text-amber-400" /> Ações Rápidas do Estabelecimento
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <button
-                  onClick={() => setActiveTab("midia-indoor")}
-                  className="p-3 rounded-xl border flex items-center gap-3 hover:border-purple-500 hover:bg-purple-500/5 transition-all text-left"
-                  style={{ borderColor: "var(--border-color)" }}
-                >
-                  <Tv className="w-5 h-5 text-purple-600 shrink-0" />
-                  <div>
-                    <p className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>Mídia Indoor TV</p>
-                    <p className="text-[10px] text-slate-400">Atualizar vídeos e fotos</p>
-                  </div>
-                </button>
+                {addonStates["midia-indoor"]?.active && (
+                  <button
+                    onClick={() => setActiveTab("midia-indoor")}
+                    className="p-3 rounded-xl border flex items-center gap-3 hover:border-purple-500 hover:bg-purple-500/5 transition-all text-left"
+                    style={{ borderColor: "var(--border-color)" }}
+                  >
+                    <Tv className="w-5 h-5 text-purple-600 shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>Mídia Indoor TV</p>
+                      <p className="text-[10px] text-slate-400">Atualizar vídeos e fotos</p>
+                    </div>
+                  </button>
+                )}
 
-                <button
-                  onClick={() => setActiveTab("radio-indoor")}
-                  className="p-3 rounded-xl border flex items-center gap-3 hover:border-indigo-500 hover:bg-indigo-500/5 transition-all text-left"
-                  style={{ borderColor: "var(--border-color)" }}
-                >
-                  <Headphones className="w-5 h-5 text-indigo-600 shrink-0" />
-                  <div>
-                    <p className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>Rádio Ambient</p>
-                    <p className="text-[10px] text-slate-400">Spotify & vinhetas loja</p>
-                  </div>
-                </button>
+                {addonStates["google-reviews"]?.active && (
+                  <button
+                    onClick={() => setActiveTab("google-reviews")}
+                    className="p-3 rounded-xl border flex items-center gap-3 hover:border-amber-500 hover:bg-amber-500/5 transition-all text-left"
+                    style={{ borderColor: "var(--border-color)" }}
+                  >
+                    <Star className="w-5 h-5 text-amber-500 shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>Google NPS</p>
+                      <p className="text-[10px] text-slate-400">Captar avaliações 5★</p>
+                    </div>
+                  </button>
+                )}
 
-                <button
-                  onClick={() => setActiveTab("google-reviews")}
-                  className="p-3 rounded-xl border flex items-center gap-3 hover:border-amber-500 hover:bg-amber-500/5 transition-all text-left"
-                  style={{ borderColor: "var(--border-color)" }}
-                >
-                  <Star className="w-5 h-5 text-amber-500 shrink-0" />
-                  <div>
-                    <p className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>Google NPS</p>
-                    <p className="text-[10px] text-slate-400">Captar avaliações 5★</p>
-                  </div>
-                </button>
+                {addonStates["loja-produtos"]?.active && (
+                  <button
+                    onClick={() => setActiveTab("loja-produtos")}
+                    className="p-3 rounded-xl border flex items-center gap-3 hover:border-emerald-500 hover:bg-emerald-500/5 transition-all text-left"
+                    style={{ borderColor: "var(--border-color)" }}
+                  >
+                    <ShoppingBag className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>Loja & Estoque</p>
+                      <p className="text-[10px] text-slate-400">Produtos & Vendas Pix</p>
+                    </div>
+                  </button>
+                )}
 
-                <button
-                  onClick={() => setActiveTab("captive-portal")}
-                  className="p-3 rounded-xl border flex items-center gap-3 hover:border-blue-500 hover:bg-blue-500/5 transition-all text-left"
-                  style={{ borderColor: "var(--border-color)" }}
-                >
-                  <Wifi className="w-5 h-5 text-blue-600 shrink-0" />
-                  <div>
-                    <p className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>Módulo Wi-Fi</p>
-                    <p className="text-[10px] text-slate-400">Planos Pix e Cortesia</p>
-                  </div>
-                </button>
+                {(addonStates["captive-portal"]?.active ?? true) && (
+                  <button
+                    onClick={() => setActiveTab("captive-portal")}
+                    className="p-3 rounded-xl border flex items-center gap-3 hover:border-blue-500 hover:bg-blue-500/5 transition-all text-left"
+                    style={{ borderColor: "var(--border-color)" }}
+                  >
+                    <Wifi className="w-5 h-5 text-blue-600 shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>Módulo Wi-Fi</p>
+                      <p className="text-[10px] text-slate-400">Planos Pix e Cortesia</p>
+                    </div>
+                  </button>
+                )}
               </div>
             </div>
 
