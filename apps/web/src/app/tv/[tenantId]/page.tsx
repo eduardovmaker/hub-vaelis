@@ -66,7 +66,11 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
     return () => clearInterval(pollInterval);
   }, [tenantId]);
 
-  const portalConfig = INITIAL_PORTAL_CONFIGS[tenantId] || INITIAL_PORTAL_CONFIGS["tenant_bar_01"];
+  const portalConfigMock = INITIAL_PORTAL_CONFIGS[tenantId] || INITIAL_PORTAL_CONFIGS["tenant_bar_01"];
+  // Usa dados do Firebase (tvConfig) como fonte primária, mock como fallback
+  const displayName = tvConfig.tenantName || portalConfigMock.tenantName;
+  const primaryColor = tvConfig.primaryColor || portalConfigMock.primaryColor || "#2563EB";
+  const wifiSsid = tvConfig.wifiSsid || portalConfigMock.wifiSsid || "WiFi_Gratis";
 
   const activePlaylist = tvConfig.playlist ? tvConfig.playlist.filter((item) => item.active) : [];
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -275,7 +279,7 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
           <span className="text-xs font-extrabold uppercase px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
             Add-on Mídia Indoor Desativado
           </span>
-          <h1 className="text-3xl font-black text-white">{portalConfig.tenantName}</h1>
+          <h1 className="text-3xl font-black text-white">{displayName}</h1>
           <p className="text-sm text-slate-400">
             Este recurso de TV Player não está ativo para este estabelecimento. Entre em contato com a administração da plataforma para ativar este plano.
           </p>
@@ -347,13 +351,13 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
           <div className="flex items-center gap-3 bg-black/60 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/10 shadow-2xl">
             <div 
               className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black shadow-lg"
-              style={{ backgroundColor: portalConfig.primaryColor || "#2563EB" }}
+              style={{ backgroundColor: primaryColor }}
             >
               <Tv className="w-6 h-6" />
             </div>
             <div>
               <h1 className="text-lg font-black tracking-tight text-white leading-none">
-                {portalConfig.tenantName}
+                {displayName}
               </h1>
               <p className="text-xs text-amber-400 font-semibold mt-0.5 flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5" /> Mídia Indoor
@@ -457,7 +461,7 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
               </p>
 
               <div className="pt-1 flex items-center justify-between text-[11px] font-mono text-slate-400 border-t border-white/10">
-                <span className="truncate">SSID: <strong className="text-white">{portalConfig.wifiSsid}</strong></span>
+                <span className="truncate">SSID: <strong className="text-white">{wifiSsid}</strong></span>
                 {(tvConfig.showClockOverlay !== false) && (
                   <span className="font-bold text-amber-400 pl-2">{currentTime}</span>
                 )}

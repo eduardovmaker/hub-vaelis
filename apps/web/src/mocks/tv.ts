@@ -66,6 +66,7 @@ export interface WebGuardConfig {
 export interface TenantTvConfig {
   tenantId: string;
   tenantName: string;
+  primaryColor?: string;
   wifiSsid?: string;
   pairingCode: string;
   addonActive: boolean;
