@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { validateCredentials } from "@/mocks/auth";
-import { prisma } from "@/lib/db";
+import { db, COLLECTIONS } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
 export async function POST(request: Request) {
@@ -23,35 +23,38 @@ export async function POST(request: Request) {
       });
     }
 
-    // 2. Consulta no Banco de Dados PostgreSQL (se o mock não coincidir)
+    // 2. Consulta no Firebase Firestore (se o mock não coincidir)
     try {
-      const user = await prisma.user.findUnique({
-        where: { email: email.toLowerCase() },
-        include: {
-          tenant: true,
-        },
-      });
+      if (db) {
+        const usersRef = db.collection(COLLECTIONS.USERS);
+        const snapshot = await usersRef.where("email", "==", email.toLowerCase()).limit(1).get();
 
-      if (user) {
-        const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-        if (isPasswordValid) {
-          const userPayload = {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            tenantId: user.tenantId || undefined,
-            tenantName: user.tenant?.tenantName || undefined,
-          };
+        if (!snapshot.empty) {
+          const userDoc = snapshot.docs[0];
+          const userData = userDoc.data();
 
-          return NextResponse.json({
-            success: true,
-            user: userPayload,
-          });
+          if (userData && userData.passwordHash) {
+            const isPasswordValid = await bcrypt.compare(password, userData.passwordHash);
+            if (isPasswordValid) {
+              const userPayload = {
+                id: userDoc.id,
+                name: userData.name,
+                email: userData.email,
+                role: userData.role,
+                tenantId: userData.tenantId || undefined,
+                tenantName: userData.tenantName || undefined,
+              };
+
+              return NextResponse.json({
+                success: true,
+                user: userPayload,
+              });
+            }
+          }
         }
       }
     } catch (dbError) {
-      console.warn("Aviso: Banco PostgreSQL offline ou inacessível no momento. Usando apenas autenticação mockada.");
+      console.warn("Aviso: Firebase Firestore offline ou sem credenciais no momento. Usando apenas autenticação mockada.");
     }
 
     return NextResponse.json(

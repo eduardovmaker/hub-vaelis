@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { db, COLLECTIONS } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { INITIAL_TV_CONFIGS, TenantTvConfig } from "@/mocks/tv";
 import { INITIAL_PORTAL_CONFIGS } from "@/mocks/portal";
 
-// Helper para timeout rápido de banco (200ms) para não travar modo apresentação
-async function withDbTimeout<T>(promise: Promise<T>, timeoutMs = 200): Promise<T> {
+// Helper para timeout rápido de banco (250ms) para não travar modo apresentação
+async function withDbTimeout<T>(promise: Promise<T>, timeoutMs = 250): Promise<T> {
   let timer: NodeJS.Timeout;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new Error("DB Timeout")), timeoutMs);
@@ -99,56 +99,42 @@ export async function POST(request: Request) {
       autoRedirectToMenu: false,
     };
 
-    // Tentar persistir no PostgreSQL se o banco estiver rodando
+    // Persistir no Firebase Firestore se disponível
     try {
-      await withDbTimeout(
-        prisma.$transaction(async (tx) => {
-          const createdTenant = await tx.tenant.create({
-            data: {
-              id: tenantId,
-              tenantName: companyName,
-              category: (category as any) || "FOOD",
-              wifiSsid: wifiSsid || `${companyName}_WiFi_Gratis`,
-              primaryColor: primaryColor || "#2563EB",
-              pairingCode,
-            },
-          });
+      if (db) {
+        const batch = db.batch();
 
-          await tx.user.create({
-            data: {
-              email: cleanEmail,
-              name: name || companyName,
-              passwordHash,
-              role: "TENANT_ADMIN",
-              tenantId: createdTenant.id,
-            },
-          });
+        const tenantRef = db.collection(COLLECTIONS.TENANTS).doc(tenantId);
+        batch.set(tenantRef, {
+          tenantName: companyName,
+          category: category || "FOOD",
+          wifiSsid: wifiSsid || `${companyName}_WiFi_Gratis`,
+          primaryColor: primaryColor || "#2563EB",
+          pairingCode,
+          addonStates: newTenantConfig.addonStates,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
 
-          await tx.addonState.create({
-            data: {
-              tenantId: createdTenant.id,
-              addonId: "captive-portal",
-              active: true,
-              paymentStatus: "PAID",
-              planCycle: "MENSAL",
-              subscriptionExpiresAt: expires30Days,
-              asaasPaymentId: `pay_checkout_${Date.now()}`,
-            },
-          });
+        const userRef = db.collection(COLLECTIONS.USERS).doc(cleanEmail);
+        batch.set(userRef, {
+          email: cleanEmail,
+          name: name || companyName,
+          passwordHash,
+          role: "TENANT_ADMIN",
+          tenantId,
+          tenantName: companyName,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
 
-          await tx.portalConfig.create({
-            data: {
-              tenantId: createdTenant.id,
-              freeAccessEnabled: true,
-              freeAccessDurationMinutes: 30,
-              adWatchSeconds: 15,
-            },
-          });
-        }),
-        300
-      );
+        const portalRef = db.collection(COLLECTIONS.PORTAL_CONFIGS).doc(tenantId);
+        batch.set(portalRef, INITIAL_PORTAL_CONFIGS[tenantId]);
+
+        await withDbTimeout(batch.commit(), 300);
+      }
     } catch (dbErr) {
-      console.warn("Aviso: PostgreSQL offline ao processar checkout. Cadastro efetuado com sucesso em memória.");
+      console.warn("Aviso: Firebase offline ao processar checkout. Cadastro efetuado com sucesso em memória.");
     }
 
     const userPayload = {

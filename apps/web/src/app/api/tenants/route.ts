@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { db, COLLECTIONS } from "@/lib/db";
 import { INITIAL_TV_CONFIGS, TenantTvConfig } from "@/mocks/tv";
-import { INITIAL_PORTAL_CONFIGS } from "@/mocks/portal";
 
 // Helper para timeout ultra rápido em apresentações offline sem travar o app (200ms)
-async function withDbTimeout<T>(promise: Promise<T>, timeoutMs = 200): Promise<T> {
+async function withDbTimeout<T>(promise: Promise<T>, timeoutMs = 250): Promise<T> {
   let timer: NodeJS.Timeout;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new Error("DB Timeout")), timeoutMs);
@@ -17,40 +16,28 @@ const memoryTenants: Record<string, TenantTvConfig> = { ...INITIAL_TV_CONFIGS };
 
 export async function GET() {
   try {
-    const dbPromise = prisma.tenant.findMany({
-      include: {
-        addonStates: true,
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-    });
+    if (db) {
+      const getTenantsPromise = (async () => {
+        const snapshot = await db.collection(COLLECTIONS.TENANTS).get();
+        if (!snapshot.empty) {
+          return snapshot.docs.map((doc: any) => {
+            const data = doc.data();
+            return {
+              tenantId: doc.id,
+              tenantName: data.tenantName,
+              pairingCode: data.pairingCode,
+              addonActive: data.addonStates?.["midia-indoor"]?.active || false,
+              addonStates: data.addonStates || {},
+            };
+          });
+        }
+        return null;
+      })();
 
-    const tenants = await withDbTimeout(dbPromise, 200);
-
-    if (tenants && tenants.length > 0) {
-      const formatted = tenants.map((t) => {
-        const addonStatesMap: Record<string, any> = {};
-        t.addonStates.forEach((s) => {
-          addonStatesMap[s.addonId] = {
-            active: s.active,
-            subscriptionExpiresAt: s.subscriptionExpiresAt?.toISOString(),
-            planCycle: s.planCycle || "MENSAL",
-            paymentStatus: s.paymentStatus || "PENDING",
-            asaasPaymentId: s.asaasPaymentId || undefined,
-          };
-        });
-
-        return {
-          tenantId: t.id,
-          tenantName: t.tenantName,
-          pairingCode: t.pairingCode,
-          addonActive: addonStatesMap["midia-indoor"]?.active || false,
-          addonStates: addonStatesMap,
-        };
-      });
-
-      return NextResponse.json({ success: true, tenants: formatted });
+      const tenants = await withDbTimeout(getTenantsPromise, 250);
+      if (tenants && tenants.length > 0) {
+        return NextResponse.json({ success: true, tenants });
+      }
     }
   } catch (error: any) {
     // Retorno de alta velocidade para apresentações off-line
@@ -75,6 +62,19 @@ export async function POST(request: Request) {
     const tenantId = `tenant_${tenantName.toLowerCase().replace(/[^a-z0-9]/g, "_")}_${Date.now().toString().slice(-4)}`;
     const finalPairingCode = pairingCode || `TV-${Math.floor(1000 + Math.random() * 9000)}`;
 
+    const defaultAddonStates = {
+      "captive-portal": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
+      "midia-indoor": { active: false, paymentStatus: "PENDING" },
+      "radio-indoor": { active: false, paymentStatus: "PENDING" },
+      "google-reviews": { active: false, paymentStatus: "PENDING" },
+      "whatsapp-bot": { active: false, paymentStatus: "PENDING" },
+      "roleta-da-sorte": { active: false, paymentStatus: "PENDING" },
+      "loja-produtos": { active: false, paymentStatus: "PENDING" },
+      "web-guard": { active: false, paymentStatus: "PENDING" },
+      "multi-unidades": { active: false, paymentStatus: "PENDING" },
+      "wifi-vip": { active: false, paymentStatus: "PENDING" },
+    };
+
     const newTenantConfig: TenantTvConfig = {
       tenantId,
       tenantName,
@@ -83,18 +83,7 @@ export async function POST(request: Request) {
       showQrOverlay: true,
       showClockOverlay: true,
       autoRenew: true,
-      addonStates: {
-        "captive-portal": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
-        "midia-indoor": { active: false, paymentStatus: "PENDING" },
-        "radio-indoor": { active: false, paymentStatus: "PENDING" },
-        "google-reviews": { active: false, paymentStatus: "PENDING" },
-        "whatsapp-bot": { active: false, paymentStatus: "PENDING" },
-        "roleta-da-sorte": { active: false, paymentStatus: "PENDING" },
-        "loja-produtos": { active: false, paymentStatus: "PENDING" },
-        "web-guard": { active: false, paymentStatus: "PENDING" },
-        "multi-unidades": { active: false, paymentStatus: "PENDING" },
-        "wifi-vip": { active: false, paymentStatus: "PENDING" },
-      },
+      addonStates: defaultAddonStates as any,
       playlist: [
         {
           id: `tv_${tenantId}_1`,
@@ -107,40 +96,30 @@ export async function POST(request: Request) {
       ],
     };
 
-    // Salvar na memória para apresentação
+    // Salvar na memória para apresentação instantânea
     memoryTenants[tenantId] = newTenantConfig;
 
     // Provisionar Container MikroTik CHR no Docker
     const { provisionTenantMikrotikChr } = await import("@/lib/docker-mikrotik");
     const chrContainer = await provisionTenantMikrotikChr(tenantId, tenantName);
 
-    // Tentar persistir no PostgreSQL se o banco estiver rodando
+    // Persistir no Firebase Firestore se disponível
     try {
-      await withDbTimeout(
-        prisma.tenant.create({
-          data: {
-            id: tenantId,
+      if (db) {
+        await withDbTimeout(
+          db.collection(COLLECTIONS.TENANTS).doc(tenantId).set({
             tenantName,
             category: category || "FOOD",
             wifiSsid: wifiSsid || `${tenantName}_WiFi`,
             primaryColor: primaryColor || "#2563EB",
             pairingCode: finalPairingCode,
-            addonStates: {
-              create: [
-                { addonId: "captive-portal", active: true, paymentStatus: "PAID" },
-                { addonId: "midia-indoor", active: false, paymentStatus: "PENDING" },
-                { addonId: "radio-indoor", active: false, paymentStatus: "PENDING" },
-                { addonId: "google-reviews", active: false, paymentStatus: "PENDING" },
-                { addonId: "whatsapp-bot", active: false, paymentStatus: "PENDING" },
-                { addonId: "roleta-da-sorte", active: false, paymentStatus: "PENDING" },
-                { addonId: "web-guard", active: false, paymentStatus: "PENDING" },
-                { addonId: "multi-unidades", active: false, paymentStatus: "PENDING" },
-              ],
-            },
-          },
-        }),
-        300
-      );
+            addonStates: defaultAddonStates,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }),
+          300
+        );
+      }
     } catch (e) {}
 
     return NextResponse.json({
@@ -169,7 +148,7 @@ export async function PATCH(request: Request) {
       );
     }
 
-    // Atualiza na memória para a apresentação
+    // Atualiza na memória para apresentação
     if (memoryTenants[tenantId]) {
       if (!memoryTenants[tenantId].addonStates) {
         memoryTenants[tenantId].addonStates = {} as any;
@@ -181,36 +160,27 @@ export async function PATCH(request: Request) {
       };
     }
 
-    const expiresAt = active
-      ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-      : new Date();
-
+    // Persiste no Firebase Firestore
     try {
-      await withDbTimeout(
-        prisma.addonState.upsert({
-          where: {
-            tenantId_addonId: {
-              tenantId,
-              addonId,
+      if (db) {
+        const tenantRef = db.collection(COLLECTIONS.TENANTS).doc(tenantId);
+        await withDbTimeout(
+          tenantRef.set(
+            {
+              addonStates: {
+                [addonId]: {
+                  active,
+                  paymentStatus: active ? "PAID" : "OVERDUE",
+                  planCycle: "MENSAL",
+                  updatedAt: new Date().toISOString(),
+                },
+              },
             },
-          },
-          update: {
-            active,
-            paymentStatus: active ? "PAID" : "OVERDUE",
-            subscriptionExpiresAt: expiresAt,
-          },
-          create: {
-            tenantId,
-            addonId,
-            active,
-            paymentStatus: active ? "PAID" : "OVERDUE",
-            subscriptionExpiresAt: expiresAt,
-            planCycle: "MENSAL",
-            asaasPaymentId: `pay_asaas_${Date.now()}`,
-          },
-        }),
-        300
-      );
+            { merge: true }
+          ),
+          300
+        );
+      }
     } catch (dbErr) {}
 
     return NextResponse.json({
