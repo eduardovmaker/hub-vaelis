@@ -203,6 +203,23 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
     }
   }, [activePlaylist.length, currentIndex, currentItem.id, currentItem.type, currentItem.durationSeconds, videoDuration, nextSlide]);
 
+  // Pré-carregamento automático dos próximos mídias da playlist no cache da Smart TV
+  useEffect(() => {
+    if (activePlaylist.length <= 1) return;
+    const nextIndex = (currentIndex + 1) % activePlaylist.length;
+    const nextMedia = activePlaylist[nextIndex];
+    if (!nextMedia || !nextMedia.url) return;
+
+    if (nextMedia.type === "video") {
+      const vidPreload = document.createElement("video");
+      vidPreload.src = nextMedia.url;
+      vidPreload.preload = "auto";
+    } else if (nextMedia.type === "image") {
+      const imgPreload = new Image();
+      imgPreload.src = nextMedia.url;
+    }
+  }, [currentIndex, activePlaylist]);
+
   // Manipular Play/Autoplay do Vídeo com Fallback contra Bloqueio do Navegador
   useEffect(() => {
     if (currentItem.type === "video" && videoRef.current) {
@@ -303,6 +320,7 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
             src={currentItem.url}
             autoPlay
             playsInline
+            preload="auto"
             muted={isMuted || shouldMuteVideo}
             onEnded={handleVideoEnded}
             onLoadedMetadata={handleVideoLoadedMetadata}

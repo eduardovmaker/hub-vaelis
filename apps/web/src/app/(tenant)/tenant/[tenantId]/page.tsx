@@ -88,7 +88,9 @@ import {
   Trophy,
   HeartHandshake,
   Package,
-  Tag
+  Tag,
+  UploadCloud,
+  FileVideo
 } from "lucide-react";
 
 interface ConnectedDevice {
@@ -502,6 +504,57 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
   const [showAsaasCheckoutModal, setShowAsaasCheckoutModal] = useState(false);
   const [copiedPix, setCopiedPix] = useState(false);
   const [isProcessingAsaas, setIsProcessingAsaas] = useState(false);
+
+  // Estado de Upload de Arquivos para o Cloudflare R2
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [uploadProgressText, setUploadProgressText] = useState<string | null>(null);
+
+  const handleFileUpload = async (file: File, target: "tvMedia" | "banner") => {
+    if (!file) return;
+    setIsUploadingFile(true);
+    setUploadProgressText(`Enviando ${file.name} para o Cloudflare R2...`);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", target === "tvMedia" ? "tv-playlist" : "banners");
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.success && data.url) {
+        if (target === "tvMedia") {
+          setNewTvMediaUrl(data.url);
+          if (!newTvMediaTitle) {
+            const baseName = file.name.replace(/\.[^/.]+$/, "");
+            setNewTvMediaTitle(baseName);
+          }
+          if (file.type.startsWith("video/")) {
+            setNewTvMediaType("video");
+          } else if (file.type.startsWith("image/")) {
+            setNewTvMediaType("image");
+          }
+        } else {
+          setNewImageUrl(data.url);
+          if (!newTitle) {
+            const baseName = file.name.replace(/\.[^/.]+$/, "");
+            setNewTitle(baseName);
+          }
+        }
+        showToastNotification("✅ Arquivo enviado com sucesso para o Cloudflare R2!");
+      } else {
+        showToastNotification(`❌ Erro no upload: ${data.error || "Não foi possível enviar o arquivo."}`);
+      }
+    } catch (err) {
+      showToastNotification("❌ Erro de conexão ao enviar arquivo para o R2.");
+    } finally {
+      setIsUploadingFile(false);
+      setUploadProgressText(null);
+    }
+  };
 
   // Configuração Customizada do Rádio Indoor
   const [radioConfig, setRadioConfig] = useState<RadioIndoorConfig>(
@@ -3014,8 +3067,62 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 </button>
               </div>
 
+              {/* BOTAO / DROPAREA DE BUSCA DE ARQUIVO LOCAL (CLOUDFLARE R2) */}
+              <div className="p-4 rounded-2xl border-2 border-dashed border-purple-500/40 bg-purple-500/5 text-center space-y-2 relative transition-all hover:border-purple-500 cursor-pointer">
+                <input
+                  type="file"
+                  accept={newTvMediaType === "image" ? "image/*" : "video/mp4,video/webm,video/quicktime"}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileUpload(file, "tvMedia");
+                  }}
+                  disabled={isUploadingFile}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                />
+                
+                <div className="flex flex-col items-center justify-center space-y-1">
+                  {isUploadingFile ? (
+                    <div className="space-y-1 py-2">
+                      <RefreshCw className="w-7 h-7 mx-auto text-purple-500 animate-spin" />
+                      <p className="font-bold text-purple-600 text-xs">{uploadProgressText || "Enviando arquivo..."}</p>
+                      <p className="text-[10px] text-slate-400">Gravando no bucket do Cloudflare R2 com cache permanente...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <UploadCloud className="w-8 h-8 text-purple-500 animate-bounce" />
+                      <p className="font-extrabold text-xs" style={{ color: "var(--text-primary)" }}>
+                        📁 Buscar arquivo no Computador / Celular
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        {newTvMediaType === "image" 
+                          ? "Selecione uma imagem (PNG, JPG, WEBP até 150 MB)" 
+                          : "Selecione um vídeo MP4/WEBM em HD ou 4K (até 150 MB)"}
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* PREVIEW DO ARQUIVO UPLOADADO */}
+              {newTvMediaUrl && (
+                <div className="p-2.5 rounded-xl border bg-slate-950/60 space-y-2" style={{ borderColor: "var(--border-color)" }}>
+                  <span className="text-[10px] font-bold uppercase text-emerald-400 flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" /> Arquivo Gravado no Cloudflare R2 (Cache Ativado):
+                  </span>
+                  {newTvMediaType === "video" ? (
+                    <video src={newTvMediaUrl} controls className="w-full h-32 rounded-lg object-cover bg-black" />
+                  ) : (
+                    <img src={newTvMediaUrl} alt="Preview" className="w-full h-32 rounded-lg object-cover" />
+                  )}
+                </div>
+              )}
+
               <input type="text" required value={newTvMediaTitle} onChange={(e) => setNewTvMediaTitle(e.target.value)} placeholder="Título do Anúncio" className="w-full p-2.5 rounded-xl border" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }} />
-              <input type="url" required value={newTvMediaUrl} onChange={(e) => setNewTvMediaUrl(e.target.value)} placeholder={newTvMediaType === "image" ? "URL da Imagem HD" : "URL do Vídeo MP4"} className="w-full p-2.5 rounded-xl border" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }} />
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400">Link Direto (Gerado pelo Upload R2 ou insira manualmente):</label>
+                <input type="url" required value={newTvMediaUrl} onChange={(e) => setNewTvMediaUrl(e.target.value)} placeholder={newTvMediaType === "image" ? "URL da Imagem HD" : "URL do Vídeo MP4"} className="w-full p-2.5 rounded-xl border" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }} />
+              </div>
 
               {newTvMediaType === "video" && (
                 <label className="flex items-start gap-2.5 cursor-pointer text-xs p-3 rounded-xl border" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)" }}>
@@ -3076,8 +3183,48 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
               <button onClick={() => setShowAddBannerModal(false)} className="text-xs font-bold text-slate-400">✕ Fechar</button>
             </div>
             <form onSubmit={handleAddBanner} className="space-y-4 text-xs">
+              {/* BOTAO / DROPAREA DE BUSCA DE ARQUIVO LOCAL (CLOUDFLARE R2) */}
+              <div className="p-4 rounded-2xl border-2 border-dashed border-emerald-500/40 bg-emerald-500/5 text-center space-y-2 relative transition-all hover:border-emerald-500 cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileUpload(file, "banner");
+                  }}
+                  disabled={isUploadingFile}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                />
+                
+                <div className="flex flex-col items-center justify-center space-y-1">
+                  {isUploadingFile ? (
+                    <div className="space-y-1 py-2">
+                      <RefreshCw className="w-7 h-7 mx-auto text-emerald-500 animate-spin" />
+                      <p className="font-bold text-emerald-600 text-xs">{uploadProgressText || "Enviando imagem..."}</p>
+                      <p className="text-[10px] text-slate-400">Gravando no Cloudflare R2...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <UploadCloud className="w-8 h-8 text-emerald-500 animate-bounce" />
+                      <p className="font-extrabold text-xs" style={{ color: "var(--text-primary)" }}>
+                        📁 Buscar Imagem no Dispositivo
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Selecione a imagem do banner (PNG, JPG, WEBP)
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {newImageUrl && (
+                <div className="p-2.5 rounded-xl border bg-slate-950/60 space-y-2" style={{ borderColor: "var(--border-color)" }}>
+                  <img src={newImageUrl} alt="Preview Banner" className="w-full h-28 rounded-lg object-cover" />
+                </div>
+              )}
+
               <input type="text" required value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Título da Oferta" className="w-full p-2.5 rounded-xl border" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }} />
-              <input type="url" required value={newImageUrl} onChange={(e) => setNewImageUrl(e.target.value)} placeholder="URL da Imagem Banner" className="w-full p-2.5 rounded-xl border" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }} />
+              <input type="url" required value={newImageUrl} onChange={(e) => setNewImageUrl(e.target.value)} placeholder="URL da Imagem Banner (Gerada pelo Upload R2)" className="w-full p-2.5 rounded-xl border" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }} />
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setShowAddBannerModal(false)} className="px-3 py-2 rounded-xl border">Cancelar</button>
                 <button type="submit" className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold">Salvar Banner</button>

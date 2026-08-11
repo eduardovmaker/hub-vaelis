@@ -19,11 +19,11 @@ export async function POST(request: Request) {
     const arrayBuffer = await file.arrayBuffer();
     const fileBuffer = Buffer.from(arrayBuffer);
 
-    // Validação opcional de tamanho máximo (ex: 50 MB)
-    const MAX_SIZE_BYTES = 50 * 1024 * 1024;
+    // Validação de tamanho máximo (150 MB para vídeos MP4 em HD)
+    const MAX_SIZE_BYTES = 150 * 1024 * 1024;
     if (fileBuffer.length > MAX_SIZE_BYTES) {
       return NextResponse.json(
-        { success: false, error: "Arquivo muito grande. O limite máximo permitido é 50 MB." },
+        { success: false, error: "Arquivo muito grande. O limite máximo permitido é 150 MB." },
         { status: 400 }
       );
     }

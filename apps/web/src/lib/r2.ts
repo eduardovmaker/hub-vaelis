@@ -91,6 +91,7 @@ export async function uploadFileToR2({
       Key: uniqueKey,
       Body: fileBuffer,
       ContentType: mimeType,
+      CacheControl: "public, max-age=31536000, immutable",
     });
 
     await client.send(command);
