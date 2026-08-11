@@ -128,8 +128,84 @@ export async function POST(request: Request) {
           updatedAt: new Date().toISOString(),
         });
 
+        const newPortalConfig = {
+          tenantId,
+          tenantName: companyName,
+          tenantCategory: category || "FOOD",
+          wifiSsid: wifiSsid || `${companyName}_WiFi_Gratis`,
+          primaryColor: primaryColor || "#2563EB",
+          banners: [
+            {
+              id: `b_${Date.now()}`,
+              title: `Seja Bem-vindo ao ${companyName}!`,
+              subtitle: "Conecte-se ao nosso Wi-Fi de alta velocidade e confira nossas novidades.",
+              imageUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1000&q=80",
+              active: true,
+              order: 1,
+            }
+          ],
+          pixPlans: [
+            { id: "p_1", title: "Acesso Rápido (2 Horas)", durationText: "2 Horas de Wi-Fi • 20 Mbps", price: 5.00, speedLimit: "20 Mbps", recommended: true },
+            { id: "p_2", title: "Passaporte Noite Toda (6 Horas)", durationText: "6 Horas de Alta Velocidade • 50 Mbps", price: 10.00, speedLimit: "50 Mbps", recommended: false },
+            { id: "p_3", title: "Diária Ilimitada (24h)", durationText: "24 Horas sem Limites • 100 Mbps", price: 18.00, speedLimit: "100 Mbps", recommended: false },
+          ],
+          freeAccessEnabled: true,
+          freeAccessDurationMinutes: 30,
+          adWatchSeconds: 15,
+          digitalMenuEnabled: true,
+          digitalMenuUrl: "",
+          digitalMenuTitle: "Cardápio & Serviços",
+          digitalMenuButtonText: "Ver Cardápio & Serviços",
+          digitalMenuIcon: "utensils",
+          autoRedirectToMenu: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        const newTvConfig = {
+          tenantId,
+          tenantName: companyName,
+          pairingCode: `TV-${Math.floor(1000 + Math.random() * 9000)}`,
+          addonActive: true,
+          showQrOverlay: true,
+          showClockOverlay: true,
+          showRadioBadge: true,
+          showTitleOverlay: true,
+          showHeaderLogo: true,
+          planCycle: body.planCycle || "MENSAL",
+          paymentStatus: "PAID",
+          subscriptionExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          asaasPaymentId: `pay_asaas_${Date.now()}`,
+          autoRenew: true,
+          playlist: [
+            {
+              id: `tv_1`,
+              title: `Destaques ${companyName}`,
+              type: "image",
+              url: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=80",
+              durationSeconds: 12,
+              active: true,
+            }
+          ],
+          addonStates: {
+            "midia-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
+            "radio-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
+            "google-reviews": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
+            "whatsapp-bot": { active: false, paymentStatus: "PENDING" },
+            "roleta-da-sorte": { active: false, paymentStatus: "PENDING" },
+            "loja-produtos": { active: false, paymentStatus: "PENDING" },
+            "web-guard": { active: false, paymentStatus: "PENDING" },
+            "multi-unidades": { active: false, paymentStatus: "PENDING" },
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
         const portalRef = db.collection(COLLECTIONS.PORTAL_CONFIGS).doc(tenantId);
-        batch.set(portalRef, INITIAL_PORTAL_CONFIGS[tenantId]);
+        batch.set(portalRef, newPortalConfig);
+
+        const tvRef = db.collection(COLLECTIONS.TV_CONFIGS).doc(tenantId);
+        batch.set(tvRef, newTvConfig);
 
         await withDbTimeout(batch.commit(), 300);
       }

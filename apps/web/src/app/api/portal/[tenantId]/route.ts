@@ -41,7 +41,35 @@ export async function GET(
     }
   } catch (error: any) {}
 
-  const fallback = memoryPortalConfigs[tenantId] || INITIAL_PORTAL_CONFIGS["tenant_bar_01"];
+  const readableName = tenantId
+    .replace(/^tenant_/, "")
+    .replace(/_\d+$/, "")
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+
+  const fallback = memoryPortalConfigs[tenantId] || {
+    tenantId,
+    tenantName: readableName || tenantId,
+    tenantCategory: "FOOD",
+    wifiSsid: `${readableName || tenantId}_WiFi_Gratis`,
+    primaryColor: "#2563EB",
+    banners: [],
+    pixPlans: [
+      { id: "p_1", title: "Acesso Rápido (2 Horas)", durationText: "2 Horas de Wi-Fi • 20 Mbps", price: 5.00, speedLimit: "20 Mbps", recommended: true },
+      { id: "p_2", title: "Passaporte Noite Toda (6 Horas)", durationText: "6 Horas de Alta Velocidade • 50 Mbps", price: 10.00, speedLimit: "50 Mbps", recommended: false },
+    ],
+    freeAccessEnabled: true,
+    freeAccessDurationMinutes: 30,
+    adWatchSeconds: 15,
+    digitalMenuEnabled: true,
+    digitalMenuUrl: "",
+    digitalMenuTitle: "Cardápio & Serviços",
+    digitalMenuButtonText: "Ver Cardápio & Serviços",
+    digitalMenuIcon: "utensils",
+    autoRedirectToMenu: false,
+  };
+
   return NextResponse.json({
     success: true,
     portalConfig: fallback,

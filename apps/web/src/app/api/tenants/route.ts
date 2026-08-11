@@ -103,19 +103,49 @@ export async function POST(request: Request) {
     // Persistir no Firebase Firestore se disponível
     try {
       if (db) {
-        await withDbTimeout(
-          db.collection(COLLECTIONS.TENANTS).doc(tenantId).set({
-            tenantName,
-            category: category || "FOOD",
-            wifiSsid: wifiSsid || `${tenantName}_WiFi`,
-            primaryColor: primaryColor || "#2563EB",
-            pairingCode: finalPairingCode,
-            addonStates: defaultAddonStates,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          }),
-          300
-        );
+        const batch = db.batch();
+
+        const tenantRef = db.collection(COLLECTIONS.TENANTS).doc(tenantId);
+        batch.set(tenantRef, {
+          tenantName,
+          category: category || "FOOD",
+          wifiSsid: wifiSsid || `${tenantName}_WiFi`,
+          primaryColor: primaryColor || "#2563EB",
+          pairingCode: finalPairingCode,
+          addonStates: defaultAddonStates,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+
+        const tvRef = db.collection(COLLECTIONS.TV_CONFIGS).doc(tenantId);
+        batch.set(tvRef, newTenantConfig);
+
+        const portalRef = db.collection(COLLECTIONS.PORTAL_CONFIGS).doc(tenantId);
+        batch.set(portalRef, {
+          tenantId,
+          tenantName,
+          tenantCategory: category || "FOOD",
+          wifiSsid: wifiSsid || `${tenantName}_WiFi`,
+          primaryColor: primaryColor || "#2563EB",
+          banners: [],
+          pixPlans: [
+            { id: "p_1", title: "Acesso Rápido (2 Horas)", durationText: "2 Horas de Wi-Fi • 20 Mbps", price: 5.00, speedLimit: "20 Mbps", recommended: true },
+            { id: "p_2", title: "Passaporte Noite Toda (6 Horas)", durationText: "6 Horas de Alta Velocidade • 50 Mbps", price: 10.00, speedLimit: "50 Mbps", recommended: false },
+          ],
+          freeAccessEnabled: true,
+          freeAccessDurationMinutes: 30,
+          adWatchSeconds: 15,
+          digitalMenuEnabled: true,
+          digitalMenuUrl: "",
+          digitalMenuTitle: "Cardápio & Serviços",
+          digitalMenuButtonText: "Ver Cardápio & Serviços",
+          digitalMenuIcon: "utensils",
+          autoRedirectToMenu: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+
+        await withDbTimeout(batch.commit(), 350);
       }
     } catch (e) {}
 

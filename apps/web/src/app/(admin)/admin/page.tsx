@@ -43,7 +43,8 @@ import {
   Lock,
   Unlock,
   Ban,
-  AlertTriangle
+  AlertTriangle,
+  Key
 } from "lucide-react";
 
 export default function MasterAdminDashboard() {
@@ -66,6 +67,48 @@ export default function MasterAdminDashboard() {
   const [newPrimaryColor, setNewPrimaryColor] = useState("#2563EB");
   const [newPairingCode, setNewPairingCode] = useState("");
   const [isSubmittingTenant, setIsSubmittingTenant] = useState(false);
+
+  // Estado do Modal de Redefinição de Senha pelo Master Admin
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [targetResetTenant, setTargetResetTenant] = useState<{ tenantId: string; tenantName: string } | null>(null);
+  const [resetPasswordInput, setResetPasswordInput] = useState("");
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+
+  const handleOpenResetModal = (tenantId: string, tenantName: string) => {
+    setTargetResetTenant({ tenantId, tenantName });
+    setResetPasswordInput("");
+    setShowResetPasswordModal(true);
+  };
+
+  const handleConfirmResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!targetResetTenant || !resetPasswordInput) return;
+    setIsResettingPassword(true);
+
+    try {
+      const res = await fetch("/api/admin/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenantId: targetResetTenant.tenantId,
+          newPassword: resetPasswordInput,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        showToast(`🔑 Senha de [${targetResetTenant.tenantName}] redefinida no Firebase com sucesso!`);
+        setShowResetPasswordModal(false);
+        setResetPasswordInput("");
+      } else {
+        showToast(`❌ Erro: ${data.error || "Não foi possível atualizar a senha."}`);
+      }
+    } catch (err) {
+      showToast("❌ Erro ao conectar com o servidor para redefinir senha.");
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
 
   const fetchTenantsFromApi = async () => {
     try {
@@ -555,6 +598,15 @@ export default function MasterAdminDashboard() {
                             <span>Ativar Piloto VIP Cortesia</span>
                           </button>
 
+                          <button
+                            onClick={() => handleOpenResetModal(tenant.tenantId, tenant.tenantName)}
+                            className="px-3.5 py-1.5 rounded-xl border border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 font-extrabold text-[11px] flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-sm"
+                            title="Redefinir senha de acesso deste estabelecimento no Firebase"
+                          >
+                            <Key className="w-3.5 h-3.5 text-amber-500" />
+                            <span>Redefinir Senha</span>
+                          </button>
+
                           <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-xs font-bold border border-emerald-500/20">
                             {activeCount} Módulos Ativos
                           </span>
@@ -970,6 +1022,80 @@ export default function MasterAdminDashboard() {
                   className="px-5 py-2 rounded-xl bg-blue-600 text-white font-bold flex items-center gap-2 shadow-md shadow-blue-600/20 hover:bg-blue-700 disabled:opacity-60"
                 >
                   {isSubmittingTenant ? "Cadastrando..." : "Cadastrar Cliente"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE REDEFINIÇÃO DE SENHA DO CLIENTE */}
+      {showResetPasswordModal && targetResetTenant && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="rounded-3xl border p-6 max-w-md w-full space-y-5 shadow-2xl animate-scale-up" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+            <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: "var(--border-color)" }}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold">
+                  <Key className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Redefinir Senha do Cliente</h3>
+                  <p className="text-xs text-slate-400 font-mono">{targetResetTenant.tenantName} ({targetResetTenant.tenantId})</p>
+                </div>
+              </div>
+              <button onClick={() => setShowResetPasswordModal(false)} className="text-slate-400 hover:text-white p-1 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmResetPassword} className="space-y-4 text-xs">
+              <div className="space-y-1.5">
+                <label className="font-bold uppercase tracking-wider text-slate-400">Nova Senha de Acesso *</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Digite a nova senha (ex: Barba#2026)"
+                    value={resetPasswordInput}
+                    onChange={(e) => setResetPasswordInput(e.target.value)}
+                    className="w-full p-3 pr-28 rounded-xl border focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono text-sm"
+                    style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const prefix = targetResetTenant.tenantName.split(" ")[0].replace(/[^a-zA-Z]/g, "") || "Vaelis";
+                      const randomPass = `${prefix}#${Math.floor(1000 + Math.random() * 9000)}`;
+                      setResetPasswordInput(randomPass);
+                    }}
+                    className="absolute right-2 top-2.5 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold hover:bg-amber-500/20 cursor-pointer"
+                  >
+                    🎲 Gerar Senha
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[11px] font-semibold flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 shrink-0" />
+                <span>A senha será criptografada (bcrypt) e atualizada no Firebase Firestore.</span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowResetPasswordModal(false)}
+                  className="px-4 py-2 rounded-xl border font-bold text-slate-400 hover:bg-slate-500/10"
+                  style={{ borderColor: "var(--border-color)" }}
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={isResettingPassword}
+                  className="px-5 py-2 rounded-xl bg-amber-500 text-black font-bold flex items-center gap-2 shadow-md shadow-amber-500/20 hover:bg-amber-600 disabled:opacity-60 cursor-pointer"
+                >
+                  {isResettingPassword ? "Atualizando..." : "Salvar Nova Senha"}
                 </button>
               </div>
             </form>

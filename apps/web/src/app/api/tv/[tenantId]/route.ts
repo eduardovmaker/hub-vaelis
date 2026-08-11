@@ -41,7 +41,33 @@ export async function GET(
     }
   } catch (error: any) {}
 
-  const fallback = memoryTvConfigs[tenantId] || INITIAL_TV_CONFIGS[tenantId] || INITIAL_TV_CONFIGS["tenant_bar_01"];
+  const readableName = tenantId
+    .replace(/^tenant_/, "")
+    .replace(/_\d+$/, "")
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+
+  const fallback = memoryTvConfigs[tenantId] || {
+    tenantId,
+    tenantName: readableName || tenantId,
+    pairingCode: `TV-${Math.floor(1000 + Math.random() * 9000)}`,
+    addonActive: true,
+    showQrOverlay: true,
+    showClockOverlay: true,
+    showRadioBadge: true,
+    showTitleOverlay: true,
+    showHeaderLogo: true,
+    planCycle: "MENSAL",
+    paymentStatus: "PAID",
+    playlist: [],
+    addonStates: {
+      "midia-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
+      "radio-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
+      "google-reviews": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
+    },
+  };
+
   return NextResponse.json({
     success: true,
     tvConfig: fallback,
