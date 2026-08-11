@@ -283,7 +283,7 @@ export default function ExternalRoletaPage({ params }: { params: Promise<{ tenan
 
       {/* Footer */}
       <footer className="py-4 text-center text-[11px] text-slate-400 border-t" style={{ borderColor: "var(--border-color)" }}>
-        HubLocal © {new Date().getFullYear()} — Powered by {tenantName}
+        Vaelis-HUB © {new Date().getFullYear()} — Powered by {tenantName}
       </footer>
 
     </div>

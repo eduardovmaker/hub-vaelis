@@ -3,8 +3,7 @@
 import React, { useState } from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/context/AuthContext";
-import { MOCK_USERS } from "@/mocks/auth";
-import { Wifi, ShieldCheck, Lock, Mail, ArrowRight, AlertCircle, Sparkles, Building2, Store } from "lucide-react";
+import { Lock, Mail, ArrowRight, AlertCircle, Store, Zap } from "lucide-react";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -17,34 +16,28 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
-
+  
     const result = await login(email, password);
     if (!result.success) {
-      setError(result.error || "Credenciais inválidas.");
+      setError(result.error || "Credenciais de acesso incorretas.");
       setIsSubmitting(false);
     }
   };
 
-  const handleQuickSelect = (quickEmail: string, quickPass: string) => {
-    setEmail(quickEmail);
-    setPassword(quickPass);
-    setError(null);
-  };
-
   return (
     <div className="min-h-screen flex flex-col justify-between transition-colors duration-200" style={{ backgroundColor: "var(--bg-primary)" }}>
-      {/* Header com Logo e Theme Toggle */}
+      {/* Header com Logo Vaelis-HUB e Theme Toggle */}
       <header className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-600/30">
-            <Store className="w-5 h-5 stroke-[2.5]" />
+          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-600/30">
+            <Zap className="w-5 h-5 stroke-[2.5]" />
           </div>
           <div>
             <h1 className="text-xl font-extrabold tracking-tight" style={{ color: "var(--text-primary)" }}>
-              Hub<span style={{ color: "var(--brand-primary)" }}>Local</span>
+              Vaelis<span style={{ color: "var(--brand-primary)" }}>-HUB</span>
             </h1>
             <p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
-              Plataforma de Engajamento & Soluções para Estabelecimentos
+              Plataforma Omnichannel de Engajamento, Mídia Indoor & Captive Portal
             </p>
           </div>
         </div>
@@ -65,24 +58,24 @@ export default function LoginPage() {
             }}
           >
             <div className="space-y-2 text-center mb-6">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <Store className="w-3.5 h-3.5" /> Portal do Estabelecimento
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <Store className="w-3.5 h-3.5" /> Portal Administrativo
               </span>
               <h2 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
-                Acessar seu Estabelecimento
+                Acesse sua Conta
               </h2>
-              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                Gerencie Mídia TV, Rádio, Avaliações Google, WhatsApp e Módulo Wi-Fi
+              <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                Gestão integrada de Mídia Indoor TV, Rádio Comercial, Automação de Avaliações Google e Captive Portal Wi-Fi
               </p>
             </div>
 
             {/* Banner de Cadastro Auto-Serviço */}
             <div className="mb-6 p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-center space-y-1">
               <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 block">
-                🚀 Não tem uma conta? Assine a plataforma em 1 minuto:
+                🚀 Ainda não possui uma conta?
               </span>
               <a href="/checkout" className="inline-flex items-center gap-1 text-xs font-black text-blue-600 dark:text-blue-400 hover:underline">
-                Criar Minha Conta & Ativar Tenant <ArrowRight className="w-3.5 h-3.5" />
+                Criar Conta & Ativar Estabelecimento <ArrowRight className="w-3.5 h-3.5" />
               </a>
             </div>
 
@@ -109,7 +102,7 @@ export default function LoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="seu.email@dominio.com"
+                    placeholder="seu.email@empresa.com"
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                     style={{
                       backgroundColor: "var(--bg-primary)",
@@ -154,7 +147,7 @@ export default function LoginPage() {
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    Entrar no Painel <ArrowRight className="w-4 h-4" />
+                    Entrar no Vaelis-HUB <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>
@@ -165,7 +158,7 @@ export default function LoginPage() {
 
       {/* Footer */}
       <footer className="py-4 text-center text-xs" style={{ color: "var(--text-secondary)" }}>
-        HubLocal © {new Date().getFullYear()} — Plataforma de Engajamento & Crescimento para Comércios e Estabelecimentos
+        Vaelis-HUB © {new Date().getFullYear()} — Plataforma Omnichannel de Engajamento & Mídia para Estabelecimentos
       </footer>
     </div>
   );

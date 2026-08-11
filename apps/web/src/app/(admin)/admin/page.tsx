@@ -312,14 +312,14 @@ export default function MasterAdminDashboard() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-black tracking-tight" style={{ color: "var(--text-primary)" }}>
-                Hub<span style={{ color: "var(--brand-primary)" }}>Local</span> Master Admin
+                Vaelis<span style={{ color: "var(--brand-primary)" }}>-HUB</span> Master Admin
               </h1>
               <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-blue-500/10 text-blue-600 border border-blue-500/20">
-                HQ SuperAdmin
+                SuperAdmin HQ
               </span>
             </div>
             <p className="text-xs text-slate-400 font-medium">
-              Gestão Centralizada de Estabelecimentos, Receita Asaas & Containers MikroTik
+              Gestão Centralizada de Estabelecimentos, Mídia Indoor, Receita & Infraestrutura MikroTik
             </p>
           </div>
         </div>

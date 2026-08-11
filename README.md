@@ -1,6 +1,6 @@
-# 🌐 CaptiveHub - Plataforma Multi-Tenant Hotspot & Mídia Indoor
+# 🌐 Vaelis-HUB — Plataforma Omnichannel de Engajamento, Mídia Indoor & Captive Portal
 
-**CaptiveHub** é uma solução completa em nuvem (SaaS Multi-Tenant) para gestão de **Hotspot Wi-Fi com Captive Portal**, **Mídia Indoor para Smart TVs (Digital Signage)**, **Rádio Indoor**, **Automação de Avaliações no Google**, **Bot WhatsApp** e **Web Guard (Filtro de Conteúdo)** integrada a roteadores **MikroTik RouterOS / CHR**.
+**Vaelis-HUB** é uma solução enterprise em nuvem (SaaS Multi-Tenant) para gestão de **Mídia Indoor para Smart TVs (Digital Signage)**, **Rádio Commercial sem Anúncios**, **Automação de Avaliações 5★ no Google**, **Hotspot Wi-Fi com Captive Portal**, **Bot WhatsApp** e **Web Guard (Filtro de Conteúdo)** integrada a roteadores **MikroTik RouterOS / CHR**.
 
 ---
 

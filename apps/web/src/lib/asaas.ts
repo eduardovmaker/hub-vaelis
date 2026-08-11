@@ -176,7 +176,7 @@ export async function getAsaasPixQrCode(paymentId: string): Promise<AsaasPixQrCo
   const { apiKey, apiUrl } = getAsaasApiConfig();
 
   if (!apiKey || paymentId.startsWith("pay_sim_") || paymentId.startsWith("pay_err_") || paymentId.startsWith("pay_exc_")) {
-    return generateSimulatedPixQrCode(99.00, "Cobrança Pix HubLocal");
+    return generateSimulatedPixQrCode(99.00, "Cobrança Pix Vaelis-HUB");
   }
 
   try {

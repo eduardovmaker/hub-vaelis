@@ -169,11 +169,11 @@ add name="hsprof-captivehub" hotspot-address=192.168.88.1 html-directory=hotspot
 /ip hotspot add name="hs-captivehub" interface=bridge-hotspot profile=hsprof-captivehub address-pool=hs-pool-1 disabled=no
 
 /radius
-add service=hotspot address=127.0.0.1 secret="captivehub-radius-secret" comment="HubLocal RADIUS Cloud"
+add service=hotspot address=127.0.0.1 secret="vaelis-radius-secret" comment="Vaelis-HUB RADIUS Cloud"
 
 /ip hotspot walled-garden
-add comment="HubLocal Cloud Domain" dst-host="*.captivehub.com.br"
-add comment="HubLocal Local Dev" dst-host="*.ngrok-free.app"
+add comment="Vaelis-HUB Cloud Domain" dst-host="*.vaelis.com.br"
+add comment="Vaelis-HUB Local Dev" dst-host="*.ngrok-free.app"
 add comment="Asaas Payment Gateway" dst-host="*.asaas.com"
 `;
 
@@ -191,12 +191,12 @@ add comment="Asaas Payment Gateway" dst-host="*.asaas.com"
     const asaasPayment = await createAsaasPixPayment({
       customerId: asaasCustomer.id,
       value: paymentAmount,
-      description: `HubLocal - Assinatura Plano ${planLabel} para ${companyName}`,
+      description: `Vaelis-HUB - Assinatura Plano ${planLabel} para ${companyName}`,
       externalReference: tenantId,
     });
 
     const asaasPaymentLink = await createAsaasPaymentLink({
-      name: `Assinatura HubLocal - ${companyName}`,
+      name: `Assinatura Vaelis-HUB - ${companyName}`,
       description: `Plano ${planLabel}`,
       value: paymentAmount,
     });

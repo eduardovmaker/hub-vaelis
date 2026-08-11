@@ -3,8 +3,8 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata: Metadata = {
-  title: "HubLocal - Plataforma de Engajamento, Mídia & Gestão para Estabelecimentos",
-  description: "Soluções completas para estabelecimentos e comércios encantarem clientes com Mídia TV Indoor, Rádio Comercial, Avaliações 5★ no Google, WhatsApp Bot e Módulo Wi-Fi Captive Portal.",
+  title: "Vaelis-HUB — Plataforma Omnichannel de Engajamento, Mídia Indoor & Captive Portal",
+  description: "Solução enterprise para estabelecimentos comércios e redes: Mídia Indoor TV, Rádio Comercial sem anúncios, Automação de Avaliações 5★ no Google e Captive Portal Wi-Fi de Alta Performance.",
 };
 
 export default function RootLayout({

@@ -42,10 +42,11 @@ export default function PublicCheckoutPage() {
   const [wifiSsid, setWifiSsid] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#2563EB");
   const [selectedStarterModules, setSelectedStarterModules] = useState<string[]>([
+    "midia-indoor",
+    "radio-indoor",
+    "google-reviews",
     "checkin-qrcode",
     "whatsapp-bot",
-    "roleta-da-sorte",
-    "loja-produtos",
   ]);
 
   const toggleStarterModule = (modId: string) => {
@@ -126,7 +127,7 @@ export default function PublicCheckoutPage() {
   };
 
   const copyPixKey = () => {
-    navigator.clipboard.writeText("00020126580014BR.GOV.BCB.PIX0136captivehub-asaas-checkout-pix-key-991204000530398654099.005802BR5925CAPTIVEHUB TECNOLOGIA SA6009SAO PAULO62070503***6304E8A1");
+    navigator.clipboard.writeText("00020126580014BR.GOV.BCB.PIX0136vaelis-hub-asaas-checkout-pix-key-991204000530398654099.005802BR5925VAELIS HUB TECNOLOGIA SA6009SAO PAULO62070503***6304E8A1");
     setPixCopied(true);
     setTimeout(() => setPixCopied(false), 3000);
   };
@@ -148,24 +149,24 @@ export default function PublicCheckoutPage() {
 
   return (
     <div className="min-h-screen flex flex-col justify-between" style={{ backgroundColor: "var(--bg-primary)" }}>
-      {/* Header com Logo e Theme Toggle */}
+      {/* Header com Logo Vaelis-HUB e Theme Toggle */}
       <header className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between border-b" style={{ borderColor: "var(--border-color)" }}>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-600/30">
-            <Store className="w-5 h-5 stroke-[2.5]" />
+          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-600/30">
+            <Zap className="w-5 h-5 stroke-[2.5]" />
           </div>
           <div>
             <h1 className="text-xl font-extrabold tracking-tight" style={{ color: "var(--text-primary)" }}>
-              Hub<span style={{ color: "var(--brand-primary)" }}>Local</span>
+              Vaelis<span style={{ color: "var(--brand-primary)" }}>-HUB</span>
             </h1>
             <p className="text-xs font-medium text-slate-400">
-              Plataforma de Engajamento, Mídia & Soluções para Estabelecimentos
+              Plataforma Omnichannel de Engajamento, Mídia Indoor & Captive Portal
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <a href="/login" className="px-3.5 py-1.5 rounded-xl border text-xs font-bold text-slate-400 hover:text-white" style={{ borderColor: "var(--border-color)" }}>
+          <a href="/login" className="px-3.5 py-1.5 rounded-xl border text-xs font-bold text-slate-400 hover:text-white transition-all" style={{ borderColor: "var(--border-color)" }}>
             Já sou cliente (Login)
           </a>
           <ThemeToggle />
@@ -179,17 +180,17 @@ export default function PublicCheckoutPage() {
         <div className="flex items-center justify-center gap-2 sm:gap-4 text-xs font-bold">
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${step >= 1 ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400"}`}>
             <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">1</span>
-            <span>Cadastro</span>
+            <span>Dados do Estabelecimento</span>
           </div>
           <div className="w-6 h-px bg-slate-700" />
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${step >= 2 ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400"}`}>
             <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">2</span>
-            <span>Pagamento PIX</span>
+            <span>Pagamento Instantâneo</span>
           </div>
           <div className="w-6 h-px bg-slate-700" />
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${step === 3 ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400"}`}>
             <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">3</span>
-            <span>Ativação & Acesso</span>
+            <span>Ativação & Acesso ao Painel</span>
           </div>
         </div>
 
@@ -200,13 +201,13 @@ export default function PublicCheckoutPage() {
           <div className="rounded-2xl border p-6 sm:p-8 shadow-2xl space-y-6 animate-fade-in" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
             <div className="space-y-1 text-center">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Ativação Imediata em 1 Minuto
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Ativação Imediata & Instantânea
               </span>
               <h2 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
-                Assinar Plataforma HubLocal
+                Ativar Plataforma Vaelis-HUB
               </h2>
-              <p className="text-xs text-slate-400">
-                Preencha os dados da sua empresa para ativarmos seu tenant com Mídia TV, Rádio Ambient, Avaliações Google, WhatsApp e Módulo Captive Portal.
+              <p className="text-xs text-slate-400 leading-relaxed max-w-xl mx-auto">
+                Cadastre sua empresa para liberar o painel completo com Mídia Indoor TV, Rádio Comercial sem anúncios, Automação de Avaliações Google e Módulo Wi-Fi.
               </p>
             </div>
 
@@ -221,10 +222,10 @@ export default function PublicCheckoutPage() {
                 style={{ borderColor: selectedPlanCycle === "MENSAL" ? undefined : "var(--border-color)", backgroundColor: "var(--bg-primary)" }}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>Plano Mensal</span>
+                  <span className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>Plano Mensal Enterprise</span>
                   <span className="text-xs font-black text-blue-500">R$ 99,00 /mês</span>
                 </div>
-                <p className="text-[11px] text-slate-400">Sem fidelidade • Cancele quando quiser</p>
+                <p className="text-[11px] text-slate-400">Sem fidelidade contratual • Cancele a qualquer momento</p>
               </button>
 
               <button
@@ -239,10 +240,10 @@ export default function PublicCheckoutPage() {
                   Economize 25%
                 </span>
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>Plano Anual</span>
+                  <span className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>Plano Anual Enterprise</span>
                   <span className="text-xs font-black text-emerald-500">R$ 890,00 /ano</span>
                 </div>
-                <p className="text-[11px] text-slate-400">Equivalente a R$ 74,00/mês no PIX</p>
+                <p className="text-[11px] text-slate-400">Equivalente a R$ 74,00/mês no Pix</p>
               </button>
             </div>
 
@@ -290,11 +291,11 @@ export default function PublicCheckoutPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="font-bold uppercase tracking-wider text-slate-400">Nome da Empresa / Tenant *</label>
+                  <label className="font-bold uppercase tracking-wider text-slate-400">Nome do Estabelecimento *</label>
                   <input
                     type="text"
                     required
-                    placeholder="Ex: Padaria Bella Vista"
+                    placeholder="Ex: Padaria & Restô Bella Vista"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     className="w-full p-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -313,14 +314,14 @@ export default function PublicCheckoutPage() {
                     style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
                   >
                     <option value="FOOD">Restaurante / Bar / Gastronomia</option>
-                    <option value="BARBER">Barbearia / Salão de Beleza</option>
-                    <option value="RETAIL">Varejo / Loja</option>
-                    <option value="SERVICES">Serviços / Outros</option>
+                    <option value="BARBER">Barbearia / Salão de Beleza / Estética</option>
+                    <option value="RETAIL">Varejo / Loja / Comércio</option>
+                    <option value="SERVICES">Serviços / Saúde / Outros</option>
                   </select>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="font-bold uppercase tracking-wider text-slate-400">Nome do SSID Wi-Fi (Opcional se usar Wi-Fi)</label>
+                  <label className="font-bold uppercase tracking-wider text-slate-400">SSID do Wi-Fi (Opcional se utilizar Módulo Wi-Fi)</label>
                   <input
                     type="text"
                     placeholder="Ex: BellaVista_WiFi_Gratis"
@@ -336,27 +337,28 @@ export default function PublicCheckoutPage() {
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 text-[11px] flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5" /> Escolha os Módulos Iniciais da Sua Plataforma
+                    <label className="font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 text-[11px] flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" /> Módulos Iniciais Selecionados
                     </label>
                     <p className="text-[11px] text-slate-400">
-                      Não tem roteador MikroTik? Desmarque o Wi-Fi Captive e use QR Code Balcão, Roleta e WhatsApp!
+                      Escolha os recursos que deseja utilizar imediatamente na sua plataforma:
                     </p>
                   </div>
-                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 uppercase">
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 uppercase">
                     {selectedStarterModules.length} Módulo(s) Ativos
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {[
+                    { id: "midia-indoor", label: "📺 TV Mídia Indoor & Digital Signage", badge: "Smart TV" },
+                    { id: "radio-indoor", label: "🎵 Rádio Comercial & Som Ambiente", badge: "Áudio" },
+                    { id: "google-reviews", label: "⭐ Avaliações 5 Estrelas no Google", badge: "Reputação" },
                     { id: "checkin-qrcode", label: "📱 QR Code Balcão & Check-in VIP", badge: "Sem Wi-Fi" },
-                    { id: "whatsapp-bot", label: "💬 WhatsApp Bot & CRM Clientes", badge: "Sem Wi-Fi" },
-                    { id: "roleta-da-sorte", label: "🎯 Roleta da Sorte Digital & Cupons", badge: "Sem Wi-Fi" },
-                    { id: "loja-produtos", label: "🛍️ Loja Virtual & Vendas Pix (Estoque)", badge: "Sem Wi-Fi" },
-                    { id: "midia-indoor", label: "📺 TV Mídia Indoor & Rádio da Casa", badge: "TV & Som" },
-                    { id: "captive-portal", label: "🌐 Hotspot Wi-Fi Captive Portal", badge: "Requer MikroTik" },
-                    { id: "google-reviews", label: "⭐ Avaliação Google NPS 5 Estrelas", badge: "Reputação" },
+                    { id: "whatsapp-bot", label: "💬 WhatsApp Bot & CRM de Leads", badge: "CRM" },
+                    { id: "roleta-da-sorte", label: "🎯 Roleta da Sorte & Gamificação", badge: "Engajamento" },
+                    { id: "loja-produtos", label: "🛍️ Loja Virtual & Vendas Pix", badge: "Vendas" },
+                    { id: "captive-portal", label: "🌐 Hotspot Wi-Fi Captive Portal", badge: "MikroTik" },
                   ].map((m) => {
                     const isChecked = selectedStarterModules.includes(m.id);
                     return (
@@ -364,7 +366,7 @@ export default function PublicCheckoutPage() {
                         key={m.id}
                         onClick={() => toggleStarterModule(m.id)}
                         className={`p-3 rounded-xl border cursor-pointer flex items-center justify-between transition-all select-none ${
-                          isChecked ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-600 dark:text-emerald-400" : "bg-slate-500/5 opacity-60"
+                          isChecked ? "bg-blue-500/10 border-blue-500/40 text-blue-600 dark:text-blue-400" : "bg-slate-500/5 opacity-60"
                         }`}
                         style={{ borderColor: isChecked ? undefined : "var(--border-color)" }}
                       >
@@ -373,12 +375,12 @@ export default function PublicCheckoutPage() {
                             type="checkbox"
                             checked={isChecked}
                             onChange={() => {}}
-                            className="w-4 h-4 text-emerald-600 rounded cursor-pointer"
+                            className="w-4 h-4 text-blue-600 rounded cursor-pointer"
                           />
                           <span className="font-bold text-xs">{m.label}</span>
                         </div>
                         <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase ${
-                          m.id === "captive-portal" ? "bg-blue-500/20 text-blue-500" : "bg-emerald-500/20 text-emerald-600"
+                          m.id === "captive-portal" ? "bg-purple-500/20 text-purple-500" : "bg-blue-500/20 text-blue-600"
                         }`}>
                           {m.badge}
                         </span>
@@ -393,7 +395,7 @@ export default function PublicCheckoutPage() {
                 className="w-full py-3.5 px-4 rounded-xl font-bold text-white shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition-all hover:bg-blue-700 active:scale-[0.99] pt-2"
                 style={{ backgroundColor: "var(--brand-primary)" }}
               >
-                <span>Ir para Pagamento & Ativar Conta</span> <ArrowRight className="w-4 h-4" />
+                <span>Prosseguir para Pagamento & Liberar Acesso</span> <ArrowRight className="w-4 h-4" />
               </button>
             </form>
           </div>
@@ -406,13 +408,13 @@ export default function PublicCheckoutPage() {
           <div className="rounded-2xl border p-6 sm:p-8 shadow-2xl space-y-6 animate-fade-in text-center" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
             <div className="space-y-1">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Asaas Gateway Conectado
+                <CheckCircle2 className="w-3.5 h-3.5" /> Gateway de Pagamento Seguro
               </span>
               <h2 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
-                Pagamento via Pix (Liberação Automática)
+                Pagamento Instantâneo via Pix
               </h2>
               <p className="text-xs text-slate-400">
-                Escaneie o QR Code abaixo com seu aplicativo do banco. O sistema ativará seu tenant automaticamente assim que o pagamento for confirmado.
+                Escaneie o QR Code abaixo no app do seu banco. A liberação do seu painel ocorre automaticamente em segundos.
               </p>
             </div>
 
@@ -437,7 +439,7 @@ export default function PublicCheckoutPage() {
               <button
                 type="button"
                 onClick={() => {
-                  const pixPayload = createdTenantData?.asaas?.pixCopyPaste || "00020126580014BR.GOV.BCB.PIX0136captivehub-asaas-checkout-pix-key-991204000530398654099.005802BR5925CAPTIVEHUB TECNOLOGIA SA6009SAO PAULO62070503***6304E8A1";
+                  const pixPayload = createdTenantData?.asaas?.pixCopyPaste || "00020126580014BR.GOV.BCB.PIX0136vaelis-hub-asaas-checkout-pix-key-991204000530398654099.005802BR5925VAELIS HUB TECNOLOGIA SA6009SAO PAULO62070503***6304E8A1";
                   navigator.clipboard.writeText(pixPayload);
                   setPixCopied(true);
                   setTimeout(() => setPixCopied(false), 3000);
@@ -457,18 +459,18 @@ export default function PublicCheckoutPage() {
                   className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  <span>Abrir Link de Pagamento Direto no Asaas</span>
+                  <span>Abrir Link de Pagamento Direto</span>
                 </a>
               )}
             </div>
 
             <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 max-w-md mx-auto space-y-2 text-xs">
               <div className="flex items-center justify-between font-bold text-blue-600 dark:text-blue-400">
-                <span>Aguardando Confirmação Asaas...</span>
+                <span>Aguardando Confirmação do Pagamento...</span>
                 <span>{pixSimulatingTimer}s</span>
               </div>
               <p className="text-[11px] text-slate-400 text-left">
-                Simulação automática ativada: assim que o timer zerar, sua conta e tenant serão criados e ativados no PostgreSQL.
+                Assim que o pagamento for confirmado, seu ambiente no Vaelis-HUB será ativado e você será direcionado para o painel.
               </p>
 
               <button
@@ -477,7 +479,7 @@ export default function PublicCheckoutPage() {
                 disabled={isProcessing}
                 className="w-full py-2 rounded-lg bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-all disabled:opacity-60"
               >
-                {isProcessing ? "Provisionando Tenant..." : "Simular Pagamento Confirmado Agora"}
+                {isProcessing ? "Ativando Estabelecimento..." : "Confirmar Pagamento e Acessar Painel"}
               </button>
             </div>
           </div>
@@ -495,14 +497,14 @@ export default function PublicCheckoutPage() {
                 <CheckCircle2 className="w-7 h-7" />
               </div>
               <h2 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                🎉 Conta Provisionada e Ativada com Sucesso!
+                🎉 Estabelecimento Ativado com Sucesso!
               </h2>
               <p className="text-xs text-slate-300 max-w-lg mx-auto">
-                Seu pagamento foi confirmado pelo Asaas. O tenant <strong>{createdTenantData.tenantName}</strong> foi criado e o Add-on <strong>Captive Portal Wi-Fi</strong> está ativado!
+                Seu pagamento foi confirmado! O ambiente de <strong>{createdTenantData.tenantName}</strong> no Vaelis-HUB está 100% configurado e pronto para uso.
               </p>
             </div>
 
-            {/* Cards de Credenciais & E-mail de Boas-Vindas Simulados */}
+            {/* Cards de Credenciais & E-mail de Boas-Vindas */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               
               {/* Card 1: Credenciais de Acesso */}
@@ -514,7 +516,7 @@ export default function PublicCheckoutPage() {
 
                 <div className="space-y-2 text-xs">
                   <div>
-                    <span className="text-slate-400 text-[10px] uppercase font-bold">Endereço do E-mail</span>
+                    <span className="text-slate-400 text-[10px] uppercase font-bold">Endereço de E-mail</span>
                     <p className="font-mono font-bold text-sm" style={{ color: "var(--text-primary)" }}>{createdTenantData.email}</p>
                   </div>
                   <div>
@@ -522,94 +524,51 @@ export default function PublicCheckoutPage() {
                     <p className="font-mono font-bold text-sm text-amber-500">•••••••• (Sua senha definida)</p>
                   </div>
                   <div>
-                    <span className="text-slate-400 text-[10px] uppercase font-bold">ID Exclusivo do Tenant</span>
+                    <span className="text-slate-400 text-[10px] uppercase font-bold">ID do Estabelecimento</span>
                     <p className="font-mono font-bold text-xs text-blue-600">{createdTenantData.tenantId}</p>
                   </div>
                 </div>
 
                 <button
                   onClick={handleAccessDashboardNow}
-                  className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-600/20"
+                  className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 transition-all"
                 >
-                  <span>Acessar Meu Painel Agora</span> <ArrowRight className="w-4 h-4" />
+                  <span>Acessar Painel Vaelis-HUB Agora</span> <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Card 2: Simulação de E-mail Enviado */}
+              {/* Card 2: E-mail de Boas-Vindas */}
               <div className="rounded-2xl border p-5 space-y-3 shadow-sm bg-slate-900 border-slate-700 text-white">
                 <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
                   <Mail className="w-5 h-5 text-emerald-400" />
-                  <h3 className="text-sm font-bold">E-mail de Boas-Vindas Enviado</h3>
+                  <h3 className="text-sm font-bold">E-mail de Confirmação Disparado</h3>
                 </div>
 
                 <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 text-[11px]">
-                  <p className="text-slate-400">De: <span className="text-slate-200">suporte@captivehub.com.br</span></p>
+                  <p className="text-slate-400">De: <span className="text-slate-200">suporte@vaelis.com.br</span></p>
                   <p className="text-slate-400">Para: <span className="text-emerald-400">{createdTenantData.email}</span></p>
-                  <p className="text-slate-400 font-bold border-t border-slate-800 pt-1.5">Assunto: 🚀 Bem-vindo ao HubLocal! Sua conta está pronta.</p>
+                  <p className="text-slate-400 font-bold border-t border-slate-800 pt-1.5">Assunto: 🚀 Bem-vindo ao Vaelis-HUB! Sua conta foi ativada.</p>
                   <p className="text-slate-300 pt-1">
-                    "Olá {createdTenantData.tenantName}, sua assinatura foi ativada. Acesse o seu painel para gerenciar Mídia TV, Avaliações, WhatsApp e Módulo Wi-Fi."
+                    "Olá {createdTenantData.tenantName}, sua assinatura foi ativada. Acesse o seu painel para gerenciar Mídia Indoor TV, Rádio Comercial, Avaliações e Captive Portal Wi-Fi."
                   </p>
                 </div>
 
                 <p className="text-[10px] text-slate-400">
-                  Um e-mail de boas-vindas completo com os dados acima foi disparado para o seu endereço de e-mail.
+                  Os detalhes de acesso acima também foram encaminhados para o seu e-mail cadastrado.
                 </p>
               </div>
             </div>
-
-            {/* Card Docker CHR Container */}
-            {createdTenantData.chrContainer && (
-              <div className="rounded-2xl border p-6 shadow-sm space-y-4" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3" style={{ borderColor: "var(--border-color)" }}>
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-blue-600/10 text-blue-600 flex items-center justify-center font-bold">
-                      <Server className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
-                        <span>Container MikroTik CHR (Docker) Dedicated</span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold text-[10px] uppercase border border-emerald-500/20">
-                          100% Online (Running)
-                        </span>
-                      </h3>
-                      <p className="text-xs text-slate-400 font-mono">
-                        Container: {createdTenantData.chrContainer.containerName} ({createdTenantData.chrContainer.containerId})
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                  <div className="p-3 rounded-xl bg-slate-500/5 border space-y-1" style={{ borderColor: "var(--border-color)" }}>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Porta WinBox</span>
-                    <p className="font-mono font-bold text-blue-600">{createdTenantData.chrContainer.winboxPort}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-500/5 border space-y-1" style={{ borderColor: "var(--border-color)" }}>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Porta Web UI</span>
-                    <p className="font-mono font-bold text-emerald-600">{createdTenantData.chrContainer.webPort}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-500/5 border space-y-1" style={{ borderColor: "var(--border-color)" }}>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Porta API ROS</span>
-                    <p className="font-mono font-bold text-purple-600">{createdTenantData.chrContainer.rosApiPort}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-500/5 border space-y-1" style={{ borderColor: "var(--border-color)" }}>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Consumo RAM</span>
-                    <p className="font-mono font-bold text-amber-500">{createdTenantData.chrContainer.memoryUsageMb} MB</p>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Script MikroTik ROS v7 */}
             <div className="rounded-2xl border p-6 shadow-sm space-y-3" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3" style={{ borderColor: "var(--border-color)" }}>
                 <div className="flex items-center gap-2">
                   <Terminal className="w-5 h-5 text-blue-600" />
-                  <h3 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>Script 1-Clique para MikroTik ROS v7</h3>
+                  <h3 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>Script de Automação MikroTik RouterOS v7</h3>
                 </div>
                 <button
                   onClick={copyMikrotikScript}
-                  className="px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 hover:bg-slate-500/10"
+                  className="px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 hover:bg-slate-500/10 transition-all"
                   style={{ borderColor: "var(--border-color)", color: "var(--text-primary)" }}
                 >
                   {copiedScript ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
@@ -629,7 +588,7 @@ export default function PublicCheckoutPage() {
 
       {/* Footer */}
       <footer className="py-4 text-center text-xs border-t" style={{ color: "var(--text-secondary)", borderColor: "var(--border-color)" }}>
-        HubLocal © {new Date().getFullYear()} — Plataforma de Engajamento & Crescimento para Estabelecimentos
+        Vaelis-HUB © {new Date().getFullYear()} — Plataforma Omnichannel de Engajamento & Mídia para Estabelecimentos
       </footer>
     </div>
   );

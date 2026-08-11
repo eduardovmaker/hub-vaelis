@@ -424,7 +424,7 @@ export default function DynamicCaptivePortal({ params }: { params: Promise<{ ten
 
         {/* Footer */}
         <footer className="text-center text-[10px] text-slate-500 py-2">
-          Powered by <span className="font-bold text-slate-400">Captive Hub</span> • Protegido por Mikrotik RouterOS
+          Powered by <span className="font-bold text-slate-400">Vaelis-HUB</span> • Protegido por MikroTik RouterOS
         </footer>
       </div>
 
