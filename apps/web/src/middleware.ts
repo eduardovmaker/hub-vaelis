@@ -15,10 +15,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Se for o domínio principal da sua plataforma (ex: app.seusaas.com ou localhost)
+  // Se for o domínio principal da sua plataforma (ex: app.seusaas.com, vercel.app ou localhost)
   if (
     hostname.includes("localhost") ||
     hostname.includes("127.0.0.1") ||
+    hostname.includes("vercel.app") ||
+    hostname.includes("hub-vaelis") ||
     hostname.includes("seusaas.com") ||
     hostname.includes("captivehub.com")
   ) {
