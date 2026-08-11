@@ -63,8 +63,8 @@ export async function POST(request: Request) {
 
     const defaultAddonStates = {
       "captive-portal": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
-      "midia-indoor": { active: false, paymentStatus: "PENDING" },
-      "radio-indoor": { active: false, paymentStatus: "PENDING" },
+      "midia-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
+      "radio-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
       "google-reviews": { active: false, paymentStatus: "PENDING" },
       "whatsapp-bot": { active: false, paymentStatus: "PENDING" },
       "roleta-da-sorte": { active: false, paymentStatus: "PENDING" },
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
       tenantId,
       tenantName,
       pairingCode: finalPairingCode,
-      addonActive: false,
+      addonActive: true,
       showQrOverlay: true,
       showClockOverlay: true,
       autoRenew: true,

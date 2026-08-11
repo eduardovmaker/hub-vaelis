@@ -289,7 +289,7 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
     }
   };
 
-  if (!tvConfig.addonActive) {
+  if (tvConfig.addonActive === false) {
     return (
       <div className="w-screen h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-8 text-center space-y-6 select-none font-sans">
         <div className="w-20 h-20 rounded-3xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center shadow-2xl">

@@ -35,6 +35,7 @@ export async function GET(
           tvConfig: {
             tenantId,
             ...config,
+            addonActive: (config as any).addonActive ?? true,
           },
         });
       }
@@ -52,7 +53,7 @@ export async function GET(
     tenantId,
     tenantName: readableName || tenantId,
     pairingCode: `TV-${Math.floor(1000 + Math.random() * 9000)}`,
-    addonActive: false,
+    addonActive: true,
     showQrOverlay: true,
     showClockOverlay: true,
     showRadioBadge: true,
