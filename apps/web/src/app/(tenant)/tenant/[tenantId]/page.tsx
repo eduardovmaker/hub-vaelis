@@ -104,56 +104,7 @@ interface ConnectedDevice {
   status: "active" | "idle";
 }
 
-const INITIAL_CONNECTED_DEVICES: ConnectedDevice[] = [
-  {
-    id: "dev_01",
-    hostname: "iPhone 14 Pro Max (Gabriel)",
-    ip: "192.168.88.102",
-    mac: "74:89:5A:21:40:99",
-    signalRssi: -52,
-    accessType: "Pix Pago",
-    downloadSpeed: "12.4 Mbps",
-    bytesUsed: "480 MB",
-    connectedTime: "1h 15m",
-    status: "active",
-  },
-  {
-    id: "dev_02",
-    hostname: "Samsung Galaxy S23 (Mariana)",
-    ip: "192.168.88.105",
-    mac: "E4:A7:A5:11:88:23",
-    signalRssi: -64,
-    accessType: "Acesso Grátis (30m)",
-    downloadSpeed: "2.1 Mbps",
-    bytesUsed: "120 MB",
-    connectedTime: "18 min",
-    status: "active",
-  },
-  {
-    id: "dev_03",
-    hostname: "Motorola Edge 40 (Carlos)",
-    ip: "192.168.88.112",
-    mac: "8C:AA:B5:44:90:12",
-    signalRssi: -71,
-    accessType: "Pix Pago",
-    downloadSpeed: "8.7 Mbps",
-    bytesUsed: "1.2 GB",
-    connectedTime: "3h 40m",
-    status: "active",
-  },
-  {
-    id: "dev_04",
-    hostname: "iPad Air 5ª Geração",
-    ip: "192.168.88.120",
-    mac: "AC:DE:48:00:11:22",
-    signalRssi: -58,
-    accessType: "Acesso Grátis (30m)",
-    downloadSpeed: "1.5 Mbps",
-    bytesUsed: "45 MB",
-    connectedTime: "05 min",
-    status: "active",
-  },
-];
+const INITIAL_CONNECTED_DEVICES: ConnectedDevice[] = [];
 
 interface CapturedLead {
   id: string;
@@ -164,12 +115,7 @@ interface CapturedLead {
   optIn: boolean;
 }
 
-const INITIAL_CAPTURED_LEADS: CapturedLead[] = [
-  { id: "lead_1", name: "Gabriel Oliveira", whatsapp: "(11) 99887-6655", connectedAt: "Hoje, 14:32", birthdate: "14/08/1994", optIn: true },
-  { id: "lead_2", name: "Mariana Costa", whatsapp: "(11) 98765-4321", connectedAt: "Hoje, 13:15", birthdate: "22/11/1998", optIn: true },
-  { id: "lead_3", name: "Carlos Eduardo Silva", whatsapp: "(11) 97654-3210", connectedAt: "Hoje, 11:04", birthdate: "05/03/1990", optIn: true },
-  { id: "lead_4", name: "Fernanda Lima", whatsapp: "(11) 96543-2109", connectedAt: "Ontem, 20:45", birthdate: "30/01/1996", optIn: true },
-];
+const INITIAL_CAPTURED_LEADS: CapturedLead[] = [];
 
 const ADDONS_CATALOG = [
   {
@@ -610,52 +556,11 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
   const [copiedCheckinUrl, setCopiedCheckinUrl] = useState(false);
 
   // Histórico de Cupons e Ganhadores da Roleta
-  const [roletaWinnersList, setRoletaWinnersList] = useState([
-    { id: "w1", customerName: "Gabriel Oliveira", whatsapp: "(11) 99887-6655", prizeName: "10% OFF na Pomada Matte", couponCode: "CUPOM-849201", wonAt: "Hoje, 14:35", status: "Pendente" },
-    { id: "w2", customerName: "Carlos Eduardo Silva", whatsapp: "(11) 97654-3210", prizeName: "🍺 Cerveja Trincando Cortesia", couponCode: "CUPOM-392014", wonAt: "Hoje, 11:10", status: "Resgatado" },
-    { id: "w3", customerName: "Mariana Costa", whatsapp: "(11) 98765-4321", prizeName: "💈 20% OFF na Barba Terapia", couponCode: "CUPOM-581920", wonAt: "Ontem, 16:40", status: "Resgatado" },
-  ]);
+  const [roletaWinnersList, setRoletaWinnersList] = useState<any[]>([]);
   const [copiedRoletaUrl, setCopiedRoletaUrl] = useState(false);
 
   // Estados da Loja de Produtos & Controle de Estoque
-  const [shopProductsList, setShopProductsList] = useState([
-    {
-      id: "prod_1",
-      name: "Pomada Matte Modeladora 150g (Efeito Natural)",
-      category: "Cabelo & Barba",
-      price: 45.00,
-      stockQty: 18,
-      imageUrl: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=400&q=80",
-      active: true,
-    },
-    {
-      id: "prod_2",
-      name: "Óleo Hidratante de Barba Terapia (Sândalo & Cedro)",
-      category: "Barba",
-      price: 38.00,
-      stockQty: 4, // Estoque Baixo (< 5)
-      imageUrl: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=400&q=80",
-      active: true,
-    },
-    {
-      id: "prod_3",
-      name: "Shampoo Fortificante Mentolado 300ml",
-      category: "Cabelo",
-      price: 32.00,
-      stockQty: 12,
-      imageUrl: "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=400&q=80",
-      active: true,
-    },
-    {
-      id: "prod_4",
-      name: "Cerveja IPA Artesanal da Casa (600ml Gelada)",
-      category: "Bebidas",
-      price: 18.00,
-      stockQty: 24,
-      imageUrl: "https://images.unsplash.com/photo-1608270586620-248524c67de9?auto=format&fit=crop&w=400&q=80",
-      active: true,
-    },
-  ]);
+  const [shopProductsList, setShopProductsList] = useState<any[]>([]);
 
   const [newProdName, setNewProdName] = useState("");
   const [newProdCategory, setNewProdCategory] = useState("Cabelo & Barba");
@@ -663,11 +568,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
   const [newProdStock, setNewProdStock] = useState(10);
   const [newProdImageUrl, setNewProdImageUrl] = useState("");
 
-  const [productSalesList, setProductSalesList] = useState([
-    { id: "sale_1", customerName: "Gabriel Oliveira", productName: "Pomada Matte Modeladora 150g", quantity: 1, totalPrice: 45.00, paidAt: "Hoje, 14:10", pixStatus: "Pago" },
-    { id: "sale_2", customerName: "Carlos Eduardo", productName: "Cerveja IPA Artesanal da Casa", quantity: 2, totalPrice: 36.00, paidAt: "Hoje, 12:45", pixStatus: "Pago" },
-    { id: "sale_3", customerName: "Mariana Costa", productName: "Óleo Hidratante de Barba Terapia", quantity: 1, totalPrice: 38.00, paidAt: "Ontem, 18:20", pixStatus: "Pago" },
-  ]);
+  const [productSalesList, setProductSalesList] = useState<any[]>([]);
 
   // Web Guard State
   const [blockAdult, setBlockAdult] = useState(tvConfig.webGuardConfig?.blockAdultContent ?? true);
