@@ -1,0 +1,13 @@
+{
+  "name": "hub-vaelis",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --prefix apps/web",
+    "dev": "npm run dev --prefix apps/web",
+    "start": "npm run start --prefix apps/web",
+    "postinstall": "npm run postinstall --prefix apps/web"
+  }
+}
