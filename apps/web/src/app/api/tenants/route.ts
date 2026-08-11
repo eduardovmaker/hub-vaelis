@@ -35,16 +35,13 @@ export async function GET() {
       })();
 
       const tenants = await withDbTimeout(getTenantsPromise, 250);
-      if (tenants && tenants.length > 0) {
-        return NextResponse.json({ success: true, tenants });
-      }
+      return NextResponse.json({ success: true, tenants: tenants || [] });
     }
   } catch (error: any) {
-    // Retorno de alta velocidade para apresentações off-line
+    // Retorno gracioso
   }
 
-  const fallbackList = Object.values(memoryTenants);
-  return NextResponse.json({ success: true, tenants: fallbackList });
+  return NextResponse.json({ success: true, tenants: [] });
 }
 
 export async function POST(request: Request) {

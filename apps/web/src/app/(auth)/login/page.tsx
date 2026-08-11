@@ -161,7 +161,7 @@ export default function LoginPage() {
             </form>
           </div>
 
-          {/* Painel de Credenciais Mocadas (Acesso Rápido para Testes) */}
+          {/* Painel de Credenciais do Administrador */}
           <div 
             className="rounded-2xl border p-5 transition-colors duration-200"
             style={{
@@ -170,61 +170,41 @@ export default function LoginPage() {
             }}
           >
             <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="w-4 h-4 text-amber-500" />
+              <Sparkles className="w-4 h-4 text-blue-500" />
               <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--text-primary)" }}>
-                Acesso Rápido para Testes (MVP)
+                Acesso Master Admin
               </h3>
             </div>
             <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>
-              Clique em um dos perfis para preencher as credenciais de demonstração:
+              Clique abaixo para preencher o login do Administrador do sistema:
             </p>
 
-            <div className="space-y-2">
-              {MOCK_USERS.map((mock) => {
-                const isSelected = email === mock.email;
-                return (
-                  <button
-                    key={mock.id}
-                    type="button"
-                    onClick={() => handleQuickSelect(mock.email, mock.password)}
-                    className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition-all text-xs ${
-                      isSelected
-                        ? "border-blue-500 bg-blue-500/10 font-semibold"
-                        : "hover:border-blue-500/50"
-                    }`}
-                    style={{
-                      borderColor: isSelected ? undefined : "var(--border-color)",
-                      backgroundColor: isSelected ? undefined : "var(--bg-primary)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <div className="flex items-center gap-2.5 truncate">
-                      {mock.role === "SUPER_ADMIN" ? (
-                        <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
-                      ) : (
-                        <Store className="w-4 h-4 text-emerald-600 shrink-0" />
-                      )}
-                      <div className="truncate">
-                        <p className="font-semibold text-xs leading-tight truncate" style={{ color: "var(--text-primary)" }}>
-                          {mock.name}
-                        </p>
-                        <p className="text-[10px]" style={{ color: "var(--text-secondary)" }}>
-                          {mock.email}
-                        </p>
-                      </div>
-                    </div>
+            <button
+              type="button"
+              onClick={() => handleQuickSelect("admin@captivehub.com", "admin123")}
+              className="w-full p-3 rounded-xl border text-left flex items-center justify-between transition-all text-xs hover:border-blue-500/50"
+              style={{
+                borderColor: "var(--border-color)",
+                backgroundColor: "var(--bg-primary)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <div className="flex items-center gap-2.5 truncate">
+                <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
+                <div className="truncate">
+                  <p className="font-semibold text-xs leading-tight truncate" style={{ color: "var(--text-primary)" }}>
+                    Master Admin CaptiveHub
+                  </p>
+                  <p className="text-[10px]" style={{ color: "var(--text-secondary)" }}>
+                    admin@captivehub.com
+                  </p>
+                </div>
+              </div>
 
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${
-                      mock.role === "SUPER_ADMIN" 
-                        ? "bg-blue-600/10 text-blue-600 dark:text-blue-400" 
-                        : "bg-emerald-600/10 text-emerald-600 dark:text-emerald-400"
-                    }`}>
-                      {mock.role === "SUPER_ADMIN" ? "Master Admin" : mock.tenantId}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 bg-blue-600/10 text-blue-600 dark:text-blue-400">
+                Master Admin
+              </span>
+            </button>
           </div>
 
         </div>

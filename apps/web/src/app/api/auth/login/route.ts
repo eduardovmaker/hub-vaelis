@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { validateCredentials } from "@/mocks/auth";
 import { db, COLLECTIONS } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
@@ -14,20 +13,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // 1. Validação Rápida via Credenciais Mockadas (Ideal para Demonstrações e Apresentações)
-    const mockUser = validateCredentials(email, password);
-    if (mockUser) {
-      return NextResponse.json({
-        success: true,
-        user: mockUser,
-      });
-    }
-
-    // 2. Consulta no Firebase Firestore (se o mock não coincidir)
+    // Consulta exclusiva no Firebase Firestore
     try {
       if (db) {
         const usersRef = db.collection(COLLECTIONS.USERS);
-        const snapshot = await usersRef.where("email", "==", email.toLowerCase()).limit(1).get();
+        const snapshot = await usersRef.where("email", "==", email.toLowerCase().trim()).limit(1).get();
 
         if (!snapshot.empty) {
           const userDoc = snapshot.docs[0];
@@ -53,8 +43,12 @@ export async function POST(request: Request) {
           }
         }
       }
-    } catch (dbError) {
-      console.warn("Aviso: Firebase Firestore offline ou sem credenciais no momento. Usando apenas autenticação mockada.");
+    } catch (dbError: any) {
+      console.error("Erro de consulta no Firebase Firestore:", dbError);
+      return NextResponse.json(
+        { success: false, error: "Erro ao conectar ao Firebase Firestore. Verifique suas credenciais no .env." },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json(
