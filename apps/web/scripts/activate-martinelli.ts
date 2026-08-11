@@ -54,6 +54,18 @@ async function activateTenant() {
     showRadioBadge: true,
     showTitleOverlay: true,
     showHeaderLogo: true,
+    addonStates: {
+      "midia-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
+      "radio-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
+    },
+    radioIndoorConfig: {
+      provider: "spotify",
+      playlistUrl: "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M",
+      playlistName: "Hits Sertanejo & Pop Barbearia (Spotify)",
+      spotIntervalMinutes: 15,
+      syncWithSmartTv: true,
+      spotMessages: [],
+    },
   }, { merge: true });
 
   console.log("✅ tvConfigs atualizado:");

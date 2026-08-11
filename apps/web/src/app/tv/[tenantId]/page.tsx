@@ -99,11 +99,11 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
   const [currentTime, setCurrentTime] = useState("");
 
   // Checar se o Add-on Rádio Indoor está ativo para este tenant
-  const isRadioIndoorActive = tvConfig.addonStates?.["radio-indoor"]?.active || false;
+  const isRadioIndoorActive = tvConfig.addonStates?.["radio-indoor"]?.active ?? true;
   const radioConfig = tvConfig.radioIndoorConfig || {
     provider: "spotify" as const,
     playlistUrl: "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M",
-    playlistName: "Hits da Boêmia & Sertanejo (Spotify)",
+    playlistName: "Hits Sertanejo & Pop Barbearia (Spotify)",
     spotIntervalMinutes: 15,
     syncWithSmartTv: true,
     spotMessages: [],
@@ -492,16 +492,7 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
         )}
       </footer>
 
-      {/* BARRA DE PROGRESSO DO SLIDE NO TOPO */}
-      <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/10 z-30 overflow-hidden">
-        <div 
-          key={`${currentIndex}-${currentItem.id}`}
-          className="h-full bg-emerald-500"
-          style={{ 
-            animation: `slideProgress ${currentDuration}s linear forwards`
-          }}
-        />
-      </div>
+
 
       {/* POPUP MODAL DE CTA PERIÓDICO (INSTAGRAM / QR CODE) - CANTO DA TELA COMO CARD FLOATING */}
       {showCtaModal && (
