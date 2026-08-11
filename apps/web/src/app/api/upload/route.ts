@@ -1,34 +1,9 @@
 import { NextResponse } from "next/server";
-import { uploadFileToR2, getPresignedR2UploadUrl } from "@/lib/r2";
+import { uploadFileToR2 } from "@/lib/r2";
 
-export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const fileName = searchParams.get("fileName") || "file.mp4";
-    const mimeType = searchParams.get("mimeType") || "video/mp4";
-    const folder = searchParams.get("folder") || "midia";
-
-    const presigned = await getPresignedR2UploadUrl({
-      fileName,
-      mimeType,
-      folder,
-    });
-
-    return NextResponse.json({
-      success: true,
-      uploadUrl: presigned.uploadUrl,
-      publicUrl: presigned.publicUrl,
-      key: presigned.key,
-      isMock: presigned.isMock || false,
-    });
-  } catch (error: any) {
-    console.error("Erro ao gerar URL presignada no R2:", error);
-    return NextResponse.json(
-      { success: false, error: error.message || "Erro ao gerar URL presignada." },
-      { status: 500 }
-    );
-  }
-}
+// Configuração do Route Segment para permitir uploads grandes
+// Na Vercel Pro: até 300s de execução. Na Hobby: até 60s.
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
@@ -57,7 +32,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Processa upload para o Cloudflare R2
+    // Processa upload para o Cloudflare R2 (server-side, sem CORS)
     const result = await uploadFileToR2({
       fileBuffer,
       fileName,

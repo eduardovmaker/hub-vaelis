@@ -519,54 +519,29 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
   const handleFileUpload = async (file: File, target: "tvMedia" | "banner") => {
     if (!file) return;
     setIsUploadingFile(true);
-    setUploadProgressText(`Gerando link direto de gravação no Cloudflare R2...`);
+    setUploadProgressText(`Enviando ${file.name} para o Cloudflare R2...`);
 
     try {
       const folder = target === "tvMedia" ? "tv-playlist" : "banners";
       
-      // 1. Solicita URL de upload presignada (Evita HTTP 413 Vercel Payload Limit)
-      const presignedRes = await fetch(
-        `/api/upload?fileName=${encodeURIComponent(file.name)}&mimeType=${encodeURIComponent(file.type || "video/mp4")}&folder=${folder}`
-      );
-      const presignedData = await presignedRes.json();
+      // Upload server-side via POST (evita CORS 403 no R2)
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", folder);
 
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
       let finalUrl = "";
 
-      if (presignedData.success && presignedData.uploadUrl) {
-        setUploadProgressText(`Enviando ${file.name} em alta velocidade para o Cloudflare R2...`);
-        
-        // 2. Transmissão direta Navegador -> Cloudflare R2 via HTTP PUT
-        const uploadRes = await fetch(presignedData.uploadUrl, {
-          method: "PUT",
-          headers: {
-            "Content-Type": file.type || "video/mp4",
-          },
-          body: file,
-        });
-
-        if (uploadRes.ok) {
-          finalUrl = presignedData.publicUrl;
-        }
-      }
-
-      // Fallback para POST se a URL presignada não estiver disponível
-      if (!finalUrl) {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("folder", folder);
-
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
-
-        const data = await res.json();
-        if (data.success && data.url) {
-          finalUrl = data.url;
-        } else {
-          showToastNotification(`❌ Erro no upload: ${data.error || "Não foi possível enviar o arquivo."}`);
-          return;
-        }
+      if (data.success && data.url) {
+        finalUrl = data.url;
+      } else {
+        showToastNotification(`❌ Erro no upload: ${data.error || "Não foi possível enviar o arquivo."}`);
+        return;
       }
 
       if (finalUrl) {
