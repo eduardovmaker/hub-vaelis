@@ -519,29 +519,56 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
   const handleFileUpload = async (file: File, target: "tvMedia" | "banner") => {
     if (!file) return;
     setIsUploadingFile(true);
-    setUploadProgressText(`Enviando ${file.name} para o Cloudflare R2...`);
+    setUploadProgressText(`Preparando upload de ${file.name}...`);
 
     try {
       const folder = target === "tvMedia" ? "tv-playlist" : "banners";
-      
-      // Upload server-side via POST (evita CORS 403 no R2)
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("folder", folder);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
       let finalUrl = "";
 
-      if (data.success && data.url) {
-        finalUrl = data.url;
-      } else {
-        showToastNotification(`❌ Erro no upload: ${data.error || "Não foi possível enviar o arquivo."}`);
-        return;
+      // 1. Tenta upload direto via presigned URL (browser → R2, sem limite de tamanho)
+      try {
+        setUploadProgressText(`Gerando link de upload direto no Cloudflare R2...`);
+        const presignedRes = await fetch(
+          `/api/upload?fileName=${encodeURIComponent(file.name)}&mimeType=${encodeURIComponent(file.type || "video/mp4")}&folder=${folder}`
+        );
+        const presignedData = await presignedRes.json();
+
+        if (presignedData.success && presignedData.uploadUrl && !presignedData.isMock) {
+          setUploadProgressText(`Enviando ${file.name} para o Cloudflare R2...`);
+
+          const uploadRes = await fetch(presignedData.uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": file.type || "application/octet-stream" },
+            body: file,
+          });
+
+          if (uploadRes.ok) {
+            finalUrl = presignedData.publicUrl;
+          }
+        }
+      } catch (presignedErr) {
+        console.warn("Presigned URL falhou, usando fallback server-side:", presignedErr);
+      }
+
+      // 2. Fallback: upload via servidor (para arquivos pequenos ou se presigned falhar)
+      if (!finalUrl) {
+        setUploadProgressText(`Enviando ${file.name} via servidor...`);
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("folder", folder);
+
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (data.success && data.url) {
+          finalUrl = data.url;
+        } else {
+          showToastNotification(`❌ Erro no upload: ${data.error || "Não foi possível enviar o arquivo."}`);
+          return;
+        }
       }
 
       if (finalUrl) {
