@@ -60,8 +60,8 @@ async function activateTenant() {
     },
     radioIndoorConfig: {
       provider: "spotify",
-      playlistUrl: "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M",
-      playlistName: "Hits Sertanejo & Pop Barbearia (Spotify)",
+      playlistUrl: "https://open.spotify.com/playlist/2OxUGZe3pso4znPJay2nHy",
+      playlistName: "Louvores (Spotify)",
       spotIntervalMinutes: 15,
       syncWithSmartTv: true,
       spotMessages: [],

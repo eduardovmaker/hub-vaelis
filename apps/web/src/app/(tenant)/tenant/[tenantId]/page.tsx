@@ -927,18 +927,20 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
     }
   };
 
-  const handleUpdateCustomPlaylist = (e: React.FormEvent) => {
+  const handleUpdateCustomPlaylist = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customPlaylistInput) return;
+    if (!customPlaylistInput || !customPlaylistInput.trim()) return;
 
-    const isSpotify = customPlaylistInput.includes("spotify");
+    const cleanUrl = customPlaylistInput.trim();
+    const isSpotify = cleanUrl.includes("spotify");
     const provider = isSpotify ? "spotify" : "youtube";
 
     const updatedRadioConfig: RadioIndoorConfig = {
       ...radioConfig,
       provider,
-      playlistUrl: customPlaylistInput,
+      playlistUrl: cleanUrl,
       playlistName: isSpotify ? "Sua Playlist Personalizada no Spotify" : "Sua Playlist Personalizada no YouTube Music",
+      syncWithSmartTv: true,
     };
 
     setRadioConfig(updatedRadioConfig);
@@ -946,6 +948,8 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
     const updatedConfig: TenantTvConfig = {
       ...tvConfig,
       radioIndoorConfig: updatedRadioConfig,
+      addonActive: true,
+      tenantName: displayTenantName,
     };
     setTvConfig(updatedConfig);
 
@@ -954,12 +958,27 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
       const currentConfigs = stored ? JSON.parse(stored) : INITIAL_TV_CONFIGS;
       currentConfigs[tenantId] = updatedConfig;
       localStorage.setItem("captive_hub_tv_configs", JSON.stringify(currentConfigs));
+      window.dispatchEvent(new Event("storage"));
     }
 
-    showNotification("✨ Sua playlist de música foi salva com sucesso!");
+    try {
+      await fetch(`/api/tv/${tenantId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          radioIndoorConfig: updatedRadioConfig,
+          addonActive: true,
+          tenantName: displayTenantName,
+        }),
+      });
+    } catch (err) {
+      console.error("Erro ao salvar playlist no servidor:", err);
+    }
+
+    showNotification("✨ Sua playlist de música foi salva e sincronizada com a TV!");
   };
 
-  const handleAddAudioSpot = (e: React.FormEvent) => {
+  const handleAddAudioSpot = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSpotMessageInput) return;
 
@@ -983,6 +1002,21 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
       const currentConfigs = stored ? JSON.parse(stored) : INITIAL_TV_CONFIGS;
       currentConfigs[tenantId] = updatedConfig;
       localStorage.setItem("captive_hub_tv_configs", JSON.stringify(currentConfigs));
+      window.dispatchEvent(new Event("storage"));
+    }
+
+    try {
+      await fetch(`/api/tv/${tenantId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          radioIndoorConfig: updatedRadioConfig,
+          addonActive: true,
+          tenantName: displayTenantName,
+        }),
+      });
+    } catch (err) {
+      console.error("Erro ao salvar vinheta no servidor:", err);
     }
 
     showNotification("Nova vinheta promocional adicionada!");
