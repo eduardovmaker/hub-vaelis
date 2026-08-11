@@ -10,6 +10,11 @@
     "start": "cd apps/web && npm run start",
     "postinstall": "cd apps/web && npm run postinstall"
   },
+  "dependencies": {
+    "next": "^15.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
   "devDependencies": {
     "next": "^15.1.6",
     "react": "^19.0.0",
