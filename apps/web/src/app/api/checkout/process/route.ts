@@ -32,27 +32,30 @@ export async function POST(request: Request) {
     const passwordHash = await bcrypt.hash(password, 10);
     const expires30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
+    const selectedStarterModules: string[] = Array.isArray(body.selectedStarterModules) ? body.selectedStarterModules : [];
+
+    const addonStatesMap: Record<string, any> = {
+      "midia-indoor": { active: selectedStarterModules.includes("midia-indoor"), paymentStatus: selectedStarterModules.includes("midia-indoor") ? "PAID" : "PENDING" },
+      "radio-indoor": { active: selectedStarterModules.includes("radio-indoor"), paymentStatus: selectedStarterModules.includes("radio-indoor") ? "PAID" : "PENDING" },
+      "google-reviews": { active: selectedStarterModules.includes("google-reviews"), paymentStatus: selectedStarterModules.includes("google-reviews") ? "PAID" : "PENDING" },
+      "whatsapp-bot": { active: selectedStarterModules.includes("whatsapp-bot"), paymentStatus: selectedStarterModules.includes("whatsapp-bot") ? "PAID" : "PENDING" },
+      "roleta-da-sorte": { active: selectedStarterModules.includes("roleta-da-sorte"), paymentStatus: selectedStarterModules.includes("roleta-da-sorte") ? "PAID" : "PENDING" },
+      "loja-produtos": { active: selectedStarterModules.includes("loja-produtos"), paymentStatus: selectedStarterModules.includes("loja-produtos") ? "PAID" : "PENDING" },
+      "web-guard": { active: selectedStarterModules.includes("web-guard"), paymentStatus: selectedStarterModules.includes("web-guard") ? "PAID" : "PENDING" },
+      "captive-portal": { active: selectedStarterModules.includes("captive-portal"), paymentStatus: selectedStarterModules.includes("captive-portal") ? "PAID" : "PENDING" },
+      "multi-unidades": { active: selectedStarterModules.includes("multi-unidades"), paymentStatus: selectedStarterModules.includes("multi-unidades") ? "PAID" : "PENDING" },
+    };
+
     // Estrutura de dados do novo tenant
     const newTenantConfig: TenantTvConfig = {
       tenantId,
       tenantName: companyName,
       pairingCode,
-      addonActive: false,
+      addonActive: selectedStarterModules.includes("midia-indoor"),
       showQrOverlay: true,
       showClockOverlay: true,
       autoRenew: true,
-      addonStates: {
-        "captive-portal": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: expires30Days.toISOString() },
-        "midia-indoor": { active: false, paymentStatus: "PENDING" },
-        "radio-indoor": { active: false, paymentStatus: "PENDING" },
-        "google-reviews": { active: false, paymentStatus: "PENDING" },
-        "whatsapp-bot": { active: false, paymentStatus: "PENDING" },
-        "roleta-da-sorte": { active: false, paymentStatus: "PENDING" },
-        "loja-produtos": { active: false, paymentStatus: "PENDING" },
-        "web-guard": { active: false, paymentStatus: "PENDING" },
-        "multi-unidades": { active: false, paymentStatus: "PENDING" },
-        "wifi-vip": { active: false, paymentStatus: "PENDING" },
-      },
+      addonStates: addonStatesMap,
       playlist: [
         {
           id: `tv_${tenantId}_1`,
@@ -187,16 +190,7 @@ export async function POST(request: Request) {
               active: true,
             }
           ],
-          addonStates: {
-            "midia-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
-            "radio-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
-            "google-reviews": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
-            "whatsapp-bot": { active: false, paymentStatus: "PENDING" },
-            "roleta-da-sorte": { active: false, paymentStatus: "PENDING" },
-            "loja-produtos": { active: false, paymentStatus: "PENDING" },
-            "web-guard": { active: false, paymentStatus: "PENDING" },
-            "multi-unidades": { active: false, paymentStatus: "PENDING" },
-          },
+          addonStates: addonStatesMap,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -261,8 +255,13 @@ add comment="Asaas Payment Gateway" dst-host="*.asaas.com"
       email: cleanEmail,
     });
 
-    const paymentAmount = body.planCycle === "ANUAL" ? 890.00 : 99.00;
-    const planLabel = body.planCycle === "ANUAL" ? "Anual (R$ 890,00)" : "Mensal (R$ 99,00)";
+    const paymentAmount = typeof body.totalAmount === "number" && body.totalAmount > 0
+      ? body.totalAmount
+      : (body.planCycle === "ANUAL" ? 399.00 : 39.90);
+
+    const planLabel = body.planCycle === "ANUAL"
+      ? `Anual (R$ ${paymentAmount.toFixed(2)})`
+      : `Mensal (R$ ${paymentAmount.toFixed(2)})`;
 
     const asaasPayment = await createAsaasPixPayment({
       customerId: asaasCustomer.id,

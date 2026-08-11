@@ -41,13 +41,20 @@ export default function PublicCheckoutPage() {
   const [category, setCategory] = useState("FOOD");
   const [wifiSsid, setWifiSsid] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#2563EB");
-  const [selectedStarterModules, setSelectedStarterModules] = useState<string[]>([
-    "midia-indoor",
-    "radio-indoor",
-    "google-reviews",
-    "checkin-qrcode",
-    "whatsapp-bot",
-  ]);
+  // Lista de Módulos Opcionais para Seleção Inicial
+  const STARTER_MODULES_CATALOG = [
+    { id: "midia-indoor", label: "📺 TV Mídia Indoor & Digital Signage", badge: "Smart TV", priceMensal: 39.90 },
+    { id: "radio-indoor", label: "🎵 Rádio Comercial & Som Ambiente", badge: "Áudio", priceMensal: 29.90 },
+    { id: "google-reviews", label: "⭐ Avaliações 5 Estrelas no Google", badge: "Reputação", priceMensal: 19.90 },
+    { id: "checkin-qrcode", label: "📱 QR Code Balcão & Check-in VIP", badge: "Sem Wi-Fi", priceMensal: 19.90 },
+    { id: "whatsapp-bot", label: "💬 WhatsApp Bot & CRM de Leads", badge: "CRM", priceMensal: 29.90 },
+    { id: "roleta-da-sorte", label: "🎯 Roleta da Sorte & Gamificação", badge: "Engajamento", priceMensal: 19.90 },
+    { id: "loja-produtos", label: "🛍️ Loja Virtual & Vendas Pix", badge: "Vendas", priceMensal: 29.90 },
+    { id: "captive-portal", label: "🌐 Hotspot Wi-Fi Captive Portal", badge: "MikroTik", priceMensal: 29.90 },
+  ];
+
+  // Inicia com NADA SELECIONADO para o cliente escolher apenas o que desejar
+  const [selectedStarterModules, setSelectedStarterModules] = useState<string[]>([]);
 
   const toggleStarterModule = (modId: string) => {
     if (selectedStarterModules.includes(modId)) {
@@ -57,8 +64,18 @@ export default function PublicCheckoutPage() {
     }
   };
 
-  // Plano Escolhido
+  // Plano Escolhido (Base Plataforma Vaelis-HUB)
   const [selectedPlanCycle, setSelectedPlanCycle] = useState<"MENSAL" | "ANUAL">("MENSAL");
+
+  // Cálculo Dinâmico de Preços
+  const basePrice = selectedPlanCycle === "MENSAL" ? 39.90 : 399.00;
+  const addonsTotal = selectedStarterModules.reduce((acc, modId) => {
+    const mod = STARTER_MODULES_CATALOG.find((m) => m.id === modId);
+    if (!mod) return acc;
+    const price = selectedPlanCycle === "ANUAL" ? mod.priceMensal * 10 : mod.priceMensal; // 10 meses no plano anual
+    return acc + price;
+  }, 0);
+  const grandTotal = basePrice + addonsTotal;
 
   // Passo 2: Estado do Pagamento PIX Asaas
   const [pixCopied, setPixCopied] = useState(false);
@@ -211,7 +228,7 @@ export default function PublicCheckoutPage() {
               </p>
             </div>
 
-            {/* Escolha de Plano */}
+            {/* Escolha do Plano Base Vaelis-HUB */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
               <button
                 type="button"
@@ -222,10 +239,10 @@ export default function PublicCheckoutPage() {
                 style={{ borderColor: selectedPlanCycle === "MENSAL" ? undefined : "var(--border-color)", backgroundColor: "var(--bg-primary)" }}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>Plano Mensal Enterprise</span>
-                  <span className="text-xs font-black text-blue-500">R$ 99,00 /mês</span>
+                  <span className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>Plano Mensal Base Vaelis-HUB</span>
+                  <span className="text-xs font-black text-blue-500">R$ 39,90 /mês</span>
                 </div>
-                <p className="text-[11px] text-slate-400">Sem fidelidade contratual • Cancele a qualquer momento</p>
+                <p className="text-[11px] text-slate-400">Acesso à Plataforma Base & Gestão • Sem fidelidade contratual</p>
               </button>
 
               <button
@@ -237,13 +254,13 @@ export default function PublicCheckoutPage() {
                 style={{ borderColor: selectedPlanCycle === "ANUAL" ? undefined : "var(--border-color)", backgroundColor: "var(--bg-primary)" }}
               >
                 <span className="absolute -top-2.5 right-3 px-2 py-0.5 rounded-full bg-emerald-600 text-white font-extrabold text-[9px] uppercase">
-                  Economize 25%
+                  Economize 20%
                 </span>
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>Plano Anual Enterprise</span>
-                  <span className="text-xs font-black text-emerald-500">R$ 890,00 /ano</span>
+                  <span className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>Plano Anual Base Vaelis-HUB</span>
+                  <span className="text-xs font-black text-emerald-500">R$ 399,00 /ano</span>
                 </div>
-                <p className="text-[11px] text-slate-400">Equivalente a R$ 74,00/mês no Pix</p>
+                <p className="text-[11px] text-slate-400">Equivalente a R$ 33,25/mês no Pix (2 Meses Grátis)</p>
               </button>
             </div>
 
@@ -333,15 +350,15 @@ export default function PublicCheckoutPage() {
                 </div>
               </div>
 
-              {/* SELEÇÃO MODULAR INICIAL DE FUNCIONALIDADES */}
+              {/* SELEÇÃO MODULAR DE FUNCIONALIDADES (OPCIONAIS COM PREÇO À PARTE) */}
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
                   <div>
                     <label className="font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 text-[11px] flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5" /> Módulos Iniciais Selecionados
+                      <Sparkles className="w-3.5 h-3.5" /> Add-ons & Módulos Opcionais (Contratados à parte)
                     </label>
                     <p className="text-[11px] text-slate-400">
-                      Escolha os recursos que deseja utilizar imediatamente na sua plataforma:
+                      Selecione os recursos adicionais que deseja atuar no seu estabelecimento ou contrate posteriormente:
                     </p>
                   </div>
                   <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 uppercase">
@@ -350,36 +367,32 @@ export default function PublicCheckoutPage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {[
-                    { id: "midia-indoor", label: "📺 TV Mídia Indoor & Digital Signage", badge: "Smart TV" },
-                    { id: "radio-indoor", label: "🎵 Rádio Comercial & Som Ambiente", badge: "Áudio" },
-                    { id: "google-reviews", label: "⭐ Avaliações 5 Estrelas no Google", badge: "Reputação" },
-                    { id: "checkin-qrcode", label: "📱 QR Code Balcão & Check-in VIP", badge: "Sem Wi-Fi" },
-                    { id: "whatsapp-bot", label: "💬 WhatsApp Bot & CRM de Leads", badge: "CRM" },
-                    { id: "roleta-da-sorte", label: "🎯 Roleta da Sorte & Gamificação", badge: "Engajamento" },
-                    { id: "loja-produtos", label: "🛍️ Loja Virtual & Vendas Pix", badge: "Vendas" },
-                    { id: "captive-portal", label: "🌐 Hotspot Wi-Fi Captive Portal", badge: "MikroTik" },
-                  ].map((m) => {
+                  {STARTER_MODULES_CATALOG.map((m) => {
                     const isChecked = selectedStarterModules.includes(m.id);
                     return (
                       <div
                         key={m.id}
                         onClick={() => toggleStarterModule(m.id)}
                         className={`p-3 rounded-xl border cursor-pointer flex items-center justify-between transition-all select-none ${
-                          isChecked ? "bg-blue-500/10 border-blue-500/40 text-blue-600 dark:text-blue-400" : "bg-slate-500/5 opacity-60"
+                          isChecked ? "bg-blue-500/10 border-blue-500/40 text-blue-600 dark:text-blue-400" : "bg-slate-500/5 opacity-60 hover:opacity-100"
                         }`}
                         style={{ borderColor: isChecked ? undefined : "var(--border-color)" }}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           <input
                             type="checkbox"
                             checked={isChecked}
                             onChange={() => {}}
-                            className="w-4 h-4 text-blue-600 rounded cursor-pointer"
+                            className="w-4 h-4 text-blue-600 rounded cursor-pointer shrink-0"
                           />
-                          <span className="font-bold text-xs">{m.label}</span>
+                          <div className="min-w-0">
+                            <span className="font-bold text-xs truncate block">{m.label}</span>
+                            <span className="text-[10px] font-semibold text-slate-400">
+                              + R$ {m.priceMensal.toFixed(2).replace(".", ",")}/mês
+                            </span>
+                          </div>
                         </div>
-                        <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase ${
+                        <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase shrink-0 ${
                           m.id === "captive-portal" ? "bg-purple-500/20 text-purple-500" : "bg-blue-500/20 text-blue-600"
                         }`}>
                           {m.badge}
@@ -390,12 +403,43 @@ export default function PublicCheckoutPage() {
                 </div>
               </div>
 
+              {/* RESUMO DINÂMICO DO PEDIDO */}
+              <div className="p-4 rounded-2xl border bg-slate-500/5 space-y-2" style={{ borderColor: "var(--border-color)" }}>
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>Plano Base Vaelis-HUB ({selectedPlanCycle}):</span>
+                  <span className="font-mono font-bold" style={{ color: "var(--text-primary)" }}>
+                    R$ {basePrice.toFixed(2).replace(".", ",")} {selectedPlanCycle === "MENSAL" ? "/mês" : "/ano"}
+                  </span>
+                </div>
+
+                {selectedStarterModules.length > 0 ? (
+                  <div className="flex items-center justify-between text-xs text-slate-400">
+                    <span>Módulos Adicionais ({selectedStarterModules.length} selecionado{selectedStarterModules.length > 1 ? "s" : ""}):</span>
+                    <span className="font-mono font-bold text-blue-500">
+                      + R$ {addonsTotal.toFixed(2).replace(".", ",")} {selectedPlanCycle === "MENSAL" ? "/mês" : "/ano"}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between text-xs text-slate-400">
+                    <span>Módulos Adicionais:</span>
+                    <span className="font-semibold text-emerald-500">Nenhum add-on selecionado (Nenhum custo extra)</span>
+                  </div>
+                )}
+
+                <div className="border-t pt-2 flex items-center justify-between text-sm font-extrabold" style={{ borderColor: "var(--border-color)", color: "var(--text-primary)" }}>
+                  <span>VALOR TOTAL DA ASSINATURA:</span>
+                  <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                    R$ {grandTotal.toFixed(2).replace(".", ",")} <span className="text-xs font-normal text-slate-400">{selectedPlanCycle === "MENSAL" ? "/mês" : "/ano"}</span>
+                  </span>
+                </div>
+              </div>
+
               <button
                 type="submit"
                 className="w-full py-3.5 px-4 rounded-xl font-bold text-white shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition-all hover:bg-blue-700 active:scale-[0.99] pt-2"
                 style={{ backgroundColor: "var(--brand-primary)" }}
               >
-                <span>Prosseguir para Pagamento & Liberar Acesso</span> <ArrowRight className="w-4 h-4" />
+                <span>Prosseguir para Pagamento & Liberar Acesso (R$ {grandTotal.toFixed(2).replace(".", ",")})</span> <ArrowRight className="w-4 h-4" />
               </button>
             </form>
           </div>
