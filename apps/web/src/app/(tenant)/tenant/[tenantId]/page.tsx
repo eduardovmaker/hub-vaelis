@@ -1132,7 +1132,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
               </button>
             )}
 
-            {(addonStates["captive-portal"]?.active ?? true) && (
+            {(addonStates["captive-portal"]?.active) && (
               <button
                 onClick={() => setActiveTab("captive-portal")}
                 className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
@@ -1422,8 +1422,8 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                     <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Leads & Contatos</span>
                     <MessageSquare className="w-5 h-5 text-emerald-600" />
                   </div>
-                  <p className="text-2xl font-extrabold text-emerald-600">1.240 Clientes</p>
-                  <p className="text-xs text-emerald-600 font-medium">Capturados via WhatsApp/Wi-Fi</p>
+                  <p className="text-2xl font-extrabold text-emerald-600">{capturedLeadsList.length} Clientes</p>
+                  <p className="text-xs text-emerald-600 font-medium">{capturedLeadsList.length > 0 ? "Capturados via WhatsApp/Wi-Fi" : "Nenhum lead capturado ainda"}</p>
                 </div>
               )}
 
@@ -1433,8 +1433,8 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                     <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Reputação Google</span>
                     <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
                   </div>
-                  <p className="text-2xl font-extrabold text-amber-500">4.9 ★ (384 Votos)</p>
-                  <p className="text-xs font-medium text-amber-600">Pesquisa NPS em Dia</p>
+                  <p className="text-2xl font-extrabold text-amber-500">0 Votos</p>
+                  <p className="text-xs font-medium text-amber-600">Aguardando avaliações NPS</p>
                 </div>
               )}
 
@@ -1444,19 +1444,19 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                     <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Mídia TV & Exibições</span>
                     <Tv className="w-5 h-5 text-purple-600" />
                   </div>
-                  <p className="text-2xl font-extrabold text-purple-600">1.450 Telas</p>
-                  <p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Exibições nas Smart TVs</p>
+                  <p className="text-2xl font-extrabold text-purple-600">{tvPlaylist.length} Mídias</p>
+                  <p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Ativas na Playlist da TV</p>
                 </div>
               )}
 
-              {(addonStates["captive-portal"]?.active ?? true) && (
+              {addonStates["captive-portal"]?.active && (
                 <div className="p-5 rounded-2xl border shadow-sm space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Módulo Wi-Fi Hotspot</span>
                     <Wifi className="w-5 h-5 text-blue-600" />
                   </div>
                   <p className="text-2xl font-extrabold text-blue-600">{connectedDevices.length} Online</p>
-                  <p className="text-xs font-medium text-blue-600">R$ 240,00 vendas Pix hoje</p>
+                  <p className="text-xs font-medium text-blue-600">R$ 0,00 vendas Pix hoje</p>
                 </div>
               )}
             </div>
@@ -1509,7 +1509,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                   </button>
                 )}
 
-                {(addonStates["captive-portal"]?.active ?? true) && (
+                {addonStates["captive-portal"]?.active && (
                   <button
                     onClick={() => setActiveTab("captive-portal")}
                     className="p-3 rounded-xl border flex items-center gap-3 hover:border-blue-500 hover:bg-blue-500/5 transition-all text-left"
@@ -3117,11 +3117,11 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 </div>
               )}
 
-              <input type="text" required value={newTvMediaTitle} onChange={(e) => setNewTvMediaTitle(e.target.value)} placeholder="Título do Anúncio" className="w-full p-2.5 rounded-xl border" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }} />
+              <input type="text" required value={newTvMediaTitle} onChange={(e) => setNewTvMediaTitle(e.target.value)} placeholder="Título do Anúncio *" className="w-full p-2.5 rounded-xl border" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }} />
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400">Link Direto (Gerado pelo Upload R2 ou insira manualmente):</label>
-                <input type="url" required value={newTvMediaUrl} onChange={(e) => setNewTvMediaUrl(e.target.value)} placeholder={newTvMediaType === "image" ? "URL da Imagem HD" : "URL do Vídeo MP4"} className="w-full p-2.5 rounded-xl border" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }} />
+                <label className="text-[10px] font-bold text-slate-400">URL da Mídia (Preenchido automaticamente ao buscar o arquivo):</label>
+                <input type="url" value={newTvMediaUrl} onChange={(e) => setNewTvMediaUrl(e.target.value)} placeholder={newTvMediaType === "image" ? "URL da Imagem (opcional se já enviou do dispositivo)" : "URL do Vídeo MP4 (opcional se já enviou do dispositivo)"} className="w-full p-2.5 rounded-xl border" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }} />
               </div>
 
               {newTvMediaType === "video" && (
@@ -3154,21 +3154,28 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
       {/* MODAL CHECKOUT ASAAS */}
       {showAsaasCheckoutModal && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="rounded-3xl border p-6 max-w-lg w-full space-y-5 shadow-2xl" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+          <div className="rounded-3xl border p-6 max-w-lg w-full space-y-5 shadow-2xl animate-scale-up" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
             <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "var(--border-color)" }}>
-              <h3 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Pagamento via Asaas Gateway</h3>
+              <h3 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Pagamento via Asaas Gateway (Pix Instantâneo)</h3>
               <button onClick={() => setShowAsaasCheckoutModal(false)} className="text-xs font-bold text-slate-400">✕ Fechar</button>
             </div>
             <div className="text-center space-y-3">
-              <div className="p-4 rounded-2xl bg-white w-44 h-44 mx-auto border flex items-center justify-center">
-                <QrCode className="w-36 h-36 text-slate-900" />
+              <div className="p-4 rounded-2xl bg-white w-48 h-48 mx-auto border flex items-center justify-center shadow-inner">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                    "00020126580014BR.GOV.BCB.PIX0136vaelis-hub-asaas-checkout-pix-key-991204000530398654099.005802BR5925VAELIS HUB TECNOLOGIA SA6009SAO PAULO62070503***6304E8A1"
+                  )}`}
+                  alt="QR Code Pix Asaas"
+                  className="w-40 h-40 object-contain"
+                />
               </div>
-              <button onClick={copyPixCode} className="w-full py-2 rounded-xl border text-xs font-bold">
-                {copiedPix ? "Código Pix Copiado!" : "Copiar Chave Pix Copia e Cola"}
+              <button onClick={copyPixCode} className="w-full py-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 hover:bg-slate-500/10">
+                {copiedPix ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                <span>{copiedPix ? "Código Pix Copiado!" : "Copiar Chave Pix Copia e Cola"}</span>
               </button>
             </div>
-            <button onClick={handleConfirmAsaasPayment} disabled={isProcessingAsaas} className="w-full py-3 rounded-xl bg-emerald-600 text-white font-extrabold text-xs">
-              {isProcessingAsaas ? "Processando..." : "Simular Pagamento Confirmado no Asaas (Webhook)"}
+            <button onClick={handleConfirmAsaasPayment} disabled={isProcessingAsaas} className="w-full py-3 rounded-xl bg-emerald-600 text-white font-extrabold text-xs shadow-md">
+              {isProcessingAsaas ? "Processando Pagamento..." : "Simular Pagamento Confirmado no Asaas (Webhook)"}
             </button>
           </div>
         </div>
@@ -3223,8 +3230,8 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 </div>
               )}
 
-              <input type="text" required value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Título da Oferta" className="w-full p-2.5 rounded-xl border" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }} />
-              <input type="url" required value={newImageUrl} onChange={(e) => setNewImageUrl(e.target.value)} placeholder="URL da Imagem Banner (Gerada pelo Upload R2)" className="w-full p-2.5 rounded-xl border" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }} />
+              <input type="text" required value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Título da Oferta *" className="w-full p-2.5 rounded-xl border" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }} />
+              <input type="url" value={newImageUrl} onChange={(e) => setNewImageUrl(e.target.value)} placeholder="URL da Imagem Banner (opcional se já enviou do dispositivo)" className="w-full p-2.5 rounded-xl border" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }} />
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setShowAddBannerModal(false)} className="px-3 py-2 rounded-xl border">Cancelar</button>
                 <button type="submit" className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold">Salvar Banner</button>
