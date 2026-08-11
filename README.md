@@ -35,9 +35,9 @@
 
 ## 🛠️ Tecnologias Utilizadas
 
-- **Front-end / Back-end:** [Next.js 15](https://nextjs.org/) (App Router, React 19, TypeScript)
-- **Estilização:** [Tailwind CSS](https://tailwindcss.com/) & [Lucide React](https://lucide.dev/)
-- **Banco de Dados & ORM:** [PostgreSQL 16](https://www.postgresql.org/) & [Prisma ORM](https://www.prisma.io/)
+- **Front-end / Back-end:** [Next.js 15.1](https://nextjs.org/) (App Router, [React 19.0](https://react.dev/), [TypeScript 5.7](https://www.typescriptlang.org/))
+- **Estilização & Ícones:** [Tailwind CSS 3.4](https://tailwindcss.com/) & [Lucide React 0.474](https://lucide.dev/)
+- **Banco de Dados & ORM:** [PostgreSQL 16](https://www.postgresql.org/) & [Prisma ORM 6.4](https://www.prisma.io/)
 - **Containers & Redes:** [Docker](https://www.docker.com/) & Docker Compose
 - **Roteadores Virtuais:** MikroTik RouterOS CHR (`vantuil/mikrotik-chr:v7`)
 - **Integração Financeira:** API Asaas (Pix, Assinaturas e Webhooks)
@@ -69,7 +69,7 @@
 │       │   └── middleware.ts   # Roteamento de Subdomínios e Domínios Customizados
 │       ├── .env.example
 │       └── package.json
-├── docker-compose.yml          # Serviço do PostgreSQL para Desenvolvimento
+├── docker-compose.yml          # Serviço do PostgreSQL 16 para Desenvolvimento
 └── README.md
 ```
 
@@ -78,14 +78,18 @@
 ## ⚡ Pré-requisitos e Instalação
 
 ### 1. Pré-requisitos
-- **Node.js**: v18.x ou superior
+- **Node.js**: v20.x ou v22.x (LTS recomendado)
 - **Docker & Docker Compose**: Instalados e em execução
-- **npm** ou **pnpm / yarn**
+- **npm**, **pnpm** ou **yarn**
 
 ### 2. Clonar o Repositório e Instalar Dependências
 
 ```bash
-# Entrar na pasta do app web
+# Clonar o repositório
+git clone https://github.com/eduardovmaker/hub-vaelis.git
+cd hub-vaelis
+
+# Entrar na pasta do aplicativo web
 cd apps/web
 
 # Instalar dependências
@@ -107,7 +111,7 @@ JWT_SECRET="captivehub_secret_key_qa_2026"
 
 ### Step 1: Subir o Banco de Dados PostgreSQL via Docker
 
-Na raiz do projeto (`c:\www\microtik`), execute:
+Na raiz do projeto (`hub-vaelis`), execute:
 
 ```bash
 docker-compose up -d
@@ -151,4 +155,5 @@ A aplicação estará acessível em `http://localhost:3000`.
 
 ## 📄 Licença
 
-Este projeto é de uso privado e proprietário do **CaptiveHub**. Todos os direitos reservados.
+Este projeto é de uso privado e proprietário. Todos os direitos reservados.
+
