@@ -5,9 +5,14 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build --prefix apps/web",
-    "dev": "npm run dev --prefix apps/web",
-    "start": "npm run start --prefix apps/web",
-    "postinstall": "npm run postinstall --prefix apps/web"
+    "build": "cd apps/web && npm run build",
+    "dev": "cd apps/web && npm run dev",
+    "start": "cd apps/web && npm run start",
+    "postinstall": "cd apps/web && npm run postinstall"
+  },
+  "devDependencies": {
+    "next": "^15.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }
