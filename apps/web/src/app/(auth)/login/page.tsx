@@ -160,53 +160,6 @@ export default function LoginPage() {
               </button>
             </form>
           </div>
-
-          {/* Painel de Credenciais do Administrador */}
-          <div 
-            className="rounded-2xl border p-5 transition-colors duration-200"
-            style={{
-              backgroundColor: "var(--bg-surface)",
-              borderColor: "var(--border-color)",
-            }}
-          >
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="w-4 h-4 text-blue-500" />
-              <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--text-primary)" }}>
-                Acesso Master Admin
-              </h3>
-            </div>
-            <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>
-              Clique abaixo para preencher o login do Administrador do sistema:
-            </p>
-
-            <button
-              type="button"
-              onClick={() => handleQuickSelect("admin@captivehub.com", "admin123")}
-              className="w-full p-3 rounded-xl border text-left flex items-center justify-between transition-all text-xs hover:border-blue-500/50"
-              style={{
-                borderColor: "var(--border-color)",
-                backgroundColor: "var(--bg-primary)",
-                color: "var(--text-primary)",
-              }}
-            >
-              <div className="flex items-center gap-2.5 truncate">
-                <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
-                <div className="truncate">
-                  <p className="font-semibold text-xs leading-tight truncate" style={{ color: "var(--text-primary)" }}>
-                    Master Admin CaptiveHub
-                  </p>
-                  <p className="text-[10px]" style={{ color: "var(--text-secondary)" }}>
-                    admin@captivehub.com
-                  </p>
-                </div>
-              </div>
-
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 bg-blue-600/10 text-blue-600 dark:text-blue-400">
-                Master Admin
-              </span>
-            </button>
-          </div>
-
         </div>
       </main>
 
