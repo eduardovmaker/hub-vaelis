@@ -11,7 +11,7 @@ async function seedFirebase() {
     process.exit(1);
   }
 
-  console.log("🌱 Iniciando população inicial do Firebase Firestore...");
+  console.log("🌱 Iniciando população inicial do Firebase Firestore (hub-vaelis)...");
 
   // 1. Criar Usuário Super Admin
   const adminPasswordHash = await bcrypt.hash("admin123", 10);
@@ -51,8 +51,8 @@ async function seedFirebase() {
   }
 
   await batch.commit();
-  console.log("✅ Tenants, TV Configs e Portal Configs populados com sucesso!");
-  console.log("🚀 População do Firebase concluída!");
+  console.log("✅ Tenants, TV Configs e Portal Configs populados com sucesso no Firestore!");
+  console.log("🚀 População do Firebase concluída com êxito!");
 }
 
 seedFirebase().catch((err) => {
