@@ -142,66 +142,88 @@ export default function MasterAdminDashboard() {
     const currentAddonState = tvConfigs[tenantId]?.addonStates?.[addonId];
     const nextActive = !currentAddonState?.active;
 
-    // Atualização na UI
-    setTvConfigs((prev) => {
-      const updatedAddonStates = {
-        ...(prev[tenantId]?.addonStates || {}),
-        [addonId]: {
-          active: nextActive,
-          paymentStatus: nextActive ? ("PAID" as const) : ("OVERDUE" as const),
-          subscriptionExpiresAt: nextActive
-            ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-            : new Date().toISOString(),
-          planCycle: currentAddonState?.planCycle || "MENSAL",
-          asaasPaymentId: currentAddonState?.asaasPaymentId || `pay_asaas_${Date.now()}`,
-        },
-      };
+    const updatedAddonStates = {
+      ...(tvConfigs[tenantId]?.addonStates || {}),
+      [addonId]: {
+        active: nextActive,
+        paymentStatus: nextActive ? ("PAID" as const) : ("OVERDUE" as const),
+        subscriptionExpiresAt: nextActive
+          ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          : new Date().toISOString(),
+        planCycle: currentAddonState?.planCycle || "MENSAL",
+        asaasPaymentId: currentAddonState?.asaasPaymentId || `pay_asaas_${Date.now()}`,
+      },
+    };
 
-      return {
-        ...prev,
-        [tenantId]: {
-          ...prev[tenantId],
-          addonActive: addonId === "midia-indoor" ? nextActive : prev[tenantId]?.addonActive,
-          addonStates: updatedAddonStates as any,
-        },
-      };
-    });
+    // Atualização na UI
+    setTvConfigs((prev) => ({
+      ...prev,
+      [tenantId]: {
+        ...prev[tenantId],
+        addonActive: addonId === "midia-indoor" ? nextActive : Boolean(prev[tenantId]?.addonActive),
+        addonStates: updatedAddonStates as any,
+      },
+    }));
+
+    // Persistência no Firebase Firestore via API
+    try {
+      await fetch("/api/tenants", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenantId,
+          addonStates: updatedAddonStates,
+        }),
+      });
+    } catch (e) {}
 
     const tenantName = tvConfigs[tenantId]?.tenantName || tenantId;
     const nextStatus = nextActive ? "LIBERADO" : "BLOQUEADO";
     showToast(`Add-on [${addonId}] ${nextStatus} para ${tenantName}`);
   };
 
-  const handleActivateVipPilot = (tenantId: string) => {
-    setTvConfigs((prev) => {
-      const allActiveStates = {
-        "captive-portal": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
-        "midia-indoor": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
-        "radio-indoor": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
-        "google-reviews": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
-        "whatsapp-bot": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
-        "roleta-da-sorte": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
-        "loja-produtos": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
-        "web-guard": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
-        "multi-unidades": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
-        "wifi-vip": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
-      };
+  const handleActivateVipPilot = async (tenantId: string) => {
+    const allActiveStates = {
+      "captive-portal": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
+      "midia-indoor": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
+      "radio-indoor": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
+      "google-reviews": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
+      "whatsapp-bot": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
+      "roleta-da-sorte": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
+      "loja-produtos": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
+      "web-guard": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
+      "multi-unidades": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
+      "wifi-vip": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
+    };
 
-      return {
-        ...prev,
-        [tenantId]: {
-          ...prev[tenantId],
+    setTvConfigs((prev) => ({
+      ...prev,
+      [tenantId]: {
+        ...prev[tenantId],
+        paymentStatus: "PAID",
+        subscriptionExpiresAt: "2099-12-31T23:59:59Z",
+        addonActive: true,
+        addonStates: allActiveStates as any,
+      },
+    }));
+
+    try {
+      await fetch("/api/tenants", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenantId,
+          addonStates: allActiveStates,
           paymentStatus: "PAID",
           subscriptionExpiresAt: "2099-12-31T23:59:59Z",
-          addonStates: allActiveStates as any,
-        },
-      };
-    });
+        }),
+      });
+    } catch (e) {}
 
     showToast("👑 Conta ativada como PILOTO VIP VITALÍCIO com sucesso!");
   };
 
-  const handleToggleBlockTenant = (tenantId: string) => {
+  const handleToggleBlockTenant = async (tenantId: string) => {
     const currentTenant = tvConfigs[tenantId];
     const isCurrentlyBlocked =
       currentTenant?.paymentStatus === "OVERDUE" ||
@@ -209,57 +231,61 @@ export default function MasterAdminDashboard() {
         new Date(currentTenant.subscriptionExpiresAt).getTime() < Date.now() &&
         !currentTenant.subscriptionExpiresAt.startsWith("2099"));
 
-    setTvConfigs((prev) => {
-      const target = prev[tenantId];
+    const target = tvConfigs[tenantId];
+    let nextAddonStates = { ...(target?.addonStates || {}) };
 
-      if (!isCurrentlyBlocked) {
-        // Bloquear tenant
-        const suspendedAddonStates = { ...target.addonStates };
-        Object.keys(suspendedAddonStates).forEach((k) => {
-          if (suspendedAddonStates[k as AddonModuleId]) {
-            suspendedAddonStates[k as AddonModuleId] = {
-              ...suspendedAddonStates[k as AddonModuleId]!,
-              active: false,
-              paymentStatus: "OVERDUE",
-            };
-          }
-        });
-
-        return {
-          ...prev,
-          [tenantId]: {
-            ...target,
+    if (!isCurrentlyBlocked) {
+      // Bloquear
+      Object.keys(nextAddonStates).forEach((k) => {
+        if (nextAddonStates[k as AddonModuleId]) {
+          nextAddonStates[k as AddonModuleId] = {
+            ...nextAddonStates[k as AddonModuleId]!,
+            active: false,
             paymentStatus: "OVERDUE",
-            subscriptionExpiresAt: "2000-01-01T00:00:00Z", // Timestamp expirado
-            addonActive: false,
-            addonStates: suspendedAddonStates as any,
-          },
-        };
-      } else {
-        // Desbloquear tenant
-        const reactivatedAddonStates = { ...target.addonStates };
-        Object.keys(reactivatedAddonStates).forEach((k) => {
-          if (reactivatedAddonStates[k as AddonModuleId]) {
-            reactivatedAddonStates[k as AddonModuleId] = {
-              ...reactivatedAddonStates[k as AddonModuleId]!,
-              active: true,
-              paymentStatus: "PAID",
-            };
-          }
-        });
-
-        return {
-          ...prev,
-          [tenantId]: {
-            ...target,
+          };
+        }
+      });
+    } else {
+      // Desbloquear
+      Object.keys(nextAddonStates).forEach((k) => {
+        if (nextAddonStates[k as AddonModuleId]) {
+          nextAddonStates[k as AddonModuleId] = {
+            ...nextAddonStates[k as AddonModuleId]!,
+            active: true,
             paymentStatus: "PAID",
-            subscriptionExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            addonActive: true,
-            addonStates: reactivatedAddonStates as any,
-          },
-        };
-      }
-    });
+          };
+        }
+      });
+    }
+
+    const nextPaymentStatus = isCurrentlyBlocked ? "PAID" : "OVERDUE";
+    const nextExpires = isCurrentlyBlocked
+      ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      : "2000-01-01T00:00:00Z";
+
+    setTvConfigs((prev) => ({
+      ...prev,
+      [tenantId]: {
+        ...target,
+        paymentStatus: nextPaymentStatus as any,
+        subscriptionExpiresAt: nextExpires,
+        addonActive: Boolean(isCurrentlyBlocked),
+        addonStates: nextAddonStates as any,
+      },
+    }));
+
+    try {
+      await fetch("/api/tenants", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenantId,
+          addonStates: nextAddonStates,
+          paymentStatus: nextPaymentStatus,
+          subscriptionExpiresAt: nextExpires,
+        }),
+      });
+    } catch (e) {}
 
     const tenantName = currentTenant?.tenantName || tenantId;
     if (!isCurrentlyBlocked) {

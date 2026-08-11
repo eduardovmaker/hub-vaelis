@@ -284,7 +284,40 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
 
   const [activeTab, setActiveTab] = useState<TenantTabType>("dashboard");
 
-  const initialConfig = INITIAL_PORTAL_CONFIGS[tenantId] || INITIAL_PORTAL_CONFIGS["tenant_bar_01"];
+  // Nome legível derivado do ID caso ainda não tenha carregado do banco
+  const derivedTenantName = tenantId
+    .replace(/^tenant_/, "")
+    .replace(/_\d+$/, "")
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+
+  const [displayTenantName, setDisplayTenantName] = useState(
+    (user?.tenantId === tenantId && user?.tenantName) ? user.tenantName : derivedTenantName
+  );
+  const [displayWifiSsid, setDisplayWifiSsid] = useState(`${derivedTenantName}_WiFi_Gratis`);
+
+  const initialConfig = INITIAL_PORTAL_CONFIGS[tenantId] || {
+    tenantId,
+    tenantName: derivedTenantName,
+    tenantCategory: "FOOD",
+    wifiSsid: `${derivedTenantName}_WiFi_Gratis`,
+    primaryColor: "#2563EB",
+    banners: [],
+    pixPlans: [
+      { id: "p_1", title: "Acesso Rápido (2 Horas)", durationText: "2 Horas de Wi-Fi • 20 Mbps", price: 5.00, speedLimit: "20 Mbps", recommended: true },
+      { id: "p_2", title: "Passaporte Noite Toda (6 Horas)", durationText: "6 Horas de Alta Velocidade • 50 Mbps", price: 10.00, speedLimit: "50 Mbps", recommended: false },
+    ],
+    freeAccessEnabled: true,
+    freeAccessDurationMinutes: 30,
+    adWatchSeconds: 15,
+    digitalMenuEnabled: true,
+    digitalMenuUrl: "",
+    digitalMenuTitle: "Cardápio & Serviços",
+    digitalMenuButtonText: "Ver Cardápio & Serviços",
+    digitalMenuIcon: "utensils",
+    autoRedirectToMenu: false,
+  };
   
   const [tvConfig, setTvConfig] = useState<TenantTvConfig>(() => {
     if (typeof window !== "undefined") {
@@ -296,7 +329,25 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
         } catch (e) {}
       }
     }
-    return INITIAL_TV_CONFIGS[tenantId] || INITIAL_TV_CONFIGS["tenant_bar_01"];
+    return INITIAL_TV_CONFIGS[tenantId] || {
+      tenantId,
+      tenantName: derivedTenantName,
+      pairingCode: `TV-${Math.floor(1000 + Math.random() * 9000)}`,
+      addonActive: true,
+      showQrOverlay: true,
+      showClockOverlay: true,
+      showRadioBadge: true,
+      showTitleOverlay: true,
+      showHeaderLogo: true,
+      planCycle: "MENSAL",
+      paymentStatus: "PAID",
+      playlist: [],
+      addonStates: {
+        "midia-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
+        "radio-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
+        "google-reviews": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
+      },
+    };
   });
 
   useEffect(() => {
@@ -310,6 +361,9 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
         const tvData = await tvRes.json();
         if (tvData.success && tvData.tvConfig) {
           setTvConfig(tvData.tvConfig);
+          if (tvData.tvConfig.tenantName) {
+            setDisplayTenantName(tvData.tvConfig.tenantName);
+          }
           if (tvData.tvConfig.playlist) {
             setTvPlaylist(tvData.tvConfig.playlist);
           }
@@ -321,17 +375,20 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
         const portalData = await portalRes.json();
         if (portalData.success && portalData.portalConfig) {
           const pc = portalData.portalConfig;
+          if (pc.tenantName) setDisplayTenantName(pc.tenantName);
+          if (pc.wifiSsid) setDisplayWifiSsid(pc.wifiSsid);
+
           setBanners(pc.banners || []);
           setPixPlansList(pc.pixPlans || []);
           setFreeAccessEnabled(pc.freeAccessEnabled ?? true);
           setFreeAccessDurationMinutes(pc.freeAccessDurationMinutes ?? 30);
           setAdWatchSeconds(pc.adWatchSeconds ?? 15);
-          setDigitalMenuEnabled(pc.digitalMenuEnabled);
-          setDigitalMenuUrl(pc.digitalMenuUrl);
-          setDigitalMenuTitle(pc.digitalMenuTitle);
-          setDigitalMenuButtonText(pc.digitalMenuButtonText);
+          setDigitalMenuEnabled(pc.digitalMenuEnabled ?? true);
+          setDigitalMenuUrl(pc.digitalMenuUrl ?? "");
+          setDigitalMenuTitle(pc.digitalMenuTitle ?? "Cardápio Digital");
+          setDigitalMenuButtonText(pc.digitalMenuButtonText ?? "Ver Cardápio");
           setDigitalMenuIcon(pc.digitalMenuIcon || "utensils");
-          setAutoRedirectToMenu(pc.autoRedirectToMenu);
+          setAutoRedirectToMenu(pc.autoRedirectToMenu ?? false);
         }
       } catch (err) {
         console.error("Erro ao carregar dados do tenant via API:", err);
@@ -964,10 +1021,10 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
           </div>
           <div>
             <h1 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-              {user?.tenantName || initialConfig.tenantName}
+              {displayTenantName}
             </h1>
             <p className="text-xs font-mono" style={{ color: "var(--text-secondary)" }}>
-              Rede Wi-Fi: <span className="font-semibold text-emerald-600">{initialConfig.wifiSsid}</span>
+              Rede Wi-Fi: <span className="font-semibold text-emerald-600">{displayWifiSsid}</span>
             </p>
           </div>
         </div>
@@ -2482,7 +2539,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                       const returnText = encodeURIComponent(
                         botReturnMessage
                           .replace("{nome}", lead.name)
-                          .replace("{estabelecimento}", user?.tenantName || initialConfig.tenantName)
+                          .replace("{estabelecimento}", displayTenantName)
                           .replace("{dias}", String(botReturnReminderDays))
                       );
                       const waUrl = `https://wa.me/55${cleanPhone}?text=${returnText}`;
