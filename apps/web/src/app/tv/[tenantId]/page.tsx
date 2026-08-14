@@ -188,9 +188,11 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
     return () => clearInterval(countdownTimer);
   }, [showCtaModal, ctaCountdown]);
 
-  // Ref para o elemento de vídeo
+  // Ref para o elemento de vídeo e detecção de formato (Reels / Vertical vs Widescreen)
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [videoDuration, setVideoDuration] = useState<number>(15);
+  const [isVideoVertical, setIsVideoVertical] = useState<boolean>(false);
+  const [userInteracted, setUserInteracted] = useState<boolean>(false);
 
   // Avançar para o Próximo Slide da TV
   const nextSlide = useCallback(() => {
@@ -279,8 +281,16 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
   };
 
   const handleVideoLoadedMetadata = () => {
-    if (videoRef.current && videoRef.current.duration) {
-      setVideoDuration(Math.ceil(videoRef.current.duration));
+    if (videoRef.current) {
+      if (videoRef.current.duration) {
+        setVideoDuration(Math.ceil(videoRef.current.duration));
+      }
+      const width = videoRef.current.videoWidth;
+      const height = videoRef.current.videoHeight;
+      if (height > 0 && width > 0) {
+        const isVert = height > width * 1.05;
+        setIsVideoVertical(isVert);
+      }
     }
   };
 
@@ -339,11 +349,28 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
   }
 
   return (
-    <div className="relative w-screen h-screen bg-black text-white overflow-hidden font-sans select-none flex flex-col justify-between">
+    <div
+      onClick={() => setUserInteracted(true)}
+      className="relative w-screen h-screen bg-black text-white overflow-hidden font-sans select-none flex flex-col justify-between"
+    >
       
-      {/* BACKGROUND STREAMER DA RÁDIO INDOOR */}
-      {isRadioIndoorActive && !shouldPauseRadio && (
-        <div className="absolute opacity-0 pointer-events-none w-1 h-1 overflow-hidden z-0">
+      {/* PROMPT DE DESBLOQUEIO DE ÁUDIO NO NAVEGADOR */}
+      {!userInteracted && isRadioIndoorActive && (
+        <button
+          onClick={() => setUserInteracted(true)}
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-amber-500 hover:bg-amber-400 text-black px-5 py-2 rounded-full text-xs font-black shadow-2xl flex items-center gap-2 animate-bounce cursor-pointer"
+        >
+          <Volume2 className="w-4 h-4" /> Clique na tela para ativar o Som da Rádio Indoor & TV
+        </button>
+      )}
+
+      {/* BACKGROUND STREAMER DA RÁDIO INDOOR (PERMANECE MONTADO NO DOM) */}
+      {isRadioIndoorActive && (
+        <div
+          className={`fixed bottom-0 right-0 z-0 transition-opacity duration-500 ${
+            shouldPauseRadio ? "opacity-0 pointer-events-none w-0 h-0 overflow-hidden" : "opacity-0 pointer-events-none w-1 h-1 overflow-hidden"
+          }`}
+        >
           {radioConfig.provider === "spotify" ? (
             <iframe
               src={parseSpotifyEmbedUrl(radioConfig.playlistUrl)}
@@ -365,22 +392,44 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
         </div>
       )}
 
-      {/* EXIBIÇÃO DA MÍDIA (SLIDESHOW DE FOTOS OU VÍDEO MP4) */}
-      <div className="absolute inset-0 z-0 bg-slate-950">
+      {/* EXIBIÇÃO DA MÍDIA (SLIDESHOW DE FOTOS OU VÍDEO MP4 COM ADAPTAÇÃO INTELIGENTE DE PROPORÇÃO) */}
+      <div className="absolute inset-0 z-0 bg-slate-950 flex items-center justify-center overflow-hidden">
         {currentItem.type === "video" ? (
-          <video
-            ref={videoRef}
-            key={currentItem.id}
-            src={currentItem.url}
-            autoPlay
-            playsInline
-            preload="auto"
-            muted={isMuted || shouldMuteVideo}
-            onEnded={handleVideoEnded}
-            onLoadedMetadata={handleVideoLoadedMetadata}
-            onError={nextSlide}
-            className="w-full h-full object-cover"
-          />
+          <div className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden">
+            {/* SE FOR VÍDEO VERTICAL (REELS / INSTAGRAM / TIKTOK 9:16): BACKDROP AMBIENTE DESFOCADO DYNÂMICO */}
+            {isVideoVertical && (
+              <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+                <video
+                  src={currentItem.url}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  className="w-full h-full object-cover filter blur-3xl scale-125 opacity-40"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/60" />
+              </div>
+            )}
+
+            {/* VÍDEO PRINCIPAL */}
+            <video
+              ref={videoRef}
+              key={currentItem.id}
+              src={currentItem.url}
+              autoPlay
+              playsInline
+              preload="auto"
+              muted={isMuted || shouldMuteVideo}
+              onEnded={handleVideoEnded}
+              onLoadedMetadata={handleVideoLoadedMetadata}
+              onError={nextSlide}
+              className={`relative z-10 ${
+                isVideoVertical
+                  ? "h-full w-auto max-w-full object-contain rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.9)] border border-white/10"
+                  : "w-full h-full object-cover"
+              }`}
+            />
+          </div>
         ) : (
           <div className="relative w-full h-full">
             <img

@@ -98,43 +98,45 @@ export interface TenantTvConfig {
 
 // Helpers para converter URLs normais de Spotify e YouTube para Iframe Embed
 export function parseSpotifyEmbedUrl(url: string): string {
-  if (!url) return "https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M";
+  if (!url) return "https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M?utm_source=generator&theme=0";
   if (url.includes("open.spotify.com/embed/")) return url;
 
   try {
     const parsed = new URL(url);
     const pathname = parsed.pathname;
     if (pathname.length > 1) {
-      return `https://open.spotify.com/embed${pathname}`;
+      return `https://open.spotify.com/embed${pathname}?utm_source=generator&theme=0`;
     }
   } catch (e) {}
 
-  return "https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M";
+  return "https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M?utm_source=generator&theme=0";
 }
 
 export function parseYouTubeEmbedUrl(url: string): string {
-  if (!url) return "https://www.youtube.com/embed/videoseries?list=PL4fGSI1pDJn6jWSV0Tz2uWp6h-Zly-gM-";
-  if (url.includes("youtube.com/embed/")) return url;
+  if (!url) return "https://www.youtube.com/embed/videoseries?list=PL4fGSI1pDJn6jWSV0Tz2uWp6h-Zly-gM-&autoplay=1&enablejsapi=1";
+  if (url.includes("youtube.com/embed/")) {
+    return url.includes("?") ? `${url}&autoplay=1&enablejsapi=1` : `${url}?autoplay=1&enablejsapi=1`;
+  }
 
   try {
     const parsed = new URL(url);
     const listParam = parsed.searchParams.get("list");
     if (listParam) {
-      return `https://www.youtube.com/embed/videoseries?list=${listParam}`;
+      return `https://www.youtube.com/embed/videoseries?list=${listParam}&autoplay=1&enablejsapi=1`;
     }
 
     const vParam = parsed.searchParams.get("v");
     if (vParam) {
-      return `https://www.youtube.com/embed/${vParam}?autoplay=1`;
+      return `https://www.youtube.com/embed/${vParam}?autoplay=1&enablejsapi=1`;
     }
 
     if (parsed.hostname.includes("youtu.be")) {
       const id = parsed.pathname.replace("/", "");
-      if (id) return `https://www.youtube.com/embed/${id}?autoplay=1`;
+      if (id) return `https://www.youtube.com/embed/${id}?autoplay=1&enablejsapi=1`;
     }
   } catch (e) {}
 
-  return "https://www.youtube.com/embed/videoseries?list=PL4fGSI1pDJn6jWSV0Tz2uWp6h-Zly-gM-";
+  return "https://www.youtube.com/embed/videoseries?list=PL4fGSI1pDJn6jWSV0Tz2uWp6h-Zly-gM-&autoplay=1&enablejsapi=1";
 }
 
 export const INITIAL_TV_CONFIGS: Record<string, TenantTvConfig> = {
