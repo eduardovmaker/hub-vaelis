@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect, useCallback, useRef } from "react";
+import { use, useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { INITIAL_PORTAL_CONFIGS } from "@/mocks/portal";
 import { 
   INITIAL_TV_CONFIGS, 
@@ -113,6 +113,34 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
     syncWithSmartTv: true,
     spotMessages: [],
   };
+  // CACHE DA PLAYLIST DA RÁDIO INDOOR NO LOCALSTORAGE E STATE MEMOIZADO:
+  // Garante que o src do iframe NUNCA recarregue ou interrompa a música durante o auto-avanço de slides ou requisições API.
+  // Apenas altera a fonte se o cliente ativamente cadastrar/salvar uma nova playlist no painel.
+  const rawPlaylistUrl = radioConfig.playlistUrl || "";
+  const provider = radioConfig.provider || "spotify";
+
+  const targetEmbedUrl = useMemo(() => {
+    return provider === "spotify"
+      ? parseSpotifyEmbedUrl(rawPlaylistUrl)
+      : parseYouTubeEmbedUrl(rawPlaylistUrl);
+  }, [provider, rawPlaylistUrl]);
+
+  const [activeEmbedUrl, setActiveEmbedUrl] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem(`captive_hub_radio_embed_${tenantId}`);
+      if (cached) return cached;
+    }
+    return targetEmbedUrl;
+  });
+
+  useEffect(() => {
+    if (targetEmbedUrl && targetEmbedUrl !== activeEmbedUrl) {
+      setActiveEmbedUrl(targetEmbedUrl);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(`captive_hub_radio_embed_${tenantId}`, targetEmbedUrl);
+      }
+    }
+  }, [targetEmbedUrl, activeEmbedUrl, tenantId]);
 
   useEffect(() => {
     const handleStorageChange = () => {
@@ -364,31 +392,21 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
         </button>
       )}
 
-      {/* BACKGROUND STREAMER DA RÁDIO INDOOR (PERMANECE MONTADO NO DOM) */}
-      {isRadioIndoorActive && (
+      {/* BACKGROUND STREAMER DA RÁDIO INDOOR (PERMANECE MONTADO E CACHEADO NO DOM) */}
+      {isRadioIndoorActive && activeEmbedUrl && (
         <div
           className={`fixed bottom-0 right-0 z-0 transition-opacity duration-500 ${
             shouldPauseRadio ? "opacity-0 pointer-events-none w-0 h-0 overflow-hidden" : "opacity-0 pointer-events-none w-1 h-1 overflow-hidden"
           }`}
         >
-          {radioConfig.provider === "spotify" ? (
-            <iframe
-              src={parseSpotifyEmbedUrl(radioConfig.playlistUrl)}
-              width="100%"
-              height="152"
-              frameBorder="0"
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            />
-          ) : (
-            <iframe
-              width="100%"
-              height="140"
-              src={parseYouTubeEmbedUrl(radioConfig.playlistUrl)}
-              title="YouTube Music Player TV"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            />
-          )}
+          <iframe
+            key={`radio_streamer_${tenantId}`}
+            src={activeEmbedUrl}
+            width="100%"
+            height="152"
+            frameBorder="0"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          />
         </div>
       )}
 
