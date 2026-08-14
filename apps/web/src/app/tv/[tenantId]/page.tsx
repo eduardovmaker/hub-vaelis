@@ -34,13 +34,16 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
 
+  // Estado de carregamento inicial
+  const [isLoading, setIsLoading] = useState(true);
+
   // Estado inicial genérico — dados reais vêm da API (Firebase)
   const [tvConfig, setTvConfig] = useState<TenantTvConfig>(
     INITIAL_TV_CONFIGS[tenantId] || {
       tenantId,
       tenantName: derivedName,
       pairingCode: "",
-      addonActive: false,
+      addonActive: true,
       showQrOverlay: true,
       showClockOverlay: true,
       showRadioBadge: true,
@@ -80,6 +83,8 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
         }
       } catch (err) {
         console.error("Erro ao carregar TV config da API:", err);
+      } finally {
+        setIsLoading(false);
       }
     }
     loadTvConfig();
@@ -288,6 +293,30 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
       document.exitFullscreen().catch(() => {});
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="w-screen h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-8 text-center space-y-6 select-none font-sans relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(147,51,234,0.15)_0%,transparent_70%)] pointer-events-none" />
+        <div className="relative">
+          <div className="w-20 h-20 rounded-3xl bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center shadow-2xl animate-pulse">
+            <Tv className="w-10 h-10 animate-bounce" />
+          </div>
+        </div>
+
+        <div className="max-w-md space-y-3 relative z-10">
+          <span className="text-xs font-black uppercase px-3.5 py-1 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20 tracking-wider">
+            Sincronizando Player TV
+          </span>
+          <h1 className="text-3xl font-black text-white tracking-tight">{displayName}</h1>
+          <div className="flex items-center justify-center gap-2 text-xs text-slate-400 font-mono pt-2">
+            <div className="w-2 h-2 rounded-full bg-purple-500 animate-ping" />
+            <span>Carregando playlist & mídia indoor...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (tvConfig.addonActive === false) {
     return (

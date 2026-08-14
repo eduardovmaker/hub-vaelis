@@ -342,6 +342,9 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
           setDigitalMenuButtonText(pc.digitalMenuButtonText ?? "Ver Cardápio");
           setDigitalMenuIcon(pc.digitalMenuIcon || "utensils");
           setAutoRedirectToMenu(pc.autoRedirectToMenu ?? false);
+          if (pc.shopProductsList && Array.isArray(pc.shopProductsList) && pc.shopProductsList.length > 0) {
+            setShopProductsList(pc.shopProductsList);
+          }
         }
       } catch (err) {
         console.error("Erro ao carregar dados do tenant via API:", err);
@@ -658,15 +661,201 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
   const [copiedRoletaUrl, setCopiedRoletaUrl] = useState(false);
 
   // Estados da Loja de Produtos & Controle de Estoque
-  const [shopProductsList, setShopProductsList] = useState<any[]>([]);
+  const DEFAULT_SHOP_PRODUCTS = [
+    {
+      id: "prod_1",
+      name: "Pomada Modeladora Efeito Matte 150g",
+      category: "Cabelo & Barba",
+      price: 45.00,
+      stockQty: 18,
+      description: "Fixação forte com acabamento fosco natural. Ideal para penteados modernos.",
+      imageUrl: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=400&q=80",
+      active: true,
+    },
+    {
+      id: "prod_2",
+      name: "Óleo Hidratante para Barba Premium 30ml",
+      category: "Cabelo & Barba",
+      price: 39.90,
+      stockQty: 12,
+      description: "Nutre os fios da barba, previne coceiras e deixa um perfume amadeirado exclusivo.",
+      imageUrl: "https://images.unsplash.com/photo-1608248597263-00079e960312?auto=format&fit=crop&w=400&q=80",
+      active: true,
+    },
+    {
+      id: "prod_3",
+      name: "Cerveja Heineken Long Neck 330ml",
+      category: "Bebidas & Snacks",
+      price: 12.00,
+      stockQty: 34,
+      description: "Cerveja gelada servida no balcão da loja.",
+      imageUrl: "https://images.unsplash.com/photo-1608270586620-248524c67de9?auto=format&fit=crop&w=400&q=80",
+      active: true,
+    },
+    {
+      id: "prod_4",
+      name: "Shampoo Fortalecedor Anti-Queda 250ml",
+      category: "Estética & Cuidados",
+      price: 49.00,
+      stockQty: 3,
+      description: "Limpeza profunda do couro cabeludo com ativos fortificantes de mentol.",
+      imageUrl: "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=400&q=80",
+      active: true,
+    },
+  ];
 
-  const [newProdName, setNewProdName] = useState("");
-  const [newProdCategory, setNewProdCategory] = useState("Cabelo & Barba");
-  const [newProdPrice, setNewProdPrice] = useState(35.00);
-  const [newProdStock, setNewProdStock] = useState(10);
-  const [newProdImageUrl, setNewProdImageUrl] = useState("");
+  const [shopProductsList, setShopProductsList] = useState<any[]>(DEFAULT_SHOP_PRODUCTS);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<any | null>(null);
 
-  const [productSalesList, setProductSalesList] = useState<any[]>([]);
+  // Form states do Modal de Produto
+  const [prodFormName, setProdFormName] = useState("");
+  const [prodFormCategory, setProdFormCategory] = useState("Cabelo & Barba");
+  const [prodFormPrice, setProdFormPrice] = useState(35.00);
+  const [prodFormStock, setProdFormStock] = useState(10);
+  const [prodFormDescription, setProdFormDescription] = useState("");
+  const [prodFormImageUrl, setProdFormImageUrl] = useState("");
+
+  // Modal de QR Code do Produto
+  const [showProductQrModal, setShowProductQrModal] = useState(false);
+  const [selectedQrProduct, setSelectedQrProduct] = useState<any | null>(null);
+  const [copiedProductLink, setCopiedProductLink] = useState<string | null>(null);
+
+  const [productSalesList, setProductSalesList] = useState<any[]>([
+    {
+      id: "sale_1",
+      customerName: "Lucas Mendes",
+      productName: "Pomada Modeladora Efeito Matte 150g",
+      quantity: 1,
+      totalPrice: 45.00,
+      paidAt: "Hoje, 15:30",
+      pixStatus: "PAID",
+    },
+    {
+      id: "sale_2",
+      customerName: "Gabriel Souza",
+      productName: "Cerveja Heineken Long Neck 330ml",
+      quantity: 2,
+      totalPrice: 24.00,
+      paidAt: "Hoje, 14:15",
+      pixStatus: "PAID",
+    },
+    {
+      id: "sale_3",
+      customerName: "Rodrigo Lima",
+      productName: "Óleo Hidratante para Barba Premium 30ml",
+      quantity: 1,
+      totalPrice: 39.90,
+      paidAt: "Hoje, 11:40",
+      pixStatus: "PAID",
+    },
+  ]);
+
+  // Handlers para Gestão de Produtos & Links Pix
+  const handleOpenNewProductModal = () => {
+    setEditingProduct(null);
+    setProdFormName("");
+    setProdFormCategory("Cabelo & Barba");
+    setProdFormPrice(35.00);
+    setProdFormStock(10);
+    setProdFormDescription("");
+    setProdFormImageUrl("");
+    setShowProductModal(true);
+  };
+
+  const handleOpenEditProductModal = (product: any) => {
+    setEditingProduct(product);
+    setProdFormName(product.name || "");
+    setProdFormCategory(product.category || "Cabelo & Barba");
+    setProdFormPrice(product.price || 0);
+    setProdFormStock(product.stockQty || 0);
+    setProdFormDescription(product.description || "");
+    setProdFormImageUrl(product.imageUrl || "");
+    setShowProductModal(true);
+  };
+
+  const handleSaveProductForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!prodFormName.trim()) {
+      showNotification("⚠️ Digite um nome para o produto.");
+      return;
+    }
+
+    const finalImage = prodFormImageUrl.trim() || "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=400&q=80";
+
+    let updatedList: any[];
+    if (editingProduct) {
+      updatedList = shopProductsList.map((p) =>
+        p.id === editingProduct.id
+          ? {
+              ...p,
+              name: prodFormName.trim(),
+              category: prodFormCategory,
+              price: Number(prodFormPrice),
+              stockQty: Number(prodFormStock),
+              description: prodFormDescription.trim(),
+              imageUrl: finalImage,
+            }
+          : p
+      );
+      showNotification("✅ Produto atualizado no catálogo!");
+    } else {
+      const newProd = {
+        id: `prod_${Date.now()}`,
+        name: prodFormName.trim(),
+        category: prodFormCategory,
+        price: Number(prodFormPrice),
+        stockQty: Number(prodFormStock),
+        description: prodFormDescription.trim(),
+        imageUrl: finalImage,
+        active: true,
+      };
+      updatedList = [...shopProductsList, newProd];
+      showNotification("✨ Novo produto cadastrado no catálogo!");
+    }
+
+    setShopProductsList(updatedList);
+    setShowProductModal(false);
+    setEditingProduct(null);
+
+    try {
+      await fetch(`/api/portal/${tenantId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shopProductsList: updatedList }),
+      });
+    } catch (err) {
+      console.error("Erro ao salvar produto no banco:", err);
+    }
+  };
+
+  const handleDeleteProduct = async (productId: string) => {
+    const updated = shopProductsList.filter((p) => p.id !== productId);
+    setShopProductsList(updated);
+    showNotification("Produto removido do catálogo.");
+    try {
+      await fetch(`/api/portal/${tenantId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shopProductsList: updated }),
+      });
+    } catch (err) {}
+  };
+
+  const getProductPaymentLink = (productId: string) => {
+    if (typeof window !== "undefined") {
+      return `${window.location.origin}/portal/${tenantId}?product=${productId}`;
+    }
+    return `/portal/${tenantId}?product=${productId}`;
+  };
+
+  const handleCopyProductLink = (productId: string) => {
+    const link = getProductPaymentLink(productId);
+    navigator.clipboard.writeText(link);
+    setCopiedProductLink(productId);
+    showNotification("📋 Link de Pagamento Pix do produto copiado!");
+    setTimeout(() => setCopiedProductLink(null), 3000);
+  };
 
   // Web Guard State
   const [blockAdult, setBlockAdult] = useState(tvConfig.webGuardConfig?.blockAdultContent ?? true);
@@ -2880,65 +3069,16 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                     Catálogo de Produtos & Unidades em Estoque
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Ajuste o preço (R$) e adicione ou reduza a quantidade disponível em tempo real.
+                    Ajuste o preço (R$), gerencie o estoque e compartilhe links Pix diretos de pagamento para cada item.
                   </p>
                 </div>
 
-                {/* FORM CADASTRO DE NOVO PRODUTO */}
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (!newProdName) return;
-                    const newProd = {
-                      id: `prod_${Date.now()}`,
-                      name: newProdName,
-                      category: newProdCategory || "Geral",
-                      price: Number(newProdPrice),
-                      stockQty: Number(newProdStock),
-                      imageUrl: newProdImageUrl || "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=400&q=80",
-                      active: true,
-                    };
-                    setShopProductsList([...shopProductsList, newProd]);
-                    setNewProdName("");
-                    setNewProdPrice(35.00);
-                    setNewProdStock(10);
-                    setNewProdImageUrl("");
-                    showNotification("Novo produto cadastrado na loja!");
-                  }}
-                  className="flex items-center gap-2 flex-wrap"
+                <button
+                  onClick={handleOpenNewProductModal}
+                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/20 active:scale-95 transition-all shrink-0"
                 >
-                  <input
-                    type="text"
-                    required
-                    placeholder="Nome do Produto"
-                    value={newProdName}
-                    onChange={(e) => setNewProdName(e.target.value)}
-                    className="px-3 py-1.5 rounded-lg border text-xs"
-                    style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
-                  />
-                  <input
-                    type="number"
-                    step="0.50"
-                    required
-                    placeholder="R$ Preço"
-                    value={newProdPrice}
-                    onChange={(e) => setNewProdPrice(parseFloat(e.target.value) || 0)}
-                    className="w-20 px-2 py-1.5 rounded-lg border text-xs font-bold"
-                    style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
-                  />
-                  <input
-                    type="number"
-                    required
-                    placeholder="Qtd Estoque"
-                    value={newProdStock}
-                    onChange={(e) => setNewProdStock(parseInt(e.target.value) || 0)}
-                    className="w-20 px-2 py-1.5 rounded-lg border text-xs font-bold text-center"
-                    style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
-                  />
-                  <button type="submit" className="px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs shadow-md shrink-0">
-                    + Adicionar Produto
-                  </button>
-                </form>
+                  <Plus className="w-4 h-4 stroke-[3]" /> Cadastrar Novo Produto
+                </button>
               </div>
 
               {/* GRID DOS PRODUTOS DA LOJA */}
@@ -2946,29 +3086,37 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 {shopProductsList.map((prod) => (
                   <div
                     key={prod.id}
-                    className="p-4 rounded-2xl border space-y-3 shadow-sm relative flex flex-col justify-between"
+                    className="p-4 rounded-2xl border space-y-3 shadow-sm relative flex flex-col justify-between group transition-all duration-300 hover:border-emerald-500/50"
                     style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)" }}
                   >
                     {prod.stockQty < 5 && (
-                      <span className="absolute top-3 right-3 px-2 py-0.5 rounded bg-rose-600 text-white font-extrabold text-[9px] uppercase shadow">
+                      <span className="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-full bg-rose-600 text-white font-extrabold text-[9px] uppercase tracking-wider shadow-lg animate-pulse">
                         Estoque Baixo ({prod.stockQty})
                       </span>
                     )}
 
-                    <div className="space-y-2">
-                      <div className="w-full h-32 rounded-xl bg-slate-900 overflow-hidden relative border" style={{ borderColor: "var(--border-color)" }}>
+                    <div className="space-y-2.5">
+                      <div className="w-full h-36 rounded-xl bg-slate-900 overflow-hidden relative border group-hover:scale-[1.02] transition-transform duration-300" style={{ borderColor: "var(--border-color)" }}>
                         <img src={prod.imageUrl} alt={prod.name} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2.5">
+                          <span className="text-[10px] text-white font-semibold line-clamp-1">{prod.description || prod.name}</span>
+                        </div>
                       </div>
+
                       <div>
-                        <span className="text-[10px] font-bold uppercase text-emerald-600">{prod.category}</span>
-                        <h4 className="font-bold text-xs leading-snug line-clamp-2" style={{ color: "var(--text-primary)" }}>{prod.name}</h4>
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 px-2 py-0.5 rounded bg-emerald-500/10 inline-block mb-1">
+                          {prod.category}
+                        </span>
+                        <h4 className="font-bold text-xs leading-snug line-clamp-2" style={{ color: "var(--text-primary)" }}>
+                          {prod.name}
+                        </h4>
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t space-y-2" style={{ borderColor: "var(--border-color)" }}>
+                    <div className="pt-2.5 border-t space-y-3" style={{ borderColor: "var(--border-color)" }}>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-400">Preço:</span>
-                        <span className="text-sm font-black text-emerald-600">R$ {prod.price.toFixed(2)}</span>
+                        <span className="text-xs font-semibold text-slate-400">Preço Pix:</span>
+                        <span className="text-base font-black text-emerald-600">R$ {prod.price.toFixed(2)}</span>
                       </div>
 
                       {/* CONTROLE RÁPIDO DE AJUSTE DE ESTOQUE + E - */}
@@ -2983,6 +3131,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                               setShopProductsList(updated);
                             }}
                             className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-black text-xs flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all"
+                            title="Diminuir estoque"
                           >
                             -
                           </button>
@@ -2997,11 +3146,60 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                               setShopProductsList(updated);
                             }}
                             className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-black text-xs flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all"
+                            title="Aumentar estoque"
                           >
                             +
                           </button>
                         </div>
                       </div>
+
+                      {/* BARRA DE AÇÕES DO PRODUTO (LINK PIX, QR CODE, EDITAR, EXCLUIR) */}
+                      <div className="grid grid-cols-2 gap-1.5 pt-1">
+                        <button
+                          onClick={() => handleCopyProductLink(prod.id)}
+                          className="py-1.5 px-2 rounded-lg border text-[10px] font-bold flex items-center justify-center gap-1 hover:bg-emerald-500/10 transition-colors"
+                          style={{ borderColor: "var(--border-color)", color: "var(--text-primary)" }}
+                          title="Copiar link de pagamento Pix deste produto"
+                        >
+                          {copiedProductLink === prod.id ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-500" /> Copiado!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3 text-emerald-600" /> Link Pix
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setSelectedQrProduct(prod);
+                            setShowProductQrModal(true);
+                          }}
+                          className="py-1.5 px-2 rounded-lg border text-[10px] font-bold flex items-center justify-center gap-1 hover:bg-purple-500/10 transition-colors"
+                          style={{ borderColor: "var(--border-color)", color: "var(--text-primary)" }}
+                          title="Exibir QR Code Pix na tela"
+                        >
+                          <QrCode className="w-3 h-3 text-purple-500" /> QR Code
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1 text-[11px] border-t" style={{ borderColor: "var(--border-color)" }}>
+                        <button
+                          onClick={() => handleOpenEditProductModal(prod)}
+                          className="text-slate-400 hover:text-emerald-500 font-bold flex items-center gap-1 text-[10px]"
+                        >
+                          <Settings className="w-3 h-3" /> Editar
+                        </button>
+                        <button
+                          onClick={() => handleDeleteProduct(prod.id)}
+                          className="text-slate-400 hover:text-rose-500 font-bold flex items-center gap-1 text-[10px]"
+                        >
+                          <Trash2 className="w-3 h-3" /> Excluir
+                        </button>
+                      </div>
+
                     </div>
                   </div>
                 ))}
@@ -3450,6 +3648,208 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CADASTRO E EDIÇÃO DE PRODUTO DO CATÁLOGO */}
+      {showProductModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="rounded-3xl border p-6 max-w-lg w-full space-y-4 shadow-2xl animate-scale-up" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "var(--border-color)" }}>
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="w-5 h-5 text-emerald-600" />
+                <h3 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>
+                  {editingProduct ? "Editar Produto do Catálogo" : "Cadastrar Novo Produto na Loja"}
+                </h3>
+              </div>
+              <button onClick={() => setShowProductModal(false)} className="text-xs font-bold text-slate-400 hover:text-white">✕ Fechar</button>
+            </div>
+
+            <form onSubmit={handleSaveProductForm} className="space-y-4 text-xs">
+              {/* UPLOAD DE IMAGEM PARA O CLOUDFLARE R2 */}
+              <div className="p-4 rounded-2xl border-2 border-dashed border-emerald-500/40 bg-emerald-500/5 text-center space-y-2 relative transition-all hover:border-emerald-500 cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileUpload(file, "banner");
+                  }}
+                  disabled={isUploadingFile}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                />
+                
+                <div className="flex flex-col items-center justify-center space-y-1">
+                  {isUploadingFile ? (
+                    <div className="space-y-1 py-2">
+                      <RefreshCw className="w-7 h-7 mx-auto text-emerald-500 animate-spin" />
+                      <p className="font-bold text-emerald-600 text-xs">{uploadProgressText || "Enviando foto..."}</p>
+                      <p className="text-[10px] text-slate-400">Gravando no Cloudflare R2...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <UploadCloud className="w-7 h-7 text-emerald-500 animate-bounce" />
+                      <p className="font-extrabold text-xs" style={{ color: "var(--text-primary)" }}>
+                        📷 Selecionar Foto do Produto no Dispositivo
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        Upload direto de imagem PNG, JPG ou WEBP para o Cloudflare R2
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {prodFormImageUrl && (
+                <div className="p-2 rounded-xl border bg-slate-950/60 flex items-center gap-3" style={{ borderColor: "var(--border-color)" }}>
+                  <img src={prodFormImageUrl} alt="Preview" className="w-16 h-16 rounded-lg object-cover border" style={{ borderColor: "var(--border-color)" }} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-bold text-emerald-500 truncate">Imagem Selecionada / R2 OK</p>
+                    <p className="text-[10px] text-slate-400 truncate">{prodFormImageUrl}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-400">Nome do Produto *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Pomada Modeladora Efeito Matte 150g"
+                  value={prodFormName}
+                  onChange={(e) => setProdFormName(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border text-xs"
+                  style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-400">Categoria *</label>
+                  <select
+                    value={prodFormCategory}
+                    onChange={(e) => setProdFormCategory(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border text-xs font-bold"
+                    style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
+                  >
+                    <option value="Cabelo & Barba">Cabelo & Barba</option>
+                    <option value="Bebidas & Snacks">Bebidas & Snacks</option>
+                    <option value="Estética & Cuidados">Estética & Cuidados</option>
+                    <option value="Acessórios">Acessórios</option>
+                    <option value="Geral">Geral</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-400">Preço Pix (R$) *</label>
+                  <input
+                    type="number"
+                    step="0.50"
+                    required
+                    value={prodFormPrice}
+                    onChange={(e) => setProdFormPrice(parseFloat(e.target.value) || 0)}
+                    className="w-full p-2.5 rounded-xl border text-xs font-bold text-emerald-600"
+                    style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)" }}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-400">Qtd Estoque *</label>
+                  <input
+                    type="number"
+                    required
+                    value={prodFormStock}
+                    onChange={(e) => setProdFormStock(parseInt(e.target.value) || 0)}
+                    className="w-full p-2.5 rounded-xl border text-xs font-bold text-center"
+                    style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-400">Descrição Curta (Opcional)</label>
+                <textarea
+                  rows={2}
+                  placeholder="Ex: Fixação forte com brilho natural para pentear no dia a dia."
+                  value={prodFormDescription}
+                  onChange={(e) => setProdFormDescription(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border text-xs"
+                  style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-400">URL da Imagem Externa (Caso não use upload)</label>
+                <input
+                  type="url"
+                  placeholder="https://..."
+                  value={prodFormImageUrl}
+                  onChange={(e) => setProdFormImageUrl(e.target.value)}
+                  className="w-full p-2 rounded-xl border text-xs font-mono"
+                  style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t" style={{ borderColor: "var(--border-color)" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowProductModal(false)}
+                  className="px-4 py-2 rounded-xl border font-bold text-slate-400 hover:bg-slate-500/10"
+                  style={{ borderColor: "var(--border-color)" }}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-md">
+                  {editingProduct ? "Salvar Alterações" : "Cadastrar Produto"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE EXIBIÇÃO DE QR CODE PIX DO PRODUTO */}
+      {showProductQrModal && selectedQrProduct && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="rounded-3xl border p-6 max-w-sm w-full space-y-4 shadow-2xl animate-scale-up text-center" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "var(--border-color)" }}>
+              <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5">
+                <QrCode className="w-4 h-4" /> Cobrança Pix do Produto
+              </span>
+              <button onClick={() => setShowProductQrModal(false)} className="text-xs font-bold text-slate-400 hover:text-white">✕ Fechar</button>
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-[10px] font-extrabold uppercase text-emerald-600 tracking-wider bg-emerald-500/10 px-2.5 py-0.5 rounded-full">
+                {selectedQrProduct.category}
+              </span>
+              <h3 className="text-base font-black leading-snug" style={{ color: "var(--text-primary)" }}>{selectedQrProduct.name}</h3>
+              <p className="text-xl font-black text-emerald-600">R$ {selectedQrProduct.price.toFixed(2)}</p>
+            </div>
+
+            {/* QR Code gerado especificamente para o produto + tenant */}
+            <div className="bg-white p-3.5 rounded-2xl w-48 h-48 mx-auto shadow-inner flex items-center justify-center border-2 border-emerald-500/40">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                  getProductPaymentLink(selectedQrProduct.id)
+                )}`}
+                alt="QR Code Pix do Produto"
+                className="w-full h-full object-contain"
+              />
+            </div>
+
+            <p className="text-[11px] text-slate-400">
+              Aponte a câmera do celular para pagar via Pix direto na conta do estabelecimento ({displayTenantName}).
+            </p>
+
+            <button
+              onClick={() => handleCopyProductLink(selectedQrProduct.id)}
+              className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md"
+            >
+              {copiedProductLink === selectedQrProduct.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copiedProductLink === selectedQrProduct.id ? "Link Copiado!" : "Copiar Link de Pagamento"}
+            </button>
           </div>
         </div>
       )}
