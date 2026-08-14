@@ -392,21 +392,40 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
         </button>
       )}
 
-      {/* BACKGROUND STREAMER DA RÁDIO INDOOR (PERMANECE MONTADO E CACHEADO NO DOM) */}
+      {/* STREAMER DA RÁDIO INDOOR COM MINI-PLAYER VISÍVEL (LIBERA O ÁUDIO NOS FONES E SMART TV) */}
       {isRadioIndoorActive && activeEmbedUrl && (
         <div
-          className={`fixed bottom-0 right-0 z-0 transition-opacity duration-500 ${
-            shouldPauseRadio ? "opacity-0 pointer-events-none w-0 h-0 overflow-hidden" : "opacity-0 pointer-events-none w-1 h-1 overflow-hidden"
+          className={`fixed bottom-24 left-6 z-40 transition-all duration-500 ${
+            shouldPauseRadio ? "opacity-0 pointer-events-none scale-90 translate-y-4" : "opacity-100 pointer-events-auto scale-100 translate-y-0"
           }`}
         >
-          <iframe
-            key={`radio_streamer_${tenantId}`}
-            src={activeEmbedUrl}
-            width="100%"
-            height="152"
-            frameBorder="0"
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-          />
+          <div className="bg-slate-900/90 backdrop-blur-xl border border-indigo-500/40 p-2.5 rounded-2xl shadow-[0_0_30px_rgba(99,102,241,0.3)] flex items-center gap-3 w-80">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black shrink-0 animate-pulse">
+              <Headphones className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between text-[10px] font-bold text-indigo-400 uppercase tracking-wider">
+                <span>🎵 Rádio Indoor ao Vivo</span>
+                <span className="flex items-center gap-1 text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> Som Ativo
+                </span>
+              </div>
+              <p className="text-xs font-bold text-white truncate leading-tight mt-0.5">
+                {radioConfig.playlistName || "Sua Playlist do Spotify / YouTube"}
+              </p>
+            </div>
+          </div>
+
+          <div className="w-80 h-20 rounded-2xl overflow-hidden shadow-2xl mt-1.5 border border-white/10 bg-slate-950">
+            <iframe
+              key={`radio_streamer_${tenantId}`}
+              src={activeEmbedUrl}
+              width="100%"
+              height="100%"
+              frameBorder="0"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            />
+          </div>
         </div>
       )}
 

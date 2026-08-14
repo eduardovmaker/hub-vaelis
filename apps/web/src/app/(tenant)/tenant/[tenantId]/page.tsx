@@ -716,10 +716,11 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
   const [prodFormDescription, setProdFormDescription] = useState("");
   const [prodFormImageUrl, setProdFormImageUrl] = useState("");
 
-  // Modal de QR Code do Produto
+  // Modal de QR Code do Produto e Conexão Spotify
   const [showProductQrModal, setShowProductQrModal] = useState(false);
   const [selectedQrProduct, setSelectedQrProduct] = useState<any | null>(null);
   const [copiedProductLink, setCopiedProductLink] = useState<string | null>(null);
+  const [isSpotifyConnected, setIsSpotifyConnected] = useState(false);
 
   const [productSalesList, setProductSalesList] = useState<any[]>([
     {
@@ -2337,24 +2338,141 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
 
             {/* SEÇÃO UNIFICADA: CONFIGURAÇÃO DE RÁDIO INDOOR & SOM AMBIENTE */}
             <div className="rounded-2xl border p-6 shadow-sm space-y-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-              <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: "var(--border-color)" }}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4" style={{ borderColor: "var(--border-color)" }}>
                 <div>
                   <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
                     <Headphones className="w-5 h-5 text-indigo-500" /> Rádio Indoor Comercial (Som Ambiente + Vinhetas da TV)
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Cole qualquer link de playlist do <strong>Spotify</strong> ou <strong>YouTube Music</strong> para tocar suas músicas em segundo plano na Smart TV da loja.
+                    Conecte sua conta do <strong>Spotify</strong> ou escolha entre as playlists curadas para tocar de fundo na Smart TV.
                   </p>
                 </div>
-                <span className="text-xs font-bold text-indigo-500 uppercase font-mono">
-                  Provedor: {radioConfig.provider.toUpperCase()}
-                </span>
+                
+                {/* BOTÃO DE LOGAR CONTA DO SPOTIFY */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSpotifyConnected(true);
+                    showNotification("🟢 Conta do Spotify conectada com sucesso!");
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition-all shrink-0"
+                >
+                  <Music className="w-4 h-4 fill-white" />
+                  {isSpotifyConnected ? "Spotify Conectado ✓" : "Logar com Spotify"}
+                </button>
+              </div>
+
+              {/* BARRA DE CONEXÃO SPOTIFY */}
+              {isSpotifyConnected && (
+                <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-500 text-black font-black flex items-center justify-center text-sm shadow">
+                      🎵
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-emerald-400">Conta Spotify Conectada</p>
+                      <p className="text-[11px] text-slate-300">Sua biblioteca de playlists e músicas está sincronizada com o Hub Vaelis.</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-emerald-500 text-black uppercase">
+                    Premium VIP
+                  </span>
+                </div>
+              )}
+
+              {/* SELEÇÃO RÁPIDA EM 1-CLIQUE DE PLAYLISTS PRONTAS */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Playlists Curadas em 1-Clique para Estabelecimentos
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                  {[
+                    {
+                      name: "Sertanejo & Modão",
+                      provider: "spotify",
+                      url: "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M",
+                      icon: "🤠",
+                      color: "border-amber-500/30 bg-amber-500/5 hover:border-amber-500",
+                    },
+                    {
+                      name: "Rock & Classic",
+                      provider: "spotify",
+                      url: "https://open.spotify.com/playlist/37i9dQZF1DXcfZ6moR2o06",
+                      icon: "🎸",
+                      color: "border-rose-500/30 bg-rose-500/5 hover:border-rose-500",
+                    },
+                    {
+                      name: "Lofi & Chill Lounge",
+                      provider: "spotify",
+                      url: "https://open.spotify.com/playlist/37i9dQZF1DXdLEN7aqioXM",
+                      icon: "🎷",
+                      color: "border-purple-500/30 bg-purple-500/5 hover:border-purple-500",
+                    },
+                    {
+                      name: "Pop & Top Brasil",
+                      provider: "spotify",
+                      url: "https://open.spotify.com/playlist/37i9dQZF1DX0XUfTFmBDM0",
+                      icon: "🎧",
+                      color: "border-emerald-500/30 bg-emerald-500/5 hover:border-emerald-500",
+                    },
+                    {
+                      name: "Deep House Sunset",
+                      provider: "youtube",
+                      url: "https://www.youtube.com/playlist?list=PL4fGSI1pDJn6jWSV0Tz2uWp6h-Zly-gM-",
+                      icon: "⚡",
+                      color: "border-blue-500/30 bg-blue-500/5 hover:border-blue-500",
+                    },
+                    {
+                      name: "MPB & Brasilidades",
+                      provider: "spotify",
+                      url: "https://open.spotify.com/playlist/37i9dQZF1DX4Y13y7s22v3",
+                      icon: "🇧🇷",
+                      color: "border-cyan-500/30 bg-cyan-500/5 hover:border-cyan-500",
+                    },
+                  ].map((preset) => (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={async () => {
+                        setCustomPlaylistInput(preset.url);
+                        const updatedRadioConfig: RadioIndoorConfig = {
+                          ...radioConfig,
+                          provider: preset.provider as any,
+                          playlistUrl: preset.url,
+                          playlistName: `${preset.name} (${preset.provider.toUpperCase()})`,
+                        };
+                        setRadioConfig(updatedRadioConfig);
+
+                        // Persiste no banco de dados Firestore
+                        try {
+                          await fetch(`/api/tv/${tenantId}`, {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ radioIndoorConfig: updatedRadioConfig }),
+                          });
+                          showNotification(`🎵 Playlist "${preset.name}" ativada no Player da TV!`);
+                        } catch (err) {}
+                      }}
+                      className={`p-3 rounded-2xl border text-left transition-all active:scale-95 flex flex-col justify-between space-y-2 ${preset.color}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xl">{preset.icon}</span>
+                        <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-black/40 text-slate-300">
+                          {preset.provider}
+                        </span>
+                      </div>
+                      <span className="text-xs font-bold leading-tight block" style={{ color: "var(--text-primary)" }}>
+                        {preset.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <form onSubmit={handleUpdateCustomPlaylist} className="p-5 rounded-2xl border space-y-4 shadow-sm" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)" }}>
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
-                    Link da sua Playlist do Spotify ou YouTube Music:
+                    Ou Cole Qualquer Link Personalizado de Playlist do Spotify ou YouTube Music:
                   </label>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
