@@ -23,13 +23,19 @@ const DEFAULT_PRIZES: Prize[] = [
 
 export default function ExternalRoletaPage({ params }: { params: Promise<{ tenantId: string }> }) {
   const resolvedParams = use(params);
-  const tenantId = resolvedParams.tenantId || "tenant_barber_02";
+  const tenantId = resolvedParams.tenantId || "tenant_01";
 
-  // Buscar dados do tenant ou fallback
-  const portalConfig = INITIAL_PORTAL_CONFIGS[tenantId] || INITIAL_PORTAL_CONFIGS["tenant_barber_02"];
-  const tvConfig = INITIAL_TV_CONFIGS[tenantId] || INITIAL_TV_CONFIGS["tenant_barber_02"];
+  const readableName = tenantId
+    .replace(/^tenant_/, "")
+    .replace(/_\d+$/, "")
+    .split("_")
+    .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 
-  const tenantName = portalConfig.tenantName || "Barbearia VIP Club";
+  const portalConfig = INITIAL_PORTAL_CONFIGS[tenantId] || {};
+  const tvConfig = INITIAL_TV_CONFIGS[tenantId] || {};
+
+  const tenantName = portalConfig.tenantName || readableName || tenantId;
   const primaryColor = portalConfig.primaryColor || "#16A34A";
 
   const [prizes, setPrizes] = useState<Prize[]>(DEFAULT_PRIZES);

@@ -7,10 +7,17 @@ import { Store, Sparkles, CheckCircle2, Copy, Check, MessageSquare, ArrowRight, 
 
 export default function StandaloneCheckinPage({ params }: { params: Promise<{ tenantId: string }> }) {
   const resolvedParams = use(params);
-  const tenantId = resolvedParams.tenantId || "tenant_barber_02";
+  const tenantId = resolvedParams.tenantId || "tenant_01";
 
-  const portalConfig = INITIAL_PORTAL_CONFIGS[tenantId] || INITIAL_PORTAL_CONFIGS["tenant_barber_02"];
-  const tenantName = portalConfig.tenantName || "Barbearia VIP Club";
+  const readableName = tenantId
+    .replace(/^tenant_/, "")
+    .replace(/_\d+$/, "")
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+
+  const portalConfig = INITIAL_PORTAL_CONFIGS[tenantId] || {};
+  const tenantName = portalConfig.tenantName || readableName || tenantId;
   const primaryColor = portalConfig.primaryColor || "#16A34A";
 
   const [customerName, setCustomerName] = useState("");

@@ -171,11 +171,11 @@ export default function MasterAdminDashboard() {
         });
         setTvConfigs(configMap);
       } else {
-        setTvConfigs(INITIAL_TV_CONFIGS);
+        setTvConfigs({});
       }
     } catch (err) {
       console.error("Erro ao buscar tenants da API:", err);
-      setTvConfigs(INITIAL_TV_CONFIGS);
+      setTvConfigs({});
     }
   };
 

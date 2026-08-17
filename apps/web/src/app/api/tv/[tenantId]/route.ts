@@ -79,7 +79,15 @@ export async function PUT(
     const { tenantId } = await params;
     const body = await request.json();
 
-    const currentMemory = memoryTvConfigs[tenantId] || INITIAL_TV_CONFIGS[tenantId] || INITIAL_TV_CONFIGS["tenant_bar_01"];
+    const currentMemory = memoryTvConfigs[tenantId] || INITIAL_TV_CONFIGS[tenantId] || {
+      tenantId,
+      tenantName: tenantId,
+      pairingCode: `TV-${Math.floor(1000 + Math.random() * 9000)}`,
+      addonActive: true,
+      showQrOverlay: true,
+      showClockOverlay: true,
+      playlist: [],
+    };
     memoryTvConfigs[tenantId] = {
       ...currentMemory,
       ...body,
