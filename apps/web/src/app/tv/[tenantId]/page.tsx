@@ -10,23 +10,25 @@ import {
   parseYouTubeEmbedUrl
 } from "@/mocks/tv";
 import { 
-  Wifi, 
-  Clock, 
   Tv, 
   Sparkles, 
   Volume2, 
   VolumeX, 
   Maximize2,
   Headphones,
-  Music,
-  Radio,
-  Play
+  Play,
+  Instagram,
+  Settings,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Radio
 } from "lucide-react";
 
 export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: string }> }) {
   const resolvedParams = use(params);
   const tenantId = resolvedParams.tenantId;
-  // Nome derivado do tenantId para uso antes da API responder
+
   const derivedName = tenantId
     ? tenantId
         .replace(/^tenant_/, "")
@@ -36,10 +38,8 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
         .join(" ")
     : "Vaelis TV";
 
-  // Estado de carregamento inicial
   const [isLoading, setIsLoading] = useState(true);
 
-  // Estado inicial genérico — dados reais vêm da API (Firebase)
   const [tvConfig, setTvConfig] = useState<TenantTvConfig>(
     INITIAL_TV_CONFIGS[tenantId] || {
       tenantId,
@@ -65,7 +65,6 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
         return;
       }
 
-      // 1. Ler primeiro do LocalStorage para sincronização instantânea entre abas
       if (typeof window !== "undefined") {
         const stored = localStorage.getItem("captive_hub_tv_configs");
         if (stored) {
@@ -78,7 +77,6 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
         }
       }
 
-      // 2. Buscar da API para persistência
       try {
         const res = await fetch(`/api/tv/${tenantId}`);
         const data = await res.json();
@@ -100,17 +98,48 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
   }, [tenantId]);
 
   const portalConfigMock = INITIAL_PORTAL_CONFIGS[tenantId];
-  // Usa dados do Firebase (tvConfig) como fonte primária
   const displayName = tvConfig.tenantName || portalConfigMock?.tenantName || derivedName;
   const primaryColor = tvConfig.primaryColor || portalConfigMock?.primaryColor || "#2563EB";
-  const wifiSsid = tvConfig.wifiSsid || portalConfigMock?.wifiSsid || "WiFi_Gratis";
 
   const activePlaylist = tvConfig.playlist ? tvConfig.playlist.filter((item) => item.active) : [];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState("");
 
-  // Checar se o Add-on Rádio Indoor está ativo para este tenant
+  // Estado de visibilidade e inatividade dos controles da interface (Fade Out em 3s)
+  const [isUiVisible, setIsUiVisible] = useState(true);
+  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Estado do Drawer Retrátil de Controles e Rádio
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // Estado de Interação Inicial (Autoplay Policy unlock)
+  const [userInteracted, setUserInteracted] = useState(false);
+
+  // Detecção de movimento de cursor ou toque para restaurar os controles
+  useEffect(() => {
+    const handleMouseMove = () => {
+      setIsUiVisible(true);
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+      inactivityTimerRef.current = setTimeout(() => {
+        setIsUiVisible(false);
+      }, 3000);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("touchstart", handleMouseMove);
+    handleMouseMove();
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("touchstart", handleMouseMove);
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    };
+  }, []);
+
+  // Rádio Indoor
   const isRadioIndoorActive = tvConfig.addonStates?.["radio-indoor"]?.active ?? true;
   const radioConfig = tvConfig.radioIndoorConfig || {
     provider: "spotify" as const,
@@ -120,9 +149,7 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
     syncWithSmartTv: true,
     spotMessages: [],
   };
-  // CACHE DA PLAYLIST DA RÁDIO INDOOR NO LOCALSTORAGE E STATE MEMOIZADO:
-  // Garante que o src do iframe NUNCA recarregue ou interrompa a música durante o auto-avanço de slides ou requisições API.
-  // Apenas altera a fonte se o cliente ativamente cadastrar/salvar uma nova playlist no painel.
+
   const rawPlaylistUrl = radioConfig.playlistUrl || "";
   const provider = radioConfig.provider || "spotify";
 
@@ -149,29 +176,12 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
     }
   }, [targetEmbedUrl, activeEmbedUrl, tenantId]);
 
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const stored = localStorage.getItem("captive_hub_tv_configs");
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (parsed[tenantId]) {
-            setTvConfig(parsed[tenantId]);
-          }
-        } catch (e) {}
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, [tenantId]);
-
   // Relógio Digital em Tempo Real
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
       setCurrentTime(
-        now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+        now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
       );
     };
 
@@ -180,59 +190,18 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
     return () => clearInterval(interval);
   }, []);
 
-  // Estado do Popup de CTA Periódico (Ex: Instagram, WhatsApp, Reviews)
-  const [showCtaModal, setShowCtaModal] = useState(false);
-  const [ctaCountdown, setCtaCountdown] = useState(15);
-
-  const ctaEnabled = tvConfig.customCtaEnabled ?? false;
-  const ctaTitle = tvConfig.customCtaTitle || "Siga nosso Instagram!";
-  const ctaSubtitle = tvConfig.customCtaSubtitle || "Aponte a câmera do celular para conferir novidades e promoções.";
-  const ctaUrl = tvConfig.customCtaUrl || "https://instagram.com";
-  const ctaIntervalMinutes = tvConfig.customCtaIntervalMinutes || 5;
-  const ctaDurationSeconds = tvConfig.customCtaDurationSeconds || 15;
-
-  // Timer para disparar o CTA de tempos em tempos
-  useEffect(() => {
-    if (!ctaEnabled) {
-      setShowCtaModal(false);
-      return;
-    }
-
-    const intervalMs = ctaIntervalMinutes * 60 * 1000;
-    const timer = setInterval(() => {
-      setShowCtaModal(true);
-      setCtaCountdown(ctaDurationSeconds);
-    }, intervalMs);
-
-    return () => clearInterval(timer);
-  }, [ctaEnabled, ctaIntervalMinutes, ctaDurationSeconds]);
-
-  // Regressão do timer do Modal CTA quando ativo
-  useEffect(() => {
-    if (!showCtaModal) return;
-
-    if (ctaCountdown <= 0) {
-      setShowCtaModal(false);
-      return;
-    }
-
-    const countdownTimer = setInterval(() => {
-      setCtaCountdown((prev) => prev - 1);
-    }, 1000);
-
-    return () => clearInterval(countdownTimer);
-  }, [showCtaModal, ctaCountdown]);
-
-  // Ref para o elemento de vídeo e detecção de formato (Reels / Vertical vs Widescreen)
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [videoDuration, setVideoDuration] = useState<number>(15);
   const [isVideoVertical, setIsVideoVertical] = useState<boolean>(false);
-  const [userInteracted, setUserInteracted] = useState<boolean>(false);
 
-  // Avançar para o Próximo Slide da TV
   const nextSlide = useCallback(() => {
     if (activePlaylist.length === 0) return;
     setCurrentIndex((prev) => (prev + 1) % activePlaylist.length);
+  }, [activePlaylist.length]);
+
+  const prevSlide = useCallback(() => {
+    if (activePlaylist.length === 0) return;
+    setCurrentIndex((prev) => (prev - 1 + activePlaylist.length) % activePlaylist.length);
   }, [activePlaylist.length]);
 
   const currentItem: TvMediaItem = activePlaylist[currentIndex] || {
@@ -244,24 +213,19 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
     active: true,
   };
 
-  // REGRA DE ÁUDIO/VÍDEO:
   const isVideoType = currentItem.type === "video";
   const shouldMuteVideo = isVideoType && (currentItem.muteVideoKeepRadio === true);
-  const shouldPauseRadio = isVideoType && (currentItem.muteVideoKeepRadio !== true);
 
-  // CONTROLADOR DE TIMER E AUTO-AVANÇO DA PLAYLIST (IMAGENS E VÍDEOS)
   useEffect(() => {
     if (activePlaylist.length === 0) return;
 
     if (currentItem.type === "image") {
-      // Para Imagens: usa durationSeconds (default 8s)
       const durationMs = (currentItem.durationSeconds || 8) * 1000;
       const timer = setTimeout(() => {
         nextSlide();
       }, durationMs);
       return () => clearTimeout(timer);
     } else {
-      // Para Vídeos: timer de segurança (máximo 35s ou duração + 5s) para garantir que a TV nunca trave
       const maxSafetyMs = Math.max(videoDuration + 5, 20) * 1000;
       const safetyTimer = setTimeout(() => {
         nextSlide();
@@ -270,41 +234,22 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
     }
   }, [activePlaylist.length, currentIndex, currentItem.id, currentItem.type, currentItem.durationSeconds, videoDuration, nextSlide]);
 
-  // Pré-carregamento automático dos próximos mídias da playlist no cache da Smart TV
-  useEffect(() => {
-    if (activePlaylist.length <= 1) return;
-    const nextIndex = (currentIndex + 1) % activePlaylist.length;
-    const nextMedia = activePlaylist[nextIndex];
-    if (!nextMedia || !nextMedia.url) return;
-
-    if (nextMedia.type === "video") {
-      const vidPreload = document.createElement("video");
-      vidPreload.src = nextMedia.url;
-      vidPreload.preload = "auto";
-    } else if (nextMedia.type === "image") {
-      const imgPreload = new Image();
-      imgPreload.src = nextMedia.url;
-    }
-  }, [currentIndex, activePlaylist]);
-
-  // Manipular Play/Autoplay do Vídeo com Fallback contra Bloqueio do Navegador
   useEffect(() => {
     if (currentItem.type === "video" && videoRef.current) {
       const vid = videoRef.current;
       vid.currentTime = 0;
-      const playPromise = vid.play();
-      if (playPromise !== undefined) {
-        playPromise.catch((error) => {
-          console.warn("[TV Player] Autoplay com som bloqueado pelo navegador. Tentando modo mudo:", error);
-          vid.muted = true;
-          vid.play().catch((e) => {
-            console.error("[TV Player] Erro ao reproduzir vídeo. Avançando slide:", e);
-            nextSlide();
+      if (userInteracted) {
+        const playPromise = vid.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((error) => {
+            console.warn("[TV Player] Autoplay bloqueado:", error);
+            vid.muted = true;
+            vid.play().catch(() => nextSlide());
           });
-        });
+        }
       }
     }
-  }, [currentIndex, currentItem.id, currentItem.type, nextSlide]);
+  }, [currentIndex, currentItem.id, currentItem.type, userInteracted, nextSlide]);
 
   const handleVideoEnded = () => {
     if (activePlaylist.length === 1 && videoRef.current) {
@@ -323,13 +268,10 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
       const width = videoRef.current.videoWidth;
       const height = videoRef.current.videoHeight;
       if (height > 0 && width > 0) {
-        const isVert = height > width * 1.05;
-        setIsVideoVertical(isVert);
+        setIsVideoVertical(height > width * 1.1);
       }
     }
   };
-
-  const currentDuration = currentItem.type === "video" ? videoDuration : (currentItem.durationSeconds || 8);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -342,112 +284,103 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
   if (isLoading) {
     return (
       <div className="w-screen h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-8 text-center space-y-6 select-none font-sans relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(147,51,234,0.15)_0%,transparent_70%)] pointer-events-none" />
-        <div className="relative">
-          <div className="w-20 h-20 rounded-3xl bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center shadow-2xl animate-pulse">
-            <Tv className="w-10 h-10 animate-bounce" />
-          </div>
+        <div className="w-20 h-20 rounded-3xl bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center shadow-2xl animate-pulse">
+          <Tv className="w-10 h-10 animate-bounce" />
         </div>
-
-        <div className="max-w-md space-y-3 relative z-10">
-          <span className="text-xs font-black uppercase px-3.5 py-1 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20 tracking-wider">
-            Sincronizando Player TV
-          </span>
-          <h1 className="text-3xl font-black text-white tracking-tight">{displayName}</h1>
-          <div className="flex items-center justify-center gap-2 text-xs text-slate-400 font-mono pt-2">
-            <div className="w-2 h-2 rounded-full bg-purple-500 animate-ping" />
-            <span>Carregando playlist & mídia indoor...</span>
-          </div>
-        </div>
+        <h1 className="text-3xl font-black text-white tracking-tight">{displayName}</h1>
+        <p className="text-xs text-slate-400 font-mono">Carregando Mídia Indoor...</p>
       </div>
     );
   }
 
-  if (tvConfig.addonActive === false) {
-    return (
-      <div className="w-screen h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-8 text-center space-y-6 select-none font-sans">
-        <div className="w-20 h-20 rounded-3xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center shadow-2xl">
-          <Tv className="w-10 h-10" />
-        </div>
+  // Desbloqueio do Contexto de Áudio e Autoplay do Navegador
+  const handleUnlockAudio = () => {
+    setUserInteracted(true);
 
-        <div className="max-w-md space-y-2">
-          <span className="text-xs font-extrabold uppercase px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
-            Add-on Mídia Indoor Desativado
-          </span>
-          <h1 className="text-3xl font-black text-white">{displayName}</h1>
-          <p className="text-sm text-slate-400">
-            Este recurso de TV Player não está ativo para este estabelecimento. Entre em contato com a administração da plataforma para ativar este plano.
-          </p>
-        </div>
-      </div>
-    );
-  }
+    // Resumir AudioContext do navegador se suspenso
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        if (ctx.state === "suspended") {
+          ctx.resume();
+        }
+      }
+    } catch (e) {}
+
+    // Iniciar vídeo se mídia atual for vídeo
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {});
+    }
+  };
 
   return (
-    <div
-      onClick={() => setUserInteracted(true)}
-      className="relative w-screen h-screen bg-black text-white overflow-hidden font-sans select-none flex flex-col justify-between"
-    >
+    <div className="relative w-screen h-screen bg-black text-white overflow-hidden font-sans select-none flex flex-col justify-between">
       
-      {/* PROMPT DE DESBLOQUEIO DE ÁUDIO NO NAVEGADOR */}
-      {!userInteracted && isRadioIndoorActive && (
-        <button
-          onClick={() => setUserInteracted(true)}
-          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-amber-500 hover:bg-amber-400 text-black px-5 py-2 rounded-full text-xs font-black shadow-2xl flex items-center gap-2 animate-bounce cursor-pointer"
-        >
-          <Volume2 className="w-4 h-4" /> Clique na tela para ativar o Som da Rádio Indoor & TV
-        </button>
-      )}
-
-      {/* STREAMER DA RÁDIO INDOOR COM MINI-PLAYER VISÍVEL (LIBERA O ÁUDIO NOS FONES E SMART TV) */}
-      {isRadioIndoorActive && activeEmbedUrl && (
-        <div
-          className={`fixed bottom-24 left-6 z-40 transition-all duration-500 ${
-            shouldPauseRadio ? "opacity-0 pointer-events-none scale-90 translate-y-4" : "opacity-100 pointer-events-auto scale-100 translate-y-0"
-          }`}
-        >
-          <div className="bg-slate-900/90 backdrop-blur-xl border border-indigo-500/40 p-2.5 rounded-2xl shadow-[0_0_30px_rgba(99,102,241,0.3)] flex items-center gap-3 w-80">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black shrink-0 animate-pulse">
-              <Headphones className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between text-[10px] font-bold text-indigo-400 uppercase tracking-wider">
-                <span>🎵 Rádio Indoor ao Vivo</span>
-                <span className="flex items-center gap-1 text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> Som Ativo
-                </span>
+      {/* 1. OVERLAY DE INTERAÇÃO INICIAL (DESTRAVA O AUTOPLAY DE ÁUDIO NO NAVEGADOR) */}
+      {!userInteracted && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-6 text-center">
+          <div className="max-w-md space-y-6 animate-scale-up">
+            <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-purple-600 via-pink-600 to-amber-500 p-0.5 mx-auto shadow-[0_0_50px_rgba(236,72,153,0.4)]">
+              <div className="w-full h-full bg-slate-950 rounded-[22px] flex items-center justify-center">
+                <Tv className="w-12 h-12 text-white animate-pulse" />
               </div>
-              <p className="text-xs font-bold text-white truncate leading-tight mt-0.5">
-                {radioConfig.playlistName || "Sua Playlist do Spotify / YouTube"}
+            </div>
+
+            <div className="space-y-2">
+              <span className="px-3 py-1 rounded-full bg-pink-500/10 text-pink-400 border border-pink-500/20 text-[10px] font-extrabold uppercase tracking-wider">
+                Digital Signage & Rádio Indoor
+              </span>
+              <h2 className="text-2xl font-black text-white">{displayName}</h2>
+              <p className="text-xs text-slate-400">
+                Clique no botão abaixo para liberar o som ambiente da Rádio Indoor (Spotify) e iniciar a transmissão da TV sem interrupções.
               </p>
             </div>
-          </div>
 
-          <div className="w-80 h-20 rounded-2xl overflow-hidden shadow-2xl mt-1.5 border border-white/10 bg-slate-950">
-            <iframe
-              key={`radio_streamer_${tenantId}`}
-              src={activeEmbedUrl}
-              width="100%"
-              height="100%"
-              frameBorder="0"
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            />
+            <button
+              onClick={handleUnlockAudio}
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white font-black text-sm shadow-2xl hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+            >
+              <Play className="w-5 h-5 fill-white" /> Iniciar Mídia Indoor
+            </button>
           </div>
         </div>
       )}
 
-      {/* EXIBIÇÃO DA MÍDIA (SLIDESHOW DE FOTOS OU VÍDEO MP4 COM ADAPTAÇÃO INTELIGENTE DE PROPORÇÃO) */}
+      {/* 2. REPRODUÇÃO EM BACKGROUND DA RÁDIO INDOOR (SPOTIFY WEB CONTROLLER / EMBED FLUIDO SEM INTERRUPÇÃO) */}
+      {isRadioIndoorActive && activeEmbedUrl && (
+        <div 
+          key="static_radio_audio_container"
+          className="fixed -bottom-96 -left-96 w-1 h-1 opacity-0 pointer-events-none overflow-hidden z-0"
+        >
+          <iframe
+            id="spotify_radio_iframe_player"
+            key={`radio_streamer_static_${tenantId}`}
+            src={
+              activeEmbedUrl.includes("?")
+                ? `${activeEmbedUrl}&autoplay=1`
+                : `${activeEmbedUrl}?autoplay=1`
+            }
+            width="100%"
+            height="100%"
+            frameBorder="0"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          />
+        </div>
+      )}
+
+      {/* 3. MÍDIA PRINCIPAL (FOTO OU VÍDEO MP4 COM SUPORTE INTELIGENTE A REELS 9:16 VS FULLSCREEN 16:9) */}
       <div className="absolute inset-0 z-0 bg-slate-950 flex items-center justify-center overflow-hidden">
         {currentItem.type === "video" ? (
           <div className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden">
-            {/* SE FOR VÍDEO VERTICAL (REELS 9:16): BACKDROP AMBIENTE LEVE EM CSS (SEM DUPLICAR REPRODUÇÃO DE VÍDEO) */}
+            {/* SE FOR REELS VERTICAL (9:16): AMBIENTE RADIAL GLOW LEVE CONFORME IMAGE_EBBC3A.JPG */}
             {isVideoVertical && (
-              <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.25)_0%,rgba(15,23,42,0.98)_75%)]">
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/60" />
+              <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.2)_0%,rgba(15,23,42,0.98)_75%)]">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/60" />
               </div>
             )}
 
-            {/* VÍDEO PRINCIPAL OTIMIZADO PARA TV */}
+            {/* VÍDEO EXIBIDO NA TV */}
             <video
               ref={videoRef}
               key={currentItem.id}
@@ -459,10 +392,9 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
               onEnded={handleVideoEnded}
               onLoadedMetadata={handleVideoLoadedMetadata}
               onError={nextSlide}
-              style={{ transform: "translateZ(0)", willChange: "transform" }}
               className={`relative z-10 ${
                 isVideoVertical
-                  ? "h-full w-auto max-w-full object-contain rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.9)] border border-white/10"
+                  ? "h-[92vh] w-auto max-w-full object-contain rounded-3xl shadow-[0_0_80px_rgba(0,0,0,0.95)] border border-white/10"
                   : "w-full h-full object-cover"
               }`}
             />
@@ -476,91 +408,85 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
               onError={nextSlide}
               className="w-full h-full object-cover transition-opacity duration-700 ease-in-out"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/20" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/40" />
           </div>
         )}
       </div>
 
-      {/* HEADER DA TV */}
-      <header className="relative z-20 p-6 flex items-center justify-between pointer-events-none">
+      {/* 4. HEADER MINIMALISTA COM FADE-OUT APÓS 3 SEGUNDOS DE INATIVIDADE */}
+      <header
+        className={`relative z-20 p-6 flex items-center justify-between transition-opacity duration-700 ${
+          isUiVisible || isDrawerOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+      >
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-3 bg-black/60 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/10 shadow-2xl">
+          <div className="flex items-center gap-3 bg-black/40 backdrop-blur-xl px-5 py-2.5 rounded-2xl border border-white/10 shadow-2xl">
             <div 
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black shadow-lg"
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black shadow-lg"
               style={{ backgroundColor: primaryColor }}
             >
-              <Tv className="w-6 h-6" />
+              <Tv className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-lg font-black tracking-tight text-white leading-none">
+              <h1 className="text-sm font-extrabold tracking-tight text-white leading-none">
                 {displayName}
               </h1>
-              <p className="text-xs text-amber-400 font-semibold mt-0.5 flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5" /> Mídia Indoor
+              <p className="text-[10px] text-amber-400 font-semibold mt-0.5 flex items-center gap-1">
+                <Sparkles className="w-3 h-3" /> Mídia Indoor
               </p>
             </div>
           </div>
-
-          {/* BADGE DA RÁDIO INDOOR SINCRONIZADA NA TV */}
-          {(tvConfig.showRadioBadge !== false) && isRadioIndoorActive && !shouldPauseRadio && (
-            <div className="bg-indigo-950/80 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-indigo-500/30 flex items-center gap-2.5 text-xs font-bold text-indigo-200 shadow-xl">
-              <Headphones className="w-4 h-4 text-indigo-400 animate-bounce" />
-              <div>
-                <span className="text-[10px] text-indigo-400 font-extrabold uppercase tracking-wider block">
-                  🎵 Som Ambiente da TV ({radioConfig.provider.toUpperCase()}):
-                </span>
-                <span className="truncate max-w-[260px] block font-semibold text-white">
-                  {radioConfig.playlistName || "Sua Playlist do Spotify/YouTube"}
-                </span>
-              </div>
-              
-              <div className="flex items-end gap-0.5 h-4 ml-1">
-                <span className="w-1 bg-emerald-400 h-full animate-pulse" />
-                <span className="w-1 bg-emerald-400 h-2/3 animate-pulse delay-75" />
-                <span className="w-1 bg-emerald-400 h-4/5 animate-pulse delay-150" />
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Controles da TV */}
-        <div className="flex items-center gap-3 pointer-events-auto">
+        {/* CONTROLES E BOTÃO PARA ABRIR O DRAWER LATERAL */}
+        <div className="flex items-center gap-2.5">
           <button
             onClick={() => setIsMuted(!isMuted)}
-            className="p-3 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 hover:bg-white/20 transition-all text-white flex items-center gap-2"
+            className="p-2.5 rounded-xl bg-black/40 backdrop-blur-xl border border-white/10 hover:bg-white/20 transition-all text-white flex items-center gap-1.5"
             title="Alternar Áudio"
           >
-            {isMuted ? <VolumeX className="w-5 h-5 text-red-400" /> : <Volume2 className="w-5 h-5 text-emerald-400" />}
-            <span className="text-xs font-bold hidden sm:inline">
-              {isMuted ? "Som Mudo" : "Som da TV Ativo"}
-            </span>
+            {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
           </button>
 
           <button
             onClick={toggleFullscreen}
-            className="p-3 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 hover:bg-white/20 transition-all text-white"
+            className="p-2.5 rounded-xl bg-black/40 backdrop-blur-xl border border-white/10 hover:bg-white/20 transition-all text-white"
             title="Modo Tela Cheia"
           >
-            <Maximize2 className="w-5 h-5" />
+            <Maximize2 className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => setIsDrawerOpen(true)}
+            className="p-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg active:scale-95 transition-all"
+            title="Abrir Rádio & Controles"
+          >
+            <Settings className="w-4 h-4" />
+            <span className="hidden sm:inline">Controles & Rádio</span>
           </button>
         </div>
       </header>
 
-      {/* RODAPÉ DA TV */}
-      <footer className="relative z-20 p-6 sm:p-8 flex flex-col md:flex-row items-end justify-between gap-6">
-        {(tvConfig.showTitleOverlay !== false) && (
-          <div className="max-w-2xl bg-black/70 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-2xl space-y-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-amber-500 text-black uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5" /> DESTAQUE DA CASA
+      {/* 5. FOOTER MINIMALISTA: TÍTULO DA MÍDIA E CTA DO INSTAGRAM NO CANTO INFERIOR DIREITO */}
+      <footer
+        className={`relative z-20 p-6 flex flex-col md:flex-row items-end justify-between gap-6 transition-opacity duration-700 ${
+          isUiVisible || isDrawerOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        {/* TÍTULO E SLIDE ATUAL DA MÍDIA */}
+        {tvConfig.showTitleOverlay !== false && (
+          <div className="max-w-xl bg-black/50 backdrop-blur-xl p-5 rounded-3xl border border-white/10 shadow-2xl space-y-1.5">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500 text-black uppercase tracking-wider">
+              <Sparkles className="w-3 h-3" /> DESTAQUE DA CASA
             </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-snug drop-shadow-md">
+            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-snug drop-shadow-md">
               {currentItem.title}
             </h2>
-            <p className="text-xs text-slate-300 flex items-center gap-2">
+            <p className="text-[11px] text-slate-300 flex items-center gap-2">
               <span>Slide {currentIndex + 1} de {activePlaylist.length}</span>
               {currentItem.type === "video" ? (
                 <span className="text-emerald-400 font-bold">
-                  • {currentItem.muteVideoKeepRadio ? "Vídeo Mudo (Tocando Rádio Indoor)" : "Tocando Áudio Próprio do Vídeo"}
+                  • {currentItem.muteVideoKeepRadio ? "Vídeo Mudo (Tocando Rádio)" : "Tocando Áudio do Vídeo"}
                 </span>
               ) : (
                 <span>• Duração: {currentItem.durationSeconds || 8}s</span>
@@ -569,88 +495,113 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
           </div>
         )}
 
-        {(tvConfig.showQrOverlay !== false) && (
-          <div className="bg-slate-900/90 backdrop-blur-lg border-2 border-emerald-500/50 p-5 rounded-3xl shadow-2xl flex items-center gap-5 shrink-0 max-w-md">
-            <div className="bg-white p-3 rounded-2xl w-32 h-32 shrink-0 shadow-inner flex flex-col items-center justify-center">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
-                  typeof window !== "undefined" && window.location.hostname !== "localhost"
-                    ? `${window.location.protocol}//${window.location.host}/portal/${tenantId}`
-                    : `http://localhost:3000/portal/${tenantId}`
-                )}`}
-                alt="QR Code TV Wi-Fi"
-                className="w-full h-full object-contain"
-              />
-            </div>
-
-            <div className="space-y-1.5 min-w-0">
-              <div className="flex items-center gap-1.5 text-xs font-black text-emerald-400 uppercase tracking-wider">
-                <Wifi className="w-4 h-4" /> Wi-Fi Grátis & Pix
-              </div>
-
-              <h3 className="text-sm font-extrabold text-white leading-tight">
-                Conecte seu Celular
-              </h3>
-              
-              <p className="text-[11px] text-slate-300 leading-snug">
-                Aponte a câmera para o QR Code para acessar o Wi-Fi ou pagar via Pix.
-              </p>
-
-              <div className="pt-1 flex items-center justify-between text-[11px] font-mono text-slate-400 border-t border-white/10">
-                <span className="truncate">SSID: <strong className="text-white">{wifiSsid}</strong></span>
-                {(tvConfig.showClockOverlay !== false) && (
-                  <span className="font-bold text-amber-400 pl-2">{currentTime}</span>
-                )}
-              </div>
-            </div>
+        {/* REPLICANDO REQUISITO DO CLIENTE: CTA DE INSTAGRAM SUBISTITUINDO O QR CODE DE WIFI/PIX */}
+        <div className="bg-black/50 backdrop-blur-xl border border-white/10 p-3.5 rounded-2xl shadow-2xl flex items-center gap-3.5 max-w-xs shrink-0">
+          <div className="bg-white p-2 rounded-xl w-20 h-20 shrink-0 shadow-inner flex items-center justify-center">
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
+                tvConfig.customCtaUrl || `https://instagram.com`
+              )}`}
+              alt="QR Code Instagram"
+              className="w-full h-full object-contain"
+            />
           </div>
-        )}
+
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center gap-1 text-[10px] font-black text-pink-400 uppercase tracking-wider">
+              <Instagram className="w-3.5 h-3.5 text-pink-500" /> Siga no Instagram
+            </div>
+
+            <h3 className="text-xs font-extrabold text-white truncate leading-tight">
+              {tvConfig.customCtaTitle || `@${displayName.toLowerCase().replace(/\s+/g, "_")}`}
+            </h3>
+            
+            <p className="text-[10px] text-slate-300 leading-snug line-clamp-2">
+              Aponte a câmera do celular para conferir novidades e fotos da loja.
+            </p>
+
+            {currentTime && (
+              <p className="text-[10px] font-mono font-bold text-amber-400 pt-0.5">{currentTime}</p>
+            )}
+          </div>
+        </div>
       </footer>
 
-
-
-      {/* POPUP MODAL DE CTA PERIÓDICO (INSTAGRAM / QR CODE) - CANTO DA TELA COMO CARD FLOATING */}
-      {showCtaModal && (
-        <div className="fixed bottom-6 right-6 z-50 animate-fade-in select-none max-w-lg w-full">
-          <div className="relative bg-slate-900/95 backdrop-blur-2xl border-2 border-pink-500/60 rounded-3xl p-5 shadow-[0_0_30px_rgba(236,72,153,0.3)] space-y-3.5 overflow-hidden">
-            <div className="absolute -top-10 -right-10 w-28 h-28 bg-pink-500/20 rounded-full blur-2xl pointer-events-none" />
-            
-            <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2.5">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500 text-white uppercase tracking-wider shadow-md">
-                <Sparkles className="w-3.5 h-3.5 animate-spin" /> RECOMENDAÇÃO DA CASA
-              </span>
-              <span className="text-[10px] font-mono text-slate-400 font-semibold">
-                Fechando em {ctaCountdown}s
-              </span>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="bg-white p-2.5 rounded-2xl w-32 h-32 shrink-0 shadow-xl border-2 border-pink-500/30 flex items-center justify-center">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(ctaUrl)}`}
-                  alt="QR Code CTA"
-                  className="w-full h-full object-contain"
-                />
+      {/* 6. DRAWER LATERAL RETRÁTIL PARA RÁDIO INDOOR & NAVEGAÇÃO DA TV */}
+      {isDrawerOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end animate-fade-in">
+          <div className="w-full max-w-md bg-slate-900/95 backdrop-blur-2xl border-l border-white/10 h-full p-6 space-y-6 shadow-2xl flex flex-col justify-between overflow-y-auto animate-slide-left">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div className="flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-purple-400" />
+                  <h3 className="text-base font-bold text-white">Controles da Mídia & Rádio</h3>
+                </div>
+                <button
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              <div className="space-y-1.5 min-w-0 flex-1">
-                <h3 className="text-base font-black text-white leading-tight tracking-tight drop-shadow-md">
-                  {ctaTitle}
-                </h3>
-                <p className="text-xs text-slate-300 leading-snug line-clamp-2">
-                  {ctaSubtitle}
+              {/* SEÇÃO DA RÁDIO INDOOR (SPOTIFY & YOUTUBE) */}
+              <div className="p-4 rounded-2xl bg-indigo-950/60 border border-indigo-500/30 space-y-3">
+                <div className="flex items-center justify-between text-xs font-bold text-indigo-300">
+                  <span className="flex items-center gap-1.5">
+                    <Headphones className="w-4 h-4 text-indigo-400" /> Rádio Indoor ({provider.toUpperCase()})
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    Ao Vivo
+                  </span>
+                </div>
+
+                <p className="text-xs text-white font-extrabold truncate">
+                  {radioConfig.playlistName || "Hits Barbearia / Loja"}
                 </p>
-                <p className="text-[10px] font-mono text-pink-400 font-bold truncate pt-0.5">
-                  {ctaUrl}
-                </p>
+
+                <div className="pt-2 border-t border-indigo-500/20 text-[11px] text-slate-300 space-y-1">
+                  <p>• Música contínua em segundo plano.</p>
+                  <p>• Vinhetas comerciais a cada 15 min.</p>
+                </div>
+              </div>
+
+              {/* CONTROLES DA PLAYLIST DA TV */}
+              <div className="p-4 rounded-2xl bg-slate-950 border border-white/10 space-y-4">
+                <h4 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider">
+                  Navegação Manual de Mídias
+                </h4>
+
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    onClick={prevSlide}
+                    className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center gap-1"
+                  >
+                    <ChevronLeft className="w-4 h-4" /> Anterior
+                  </button>
+
+                  <button
+                    onClick={nextSlide}
+                    className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-md"
+                  >
+                    Próximo <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="text-xs text-slate-400 space-y-1 pt-2 border-t border-white/10">
+                  <p className="font-bold text-white">Mídia Atual:</p>
+                  <p className="truncate text-slate-300">{currentItem.title}</p>
+                </div>
               </div>
             </div>
 
-            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden border border-white/10 mt-1">
-              <div 
-                className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500 transition-all duration-1000 ease-linear"
-                style={{ width: `${(ctaCountdown / ctaDurationSeconds) * 100}%` }}
-              />
+            <div className="pt-4 border-t border-white/10">
+              <button
+                onClick={() => setIsDrawerOpen(false)}
+                className="w-full py-3 rounded-xl bg-slate-800 text-white font-bold text-xs hover:bg-slate-700"
+              >
+                Fechar Menu
+              </button>
             </div>
           </div>
         </div>

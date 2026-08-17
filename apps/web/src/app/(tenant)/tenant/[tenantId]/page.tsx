@@ -43,8 +43,8 @@ import {
   Save,
   Check,
   Globe,
-  Tv,
   ExternalLink,
+  Tv,
   Play,
   Clock,
   Video,
@@ -509,12 +509,34 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
   // Estado do Modal Simulador da Visão do Cliente Mobile
   const [showSimulatorModal, setShowSimulatorModal] = useState(false);
 
-  // Estado de Checkout Asaas
+  // Estado de Checkout Asaas Real
   const [targetAddonId, setTargetAddonId] = useState<AddonModuleId>("midia-indoor");
   const [selectedCycle, setSelectedCycle] = useState<PlanCycle>("MENSAL");
   const [showAsaasCheckoutModal, setShowAsaasCheckoutModal] = useState(false);
   const [copiedPix, setCopiedPix] = useState(false);
   const [isProcessingAsaas, setIsProcessingAsaas] = useState(false);
+  const [pixQrCodeImage, setPixQrCodeImage] = useState<string>("");
+  const [pixCopiaColaCode, setPixCopiaColaCode] = useState<string>("");
+  const [isGeneratingPix, setIsGeneratingPix] = useState<boolean>(false);
+  const [asaasPaymentId, setAsaasPaymentId] = useState<string>("");
+  const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const stopAddonPolling = () => {
+    if (pollingTimerRef.current) {
+      clearInterval(pollingTimerRef.current);
+      pollingTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      stopAddonPolling();
+    };
+  }, []);
+
+  // Estado do Modal de QR Code da Loja Pública / PDV
+  const [showStoreQrModal, setShowStoreQrModal] = useState(false);
+  const [copiedStoreUrl, setCopiedStoreUrl] = useState(false);
 
   // Estado de Upload de Arquivos para o Cloudflare R2
   const [isUploadingFile, setIsUploadingFile] = useState(false);
@@ -1054,52 +1076,28 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
     showNotification("Mídia removida da TV e atualizada no banco.");
   };
 
-  const openCheckoutForAddon = (addonId: AddonModuleId) => {
-    setTargetAddonId(addonId);
-    setShowAsaasCheckoutModal(true);
-  };
-
-  const handleConfirmAsaasPayment = async () => {
-    setIsProcessingAsaas(true);
+  const checkAddonPaymentStatus = async (addonId: AddonModuleId, paymentId?: string) => {
     try {
-      const targetCatalogItem = ADDONS_CATALOG.find((a) => a.id === targetAddonId);
-      const price = selectedCycle === "MENSAL"
-        ? targetCatalogItem?.priceMensal || 89
-        : selectedCycle === "TRIMESTRAL"
-        ? targetCatalogItem?.priceTrimestral || 239
-        : targetCatalogItem?.priceAnual || 790;
-
-      const res = await fetch("/api/webhooks/asaas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          event: "PAYMENT_RECEIVED",
-          tenantId,
-          addonId: targetAddonId,
-          cycle: selectedCycle,
-          payment: {
-            id: `pay_asaas_${Date.now()}`,
-            value: price,
-          },
-        }),
-      });
-
+      const res = await fetch(`/api/tenant/${tenantId}/addon-status?addonId=${addonId}&paymentId=${paymentId || ""}`);
       const data = await res.json();
-      if (data.success && data.config) {
+      if (data.success && data.active) {
+        stopAddonPolling();
+
+        const targetCatalogItem = ADDONS_CATALOG.find((a) => a.id === addonId);
         const updatedAddonStates = {
           ...(tvConfig.addonStates || {}),
-          [targetAddonId]: {
+          [addonId]: {
             active: true,
-            planCycle: selectedCycle,
+            planCycle: data.planCycle || selectedCycle,
             paymentStatus: "PAID" as const,
-            subscriptionExpiresAt: data.config.subscriptionExpiresAt,
-            asaasPaymentId: data.config.asaasPaymentId,
+            subscriptionExpiresAt: data.subscriptionExpiresAt || new Date(Date.now() + 30 * 86400000).toISOString(),
+            asaasPaymentId: data.asaasPaymentId || paymentId,
           },
         };
 
         const updatedConfig: TenantTvConfig = {
           ...tvConfig,
-          addonActive: targetAddonId === "midia-indoor" ? true : tvConfig.addonActive,
+          addonActive: addonId === "midia-indoor" ? true : tvConfig.addonActive,
           addonStates: updatedAddonStates as any,
         };
 
@@ -1114,13 +1112,51 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
         }
 
         setShowAsaasCheckoutModal(false);
-        showNotification(`🎉 Add-on [${targetCatalogItem?.title || targetAddonId}] liberado com sucesso na sua Navbar!`);
-        setActiveTab(targetAddonId as any);
+        showNotification(`🎉 Pagamento Asaas Confirmado! Add-on [${targetCatalogItem?.title || addonId}] ativado com sucesso!`);
+        setActiveTab(addonId as any);
       }
     } catch (err) {
-      showNotification("Erro no processamento Asaas.");
+      console.error("Erro no polling do Add-on:", err);
+    }
+  };
+
+  const openCheckoutForAddon = async (addonId: AddonModuleId) => {
+    setTargetAddonId(addonId);
+    setShowAsaasCheckoutModal(true);
+    setIsGeneratingPix(true);
+    setPixQrCodeImage("");
+    setPixCopiaColaCode("");
+    stopAddonPolling();
+
+    try {
+      const res = await fetch(`/api/tenant/${tenantId}/addon-checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          addonId,
+          cycle: selectedCycle,
+          customerName: displayTenantName,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setPixQrCodeImage(data.encodedImage || "");
+        setPixCopiaColaCode(data.pixCopiaECola || "");
+        setAsaasPaymentId(data.paymentId || "");
+
+        // Iniciar Polling a cada 3s para escutar confirmação do Webhook Asaas
+        pollingTimerRef.current = setInterval(() => {
+          checkAddonPaymentStatus(addonId, data.paymentId);
+        }, 3000);
+      } else {
+        showNotification(`Erro ao gerar Pix: ${data.error || "Falha na API do Asaas"}`);
+      }
+    } catch (err) {
+      console.error("Erro ao gerar Pix de Add-on:", err);
+      showNotification("Erro de conexão ao gerar cobrança Pix do Asaas.");
     } finally {
-      setIsProcessingAsaas(false);
+      setIsGeneratingPix(false);
     }
   };
 
@@ -1253,7 +1289,8 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
   };
 
   const copyPixCode = () => {
-    navigator.clipboard.writeText("00020126580014BR.GOV.BCB.PIX0136captivehub-asaas-pix-key-9821852040005303986540589.005802BR5925CAPTIVEHUB TECNOLOGIA SA6009SAO PAULO62070503***6304D1A4");
+    const codeToCopy = pixCopiaColaCode || "00020126580014BR.GOV.BCB.PIX0136captivehub-asaas-pix-key-9821852040005303986540589.005802BR5925CAPTIVEHUB TECNOLOGIA SA6009SAO PAULO62070503***6304D1A4";
+    navigator.clipboard.writeText(codeToCopy);
     setCopiedPix(true);
     setTimeout(() => setCopiedPix(false), 3000);
   };
@@ -3187,6 +3224,15 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                   Gerencie o catálogo de produtos da sua loja (pomadas, produtos, bebidas), monitore o estoque e acompanhe vendas instantâneas por Pix.
                 </p>
               </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowStoreQrModal(true)}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/20 active:scale-95 transition-all shrink-0"
+                >
+                  <QrCode className="w-4 h-4" /> Acessar PDV / E-commerce do Cliente
+                </button>
+              </div>
             </div>
 
             {/* GRID DE CARDS COM ESTATÍSTICAS DA LOJA */}
@@ -3763,32 +3809,144 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
         </div>
       )}
 
-      {/* MODAL CHECKOUT ASAAS */}
+      {/* MODAL CHECKOUT ASAAS REAL */}
       {showAsaasCheckoutModal && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="rounded-3xl border p-6 max-w-lg w-full space-y-5 shadow-2xl animate-scale-up" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
             <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "var(--border-color)" }}>
-              <h3 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Pagamento via Asaas Gateway (Pix Instantâneo)</h3>
-              <button onClick={() => setShowAsaasCheckoutModal(false)} className="text-xs font-bold text-slate-400">✕ Fechar</button>
-            </div>
-            <div className="text-center space-y-3">
-              <div className="p-4 rounded-2xl bg-white w-48 h-48 mx-auto border flex items-center justify-center shadow-inner">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-                    "00020126580014BR.GOV.BCB.PIX0136vaelis-hub-asaas-checkout-pix-key-991204000530398654099.005802BR5925VAELIS HUB TECNOLOGIA SA6009SAO PAULO62070503***6304E8A1"
-                  )}`}
-                  alt="QR Code Pix Asaas"
-                  className="w-40 h-40 object-contain"
-                />
+              <div className="flex items-center gap-2">
+                <QrCode className="w-5 h-5 text-emerald-500" />
+                <h3 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Pagamento via Asaas Gateway (Pix Instantâneo)</h3>
               </div>
-              <button onClick={copyPixCode} className="w-full py-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 hover:bg-slate-500/10">
-                {copiedPix ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                <span>{copiedPix ? "Código Pix Copiado!" : "Copiar Chave Pix Copia e Cola"}</span>
+              <button 
+                onClick={() => {
+                  stopAddonPolling();
+                  setShowAsaasCheckoutModal(false);
+                }} 
+                className="text-xs font-bold text-slate-400 hover:text-red-400 transition-colors"
+              >
+                ✕ Fechar
               </button>
             </div>
-            <button onClick={handleConfirmAsaasPayment} disabled={isProcessingAsaas} className="w-full py-3 rounded-xl bg-emerald-600 text-white font-extrabold text-xs shadow-md">
-              {isProcessingAsaas ? "Processando Pagamento..." : "Simular Pagamento Confirmado no Asaas (Webhook)"}
-            </button>
+
+            {isGeneratingPix ? (
+              <div className="py-12 flex flex-col items-center justify-center space-y-3">
+                <RefreshCw className="w-9 h-9 text-emerald-500 animate-spin" />
+                <p className="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">Gerando cobrança Pix real na conta Asaas...</p>
+                <p className="text-xs text-slate-400">Aguarde alguns segundos enquanto conectamos à API do Asaas Master.</p>
+              </div>
+            ) : (
+              <div className="text-center space-y-4">
+                <div className="p-4 rounded-2xl bg-white w-52 h-52 mx-auto border flex items-center justify-center shadow-inner">
+                  {pixQrCodeImage ? (
+                    <img
+                      src={
+                        pixQrCodeImage.startsWith("data:") || pixQrCodeImage.startsWith("http")
+                          ? pixQrCodeImage
+                          : `data:image/png;base64,${pixQrCodeImage}`
+                      }
+                      alt="QR Code Pix Asaas"
+                      className="w-44 h-44 object-contain"
+                    />
+                  ) : pixCopiaColaCode ? (
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixCopiaColaCode)}`}
+                      alt="QR Code Pix Asaas"
+                      className="w-44 h-44 object-contain"
+                    />
+                  ) : (
+                    <div className="text-xs text-slate-400">Erro ao carregar QR Code</div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <button onClick={copyPixCode} className="w-full py-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 bg-emerald-600/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600/20 transition-all">
+                    {copiedPix ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                    <span>{copiedPix ? "Código Pix Copiado para a Área de Transferência!" : "Copiar Chave Pix Copia e Cola"}</span>
+                  </button>
+
+                  <div className="flex items-center justify-center gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-semibold">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping inline-block" />
+                    <span>Aguardando pagamento Pix... Liberação automática via Webhook</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL QR CODE PDV / E-COMMERCE DA LOJA */}
+      {showStoreQrModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="rounded-3xl border p-6 max-w-lg w-full space-y-5 shadow-2xl animate-scale-up" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "var(--border-color)" }}>
+              <div className="flex items-center gap-2">
+                <Store className="w-5 h-5 text-emerald-500" />
+                <h3 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>PDV / E-commerce do Cliente (QR Code Externo)</h3>
+              </div>
+              <button 
+                onClick={() => setShowStoreQrModal(false)} 
+                className="text-xs font-bold text-slate-400 hover:text-red-400 transition-colors"
+              >
+                ✕ Fechar
+              </button>
+            </div>
+
+            <div className="text-center space-y-4">
+              <p className="text-xs text-slate-400">
+                Imprima este QR Code no balcão da sua loja ou compartilhe o link direto para seus clientes realizarem compras instantâneas via Pix.
+              </p>
+
+              <div className="p-4 rounded-2xl bg-white w-56 h-56 mx-auto border flex items-center justify-center shadow-inner relative group">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
+                    typeof window !== "undefined" ? `${window.location.origin}/loja/${tenantId}` : `https://${tenantId}.hub-vaelis.com/loja`
+                  )}`}
+                  alt="QR Code E-commerce Loja"
+                  className="w-48 h-48 object-contain"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-left space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-400">URL Pública da Loja:</span>
+                <p className="text-xs font-mono font-bold text-emerald-400 truncate">
+                  {typeof window !== "undefined" ? `${window.location.origin}/loja/${tenantId}` : `https://${tenantId}.hub-vaelis.com/loja`}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    const url = typeof window !== "undefined" ? `${window.location.origin}/loja/${tenantId}` : `/loja/${tenantId}`;
+                    window.open(url, "_blank");
+                  }}
+                  className="py-3 px-3 rounded-xl bg-emerald-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-emerald-500 shadow-md active:scale-95 transition-all"
+                >
+                  <ExternalLink className="w-4 h-4" /> Abrir Loja em Nova Aba
+                </button>
+
+                <button
+                  onClick={() => {
+                    const url = typeof window !== "undefined" ? `${window.location.origin}/loja/${tenantId}` : `https://${tenantId}.hub-vaelis.com/loja`;
+                    navigator.clipboard.writeText(url);
+                    setCopiedStoreUrl(true);
+                    setTimeout(() => setCopiedStoreUrl(false), 3000);
+                  }}
+                  className="py-3 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-500/10 active:scale-95 transition-all"
+                >
+                  {copiedStoreUrl ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiedStoreUrl ? "URL Copiada!" : "Copiar Link"}</span>
+                </button>
+              </div>
+
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
+                <span className="text-[11px] text-left">
+                  Checkout totalmente integrado ao <strong>Asaas</strong> com a regra de Split ({asaasConfigState.splitPercentage}% Carteira Tenant / {asaasConfigState.platformFeePercentage}% Plataforma).
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       )}

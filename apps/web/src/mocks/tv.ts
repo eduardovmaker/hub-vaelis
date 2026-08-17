@@ -106,7 +106,7 @@ export function parseSpotifyEmbedUrl(url: string): string {
     return `${base}?utm_source=generator&theme=0`;
   }
 
-  // Suporte a URI oficial do Spotify (ex: spotify:playlist:37i9dQZF1DXcBWIGoYBM5M)
+  // Suporte a URI oficial do Spotify (ex: spotify:playlist:37i9dQZF1DXcBWIGoYBM5M ou spotify:track:...)
   if (cleanUrl.startsWith("spotify:")) {
     const parts = cleanUrl.split(":");
     if (parts.length >= 3) {
@@ -121,6 +121,13 @@ export function parseSpotifyEmbedUrl(url: string): string {
     // Remove prefixos regionais como /intl-pt/ ou /intl-es/
     let pathname = parsed.pathname.replace(/^\/intl-[a-z]{2}(-[a-zA-Z]{2,4})?/, "");
     if (!pathname.startsWith("/")) pathname = "/" + pathname;
+
+    const segments = pathname.split("/").filter(Boolean);
+    if (segments.length >= 2) {
+      const type = segments[0]; // playlist, track, album, artist
+      const id = segments[1];
+      return `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`;
+    }
 
     if (pathname.length > 1) {
       return `https://open.spotify.com/embed${pathname}?utm_source=generator&theme=0`;
