@@ -23,25 +23,37 @@ async function seedFirebase() {
   await clearCollection(db, COLLECTIONS.TENANTS);
   await clearCollection(db, COLLECTIONS.TV_CONFIGS);
   await clearCollection(db, COLLECTIONS.PORTAL_CONFIGS);
+  await clearCollection(db, COLLECTIONS.RADIO_INDOOR_CONFIGS);
+  await clearCollection(db, COLLECTIONS.ASAAS_CONFIGS);
+  await clearCollection(db, COLLECTIONS.PRODUCTS);
+  await clearCollection(db, COLLECTIONS.SALES);
   console.log("✅ Coleções limpas com sucesso.");
 
-  console.log("🔑 Criando o único usuário Master Admin no Firebase...");
-  const adminPasswordHash = await bcrypt.hash("admin123", 10);
+  const adminEmail = "dudis.tadeu@gmail.com";
+  const rawPassword = process.env.ADMIN_INITIAL_PASSWORD || "VaelisHub@2026!Prod";
+
+  if (!process.env.ADMIN_INITIAL_PASSWORD) {
+    console.warn("⚠️  ADMIN_INITIAL_PASSWORD não definida no .env. Utilizando senha temporária inicial de produção.");
+  }
+
+  console.log(`🔑 Criando o único usuário Super Admin (${adminEmail}) no Firebase...`);
+  const adminPasswordHash = await bcrypt.hash(rawPassword, 10);
   
-  await db.collection(COLLECTIONS.USERS).doc("admin@captivehub.com").set({
-    name: "Master Admin CaptiveHub",
-    email: "admin@captivehub.com",
+  await db.collection(COLLECTIONS.USERS).doc(adminEmail).set({
+    name: "Eduardo Tadeu (Super Admin)",
+    email: adminEmail,
     passwordHash: adminPasswordHash,
     role: "SUPER_ADMIN",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
 
-  console.log("✨ Sucesso! Apenas 1 usuário Master Admin cadastrado no Firebase:");
-  console.log("📧 E-mail: admin@captivehub.com");
-  console.log("🔑 Senha:  admin123");
+  console.log("✨ Sucesso! Apenas 1 usuário Super Admin cadastrado no Firebase:");
+  console.log(`📧 E-mail: ${adminEmail}`);
+  console.log(`🛡️  Role:   SUPER_ADMIN`);
 }
 
 seedFirebase().catch((err) => {
   console.error("Erro durante o seed do Firebase:", err);
 });
+

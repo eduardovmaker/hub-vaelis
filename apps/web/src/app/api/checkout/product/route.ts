@@ -1,9 +1,24 @@
 import { NextResponse } from "next/server";
 import { db, COLLECTIONS } from "@/lib/db";
 import { createOrGetAsaasCustomer, createAsaasPixPayment } from "@/lib/asaas";
+import { checkoutRatelimit, checkRateLimit } from "@/lib/ratelimit";
 
 export async function POST(request: Request) {
   try {
+    // 🛡️ Rate limit por IP (10 req/min)
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
+    const rl = await checkRateLimit(checkoutRatelimit, `checkout_${ip}`);
+
+    if (!rl.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Limite de requisições de checkout excedido. Por favor, aguarde 1 minuto.",
+        },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { tenantId, productId, customerName, customerEmail, customerCpf, quantity } = body;
 
@@ -39,11 +54,14 @@ export async function POST(request: Request) {
       const asaasDoc = await db.collection(COLLECTIONS.ASAAS_CONFIGS).doc(tenantId).get();
       if (asaasDoc.exists) {
         const asaasData = asaasDoc.data();
-        if (asaasData?.splitEnabled && asaasData?.walletId) {
+        const rawWalletId = (asaasData?.walletId || "").trim();
+        const splitPct = typeof asaasData?.splitPercentage === "number" ? asaasData.splitPercentage : 90;
+
+        if (asaasData?.splitEnabled && rawWalletId) {
           splitRules = [
             {
-              walletId: asaasData.walletId,
-              percentualValue: asaasData.splitPercentage || 90,
+              walletId: rawWalletId,
+              percentualValue: Math.min(100, Math.max(0, splitPct)),
             },
           ];
         }
@@ -62,7 +80,7 @@ export async function POST(request: Request) {
       customerId: customer.id,
       value: totalValue,
       description: `Compra: ${product.name} (Qtd: ${qty}) - ${tenantId}`,
-      externalReference: `prod_sale_${Date.now()}`,
+      externalReference: tenantId,
       split: splitRules,
     });
 

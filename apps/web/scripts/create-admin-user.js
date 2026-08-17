@@ -53,10 +53,14 @@ const db = admin.firestore();
 
 async function createAdminUser() {
   const email = "dudis.tadeu@gmail.com";
-  const rawPassword = "Eusou!@lenda01";
-  const name = "Eduardo Tadeu (Master Admin)";
+  const rawPassword = process.env.ADMIN_INITIAL_PASSWORD || "VaelisHub@2026!Prod";
+  const name = "Eduardo Tadeu (Super Admin)";
 
-  console.log(`🔑 Gerando hash para a senha...`);
+  if (!process.env.ADMIN_INITIAL_PASSWORD) {
+    console.warn("⚠️  ADMIN_INITIAL_PASSWORD não definida no .env. Utilizando senha temporária inicial de produção.");
+  }
+
+  console.log(`🔑 Gerando hash seguro para a senha...`);
   const passwordHash = await bcrypt.hash(rawPassword, 10);
 
   console.log(`💾 Criando/Atualizando usuário ${email} no Firebase Firestore...`);
@@ -69,9 +73,8 @@ async function createAdminUser() {
     updatedAt: new Date().toISOString(),
   }, { merge: true });
 
-  console.log(`🎉 SUCCESS: Usuário Master Admin criado/atualizado com sucesso no Firebase Firestore!`);
+  console.log(`🎉 SUCCESS: Usuário Super Admin criado/atualizado com sucesso no Firebase Firestore!`);
   console.log(`📧 E-mail: ${email}`);
-  console.log(`🔑 Senha:  ${rawPassword}`);
   console.log(`🛡️ Função: SUPER_ADMIN`);
 }
 

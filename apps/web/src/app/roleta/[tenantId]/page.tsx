@@ -23,7 +23,7 @@ const DEFAULT_PRIZES: Prize[] = [
 
 export default function ExternalRoletaPage({ params }: { params: Promise<{ tenantId: string }> }) {
   const resolvedParams = use(params);
-  const tenantId = resolvedParams.tenantId || "tenant_01";
+  const tenantId = resolvedParams.tenantId;
 
   const readableName = tenantId
     .replace(/^tenant_/, "")

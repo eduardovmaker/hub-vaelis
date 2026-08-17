@@ -7,7 +7,7 @@ export default function DefaultPortalPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/portal/tenant_bar_01");
+    router.replace("/login");
   }, [router]);
 
   return (

@@ -7,7 +7,7 @@ export default function DefaultTvPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/tv/tenant_bar_01");
+    router.replace("/login");
   }, [router]);
 
   return (

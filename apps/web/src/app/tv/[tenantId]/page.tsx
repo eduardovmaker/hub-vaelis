@@ -25,14 +25,16 @@ import {
 
 export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: string }> }) {
   const resolvedParams = use(params);
-  const tenantId = resolvedParams.tenantId || "tenant_bar_01";
+  const tenantId = resolvedParams.tenantId;
   // Nome derivado do tenantId para uso antes da API responder
   const derivedName = tenantId
-    .replace(/^tenant_/, "")
-    .replace(/_\d+$/, "")
-    .split("_")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
+    ? tenantId
+        .replace(/^tenant_/, "")
+        .replace(/_\d+$/, "")
+        .split("_")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ")
+    : "Vaelis TV";
 
   // Estado de carregamento inicial
   const [isLoading, setIsLoading] = useState(true);
@@ -58,6 +60,11 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
 
   useEffect(() => {
     async function loadTvConfig() {
+      if (!tenantId) {
+        setIsLoading(false);
+        return;
+      }
+
       // 1. Ler primeiro do LocalStorage para sincronização instantânea entre abas
       if (typeof window !== "undefined") {
         const stored = localStorage.getItem("captive_hub_tv_configs");
@@ -92,11 +99,11 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
     return () => clearInterval(pollInterval);
   }, [tenantId]);
 
-  const portalConfigMock = INITIAL_PORTAL_CONFIGS[tenantId] || INITIAL_PORTAL_CONFIGS["tenant_bar_01"];
-  // Usa dados do Firebase (tvConfig) como fonte primária, mock como fallback
-  const displayName = tvConfig.tenantName || portalConfigMock.tenantName;
-  const primaryColor = tvConfig.primaryColor || portalConfigMock.primaryColor || "#2563EB";
-  const wifiSsid = tvConfig.wifiSsid || portalConfigMock.wifiSsid || "WiFi_Gratis";
+  const portalConfigMock = INITIAL_PORTAL_CONFIGS[tenantId];
+  // Usa dados do Firebase (tvConfig) como fonte primária
+  const displayName = tvConfig.tenantName || portalConfigMock?.tenantName || derivedName;
+  const primaryColor = tvConfig.primaryColor || portalConfigMock?.primaryColor || "#2563EB";
+  const wifiSsid = tvConfig.wifiSsid || portalConfigMock?.wifiSsid || "WiFi_Gratis";
 
   const activePlaylist = tvConfig.playlist ? tvConfig.playlist.filter((item) => item.active) : [];
   const [currentIndex, setCurrentIndex] = useState(0);

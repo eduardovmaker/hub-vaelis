@@ -4,10 +4,34 @@ import { provisionTenantMikrotikChr, stopTenantMikrotikChr } from "@/lib/docker-
 
 export async function POST(request: Request) {
   try {
+    // 1. Validação de Segurança do Webhook (Access Token Header)
+    const accessToken = request.headers.get("asaas-access-token") || request.headers.get("access-token");
+    const configuredSecret = process.env.ASAAS_WEBHOOK_ACCESS_TOKEN || process.env.ASAAS_API_KEY;
+
+    if (configuredSecret) {
+      if (!accessToken || accessToken.trim() !== configuredSecret.trim()) {
+        console.warn("⚠️ Tentativa de requisição não autorizada ao Webhook Asaas. Token ausente ou incorreto.");
+        return NextResponse.json(
+          { success: false, error: "Não Autorizado. Token de segurança do Webhook Asaas inválido." },
+          { status: 401 }
+        );
+      }
+    }
+
     const body = await request.json();
     const { event, payment } = body;
 
-    const tenantId = payment?.tenantId || body?.tenantId || "tenant_bar_01";
+    // 2. Extração segura do ID do Tenant (Sem fallbacks hardcoded de mock)
+    const tenantId = payment?.externalReference || payment?.tenantId || body?.externalReference || body?.tenantId;
+
+    if (!tenantId) {
+      console.warn("[Webhook Asaas] Requisição recebida sem vínculo de tenantId (externalReference).");
+      return NextResponse.json(
+        { success: false, error: "Informação do tenantId/externalReference ausente na notificação do pagamento." },
+        { status: 400 }
+      );
+    }
+
     const cycle = payment?.cycle || body?.cycle || "MENSAL";
     const addonId = payment?.addonId || body?.addonId || "midia-indoor";
     const eventType = event || body?.event || "PAYMENT_RECEIVED";
@@ -133,3 +157,4 @@ export async function POST(request: Request) {
     );
   }
 }
+

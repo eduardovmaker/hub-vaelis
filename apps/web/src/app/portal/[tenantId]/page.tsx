@@ -25,15 +25,36 @@ import {
 
 export default function DynamicCaptivePortal({ params }: { params: Promise<{ tenantId: string }> }) {
   const resolvedParams = use(params);
-  const tenantId = resolvedParams.tenantId || "tenant_bar_01";
+  const tenantId = resolvedParams.tenantId;
   
   // Buscar configuração do portal diretamente do banco de dados PostgreSQL
   const [portalConfig, setPortalConfig] = useState<TenantPortalConfig>(
-    INITIAL_PORTAL_CONFIGS[tenantId] || INITIAL_PORTAL_CONFIGS["tenant_bar_01"]
+    INITIAL_PORTAL_CONFIGS[tenantId] || {
+      tenantId,
+      tenantName: tenantId || "Vaelis Portal",
+      tenantCategory: "FOOD",
+      wifiSsid: "WiFi_Gratis",
+      primaryColor: "#2563EB",
+      banners: [],
+      pixPlans: [
+        { id: "p1", title: "Acesso Rápido (2 Horas)", durationText: "2 Horas de Wi-Fi", price: 5.0, speedLimit: "20 Mbps" },
+        { id: "p2", title: "Passaporte Dia Todo (6 Horas)", durationText: "6 Horas de Alta Velocidade", price: 10.0, speedLimit: "50 Mbps", recommended: true },
+      ],
+      freeAccessEnabled: true,
+      freeAccessDurationMinutes: 30,
+      adWatchSeconds: 15,
+      digitalMenuEnabled: false,
+      digitalMenuUrl: "",
+      digitalMenuTitle: "Cardápio Digital",
+      digitalMenuButtonText: "Ver Cardápio",
+      digitalMenuIcon: "utensils",
+      autoRedirectToMenu: false,
+    }
   );
 
   useEffect(() => {
     async function loadPortalConfig() {
+      if (!tenantId) return;
       try {
         const res = await fetch(`/api/portal/${tenantId}`);
         const data = await res.json();
@@ -48,7 +69,9 @@ export default function DynamicCaptivePortal({ params }: { params: Promise<{ ten
   }, [tenantId]);
 
   const [activeTab, setActiveTab] = useState<"pix" | "free">("pix");
-  const [selectedPlan, setSelectedPlan] = useState<PixPlan>(portalConfig.pixPlans[0] || INITIAL_PORTAL_CONFIGS["tenant_bar_01"].pixPlans[0]);
+  const [selectedPlan, setSelectedPlan] = useState<PixPlan>(
+    portalConfig.pixPlans[0] || { id: "p1", title: "Acesso Rápido (2 Horas)", durationText: "2 Horas de Wi-Fi", price: 5.0, speedLimit: "20 Mbps" }
+  );
   
   // Estados do Fluxo Pix
   const [showPixModal, setShowPixModal] = useState(false);

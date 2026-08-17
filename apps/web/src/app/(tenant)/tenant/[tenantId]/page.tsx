@@ -228,13 +228,13 @@ type TenantTabType =
 
 export default function TenantDashboard({ params }: { params: Promise<{ tenantId: string }> }) {
   const resolvedParams = use(params);
-  const tenantId = resolvedParams.tenantId || "tenant_bar_01";
+  const tenantId = resolvedParams.tenantId;
   const { user, logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState<TenantTabType>("dashboard");
 
   // Nome legível derivado do ID caso ainda não tenha carregado do banco
-  const derivedTenantName = tenantId
+  const derivedTenantName = (tenantId || "")
     .replace(/^tenant_/, "")
     .replace(/_\d+$/, "")
     .split("_")

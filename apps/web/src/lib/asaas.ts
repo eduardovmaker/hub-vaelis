@@ -1,6 +1,6 @@
 /**
  * Integrador Completo do Gateway de Pagamento Asaas (v3 API)
- * Suporta Pagamentos Pix com QR Code, Códigos Copia e Cola, Links de Pagamento e Webhooks.
+ * Suporta Pagamentos Pix com QR Code, Códigos Copia e Cola, Links de Pagamento, Split de Recebíveis e Webhooks.
  */
 
 export interface AsaasCustomerInput {
@@ -42,28 +42,67 @@ export interface AsaasPaymentLinkInput {
 const getAsaasApiConfig = () => {
   const apiKey = process.env.ASAAS_API_KEY || "";
   const apiUrl = (process.env.ASAAS_API_URL || "https://sandbox.asaas.com/api/v3").replace(/\/$/, "");
-  return { apiKey, apiUrl };
+  const isProduction = process.env.NODE_ENV === "production" || !!process.env.ASAAS_API_KEY;
+  return { apiKey, apiUrl, isProduction };
 };
 
 /**
- * Cria ou busca um cliente existente no Asaas
+ * Sanitiza CPF/CNPJ removendo caracteres especiais (máscaras)
+ */
+export function sanitizeCpfCnpj(doc?: string): string | undefined {
+  if (!doc) return undefined;
+  const clean = doc.replace(/[^\d]/g, "");
+  return clean.length >= 11 ? clean : undefined;
+}
+
+/**
+ * Valida se as regras de Split possuem walletId e percentuais válidos
+ */
+export function validateSplitRules(split?: AsaasSplitRule[]): AsaasSplitRule[] | undefined {
+  if (!split || !Array.isArray(split) || split.length === 0) return undefined;
+
+  const validRules = split.filter((rule) => {
+    if (!rule.walletId || typeof rule.walletId !== "string" || rule.walletId.trim().length === 0) {
+      return false;
+    }
+    if (rule.percentualValue !== undefined && (rule.percentualValue <= 0 || rule.percentualValue > 100)) {
+      return false;
+    }
+    if (rule.fixedValue !== undefined && rule.fixedValue <= 0) {
+      return false;
+    }
+    return true;
+  });
+
+  return validRules.length > 0 ? validRules : undefined;
+}
+
+/**
+ * Cria ou busca um cliente existente no Asaas (com timeout de 10s)
  */
 export async function createOrGetAsaasCustomer(input: AsaasCustomerInput): Promise<{ id: string }> {
-  const { apiKey, apiUrl } = getAsaasApiConfig();
+  const { apiKey, apiUrl, isProduction } = getAsaasApiConfig();
 
   if (!apiKey) {
+    if (isProduction) {
+      throw new Error("ASAAS_API_KEY não configurada no ambiente de produção.");
+    }
     console.warn("[Asaas SDK] ASAAS_API_KEY não configurada. Usando cliente simulado.");
     return { id: `cus_simulated_${Date.now()}` };
   }
 
+  const cleanCpfCnpj = sanitizeCpfCnpj(input.cpfCnpj);
+  const cleanEmail = (input.email || "").trim().toLowerCase();
+
   try {
     // 1. Tentar buscar cliente existente por email
-    const searchRes = await fetch(`${apiUrl}/customers?email=${encodeURIComponent(input.email)}`, {
+    const searchRes = await fetch(`${apiUrl}/customers?email=${encodeURIComponent(cleanEmail)}`, {
       method: "GET",
       headers: {
         "access_token": apiKey,
         "Content-Type": "application/json",
       },
+      signal: AbortSignal.timeout(10000),
     });
 
     if (searchRes.ok) {
@@ -80,10 +119,11 @@ export async function createOrGetAsaasCustomer(input: AsaasCustomerInput): Promi
         "access_token": apiKey,
         "Content-Type": "application/json",
       },
+      signal: AbortSignal.timeout(10000),
       body: JSON.stringify({
         name: input.name,
-        email: input.email,
-        cpfCnpj: input.cpfCnpj || undefined,
+        email: cleanEmail,
+        cpfCnpj: cleanCpfCnpj,
         phone: input.phone || undefined,
         notificationDisabled: false,
       }),
@@ -93,18 +133,22 @@ export async function createOrGetAsaasCustomer(input: AsaasCustomerInput): Promi
       const createData = await createRes.json();
       return { id: createData.id };
     } else {
-      const errText = await createRes.text();
-      console.error("[Asaas SDK] Erro ao criar cliente:", errText);
-      return { id: `cus_fallback_${Date.now()}` };
+      const errJson = await createRes.json().catch(() => null);
+      const errMsg = errJson?.errors?.[0]?.description || (await createRes.text());
+      console.error("[Asaas SDK] Erro ao criar cliente no Asaas:", errMsg);
+      throw new Error(`Falha no cadastro do cliente no Asaas: ${errMsg}`);
     }
-  } catch (err) {
-    console.error("[Asaas SDK] Exceção ao conectar no Asaas:", err);
+  } catch (err: any) {
+    console.error("[Asaas SDK] Exceção ao conectar no Asaas (Cliente):", err.message || err);
+    if (isProduction || apiKey) {
+      throw err;
+    }
     return { id: `cus_fallback_${Date.now()}` };
   }
 }
 
 /**
- * Cria uma cobrança via Pix no Asaas
+ * Cria uma cobrança via Pix no Asaas (com timeout de 10s e validação de Split)
  */
 export async function createAsaasPixPayment(input: AsaasPaymentInput): Promise<{
   id: string;
@@ -112,11 +156,15 @@ export async function createAsaasPixPayment(input: AsaasPaymentInput): Promise<{
   invoiceUrl?: string;
   pixQrCode?: AsaasPixQrCodeResult;
 }> {
-  const { apiKey, apiUrl } = getAsaasApiConfig();
+  const { apiKey, apiUrl, isProduction } = getAsaasApiConfig();
   const tomorrowStr = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split("T")[0];
   const dueDate = input.dueDate || tomorrowStr;
+  const validatedSplit = validateSplitRules(input.split);
 
   if (!apiKey) {
+    if (isProduction) {
+      throw new Error("ASAAS_API_KEY não configurada no ambiente de produção.");
+    }
     console.warn("[Asaas SDK] ASAAS_API_KEY não encontrada. Gerando pagamento Pix em modo simulação.");
     const simPaymentId = `pay_sim_${Math.floor(100000 + Math.random() * 900000)}`;
     return {
@@ -128,27 +176,30 @@ export async function createAsaasPixPayment(input: AsaasPaymentInput): Promise<{
   }
 
   try {
+    const payloadBody = {
+      customer: input.customerId,
+      billingType: "PIX",
+      value: input.value,
+      dueDate: dueDate,
+      description: input.description,
+      externalReference: input.externalReference,
+      split: validatedSplit,
+    };
+
     const res = await fetch(`${apiUrl}/payments`, {
       method: "POST",
       headers: {
         "access_token": apiKey,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        customer: input.customerId,
-        billingType: "PIX",
-        value: input.value,
-        dueDate: dueDate,
-        description: input.description,
-        externalReference: input.externalReference,
-        split: input.split && input.split.length > 0 ? input.split : undefined,
-      }),
+      signal: AbortSignal.timeout(10000),
+      body: JSON.stringify(payloadBody),
     });
 
     if (res.ok) {
       const paymentData = await res.json();
       
-      // Buscar o QR Code Pix desta cobrança
+      // Buscar o QR Code Pix real desta cobrança
       const qrCode = await getAsaasPixQrCode(paymentData.id);
 
       return {
@@ -158,17 +209,16 @@ export async function createAsaasPixPayment(input: AsaasPaymentInput): Promise<{
         pixQrCode: qrCode || generateSimulatedPixQrCode(input.value, input.description),
       };
     } else {
-      const errText = await res.text();
-      console.error("[Asaas SDK] Erro ao criar pagamento no Asaas:", errText);
-      const simId = `pay_err_${Date.now()}`;
-      return {
-        id: simId,
-        status: "PENDING",
-        pixQrCode: generateSimulatedPixQrCode(input.value, input.description),
-      };
+      const errJson = await res.json().catch(() => null);
+      const errMsg = errJson?.errors?.[0]?.description || (await res.text());
+      console.error("[Asaas SDK] Erro ao criar pagamento no Asaas:", errMsg);
+      throw new Error(`Erro na API do Asaas ao criar cobrança Pix: ${errMsg}`);
     }
-  } catch (err) {
-    console.error("[Asaas SDK] Exceção na criação de pagamento Pix:", err);
+  } catch (err: any) {
+    console.error("[Asaas SDK] Exceção na criação de pagamento Pix:", err.message || err);
+    if (isProduction || apiKey) {
+      throw err;
+    }
     const simId = `pay_exc_${Date.now()}`;
     return {
       id: simId,
@@ -179,7 +229,7 @@ export async function createAsaasPixPayment(input: AsaasPaymentInput): Promise<{
 }
 
 /**
- * Obtém o QR Code (Base64) e Código Copia e Cola Pix de um pagamento do Asaas
+ * Obtém o QR Code (Base64) e Código Copia e Cola Pix de um pagamento do Asaas (timeout 10s)
  */
 export async function getAsaasPixQrCode(paymentId: string): Promise<AsaasPixQrCodeResult | null> {
   const { apiKey, apiUrl } = getAsaasApiConfig();
@@ -195,30 +245,34 @@ export async function getAsaasPixQrCode(paymentId: string): Promise<AsaasPixQrCo
         "access_token": apiKey,
         "Content-Type": "application/json",
       },
+      signal: AbortSignal.timeout(10000),
     });
 
     if (res.ok) {
       const qrData = await res.json();
       return {
         encodedImage: qrData.encodedImage, // Imagem Base64
-        payload: qrData.payload,           // Copia e Cola Pix
+        payload: qrData.payload,           // Copia e Cola Pix (BR Code)
         expirationDate: qrData.expirationDate,
       };
     }
     return null;
   } catch (err) {
-    console.error("[Asaas SDK] Erro ao buscar QR Code Pix:", err);
+    console.error("[Asaas SDK] Erro ao buscar QR Code Pix no Asaas:", err);
     return null;
   }
 }
 
 /**
- * Cria um Link de Pagamento no Asaas para compartilhamento público
+ * Cria um Link de Pagamento no Asaas para compartilhamento público (timeout 10s)
  */
 export async function createAsaasPaymentLink(input: AsaasPaymentLinkInput): Promise<{ id: string; url: string }> {
-  const { apiKey, apiUrl } = getAsaasApiConfig();
+  const { apiKey, apiUrl, isProduction } = getAsaasApiConfig();
 
   if (!apiKey) {
+    if (isProduction) {
+      throw new Error("ASAAS_API_KEY não configurada no ambiente de produção.");
+    }
     const linkId = `link_${Math.floor(100000 + Math.random() * 900000)}`;
     return {
       id: linkId,
@@ -233,6 +287,7 @@ export async function createAsaasPaymentLink(input: AsaasPaymentLinkInput): Prom
         "access_token": apiKey,
         "Content-Type": "application/json",
       },
+      signal: AbortSignal.timeout(10000),
       body: JSON.stringify({
         name: input.name,
         description: input.description,
@@ -249,18 +304,23 @@ export async function createAsaasPaymentLink(input: AsaasPaymentLinkInput): Prom
         url: linkData.url,
       };
     } else {
-      const linkId = `link_fallback_${Date.now()}`;
-      return { id: linkId, url: `https://sandbox.asaas.com/c/${linkId}` };
+      const errJson = await res.json().catch(() => null);
+      const errMsg = errJson?.errors?.[0]?.description || (await res.text());
+      console.error("[Asaas SDK] Erro ao criar link de pagamento no Asaas:", errMsg);
+      throw new Error(`Falha ao criar link de pagamento no Asaas: ${errMsg}`);
     }
-  } catch (err) {
-    console.error("[Asaas SDK] Erro ao criar link de pagamento:", err);
+  } catch (err: any) {
+    console.error("[Asaas SDK] Erro ao criar link de pagamento:", err.message || err);
+    if (isProduction || apiKey) {
+      throw err;
+    }
     const linkId = `link_fallback_${Date.now()}`;
     return { id: linkId, url: `https://sandbox.asaas.com/c/${linkId}` };
   }
 }
 
 /**
- * Gerador de QR Code Pix e Copia e Cola simulado para ambiente de desenvolvimento/demo
+ * Gerador de QR Code Pix e Copia e Cola simulado (apenas para ambiente local/desenvolvimento sem API key)
  */
 function generateSimulatedPixQrCode(value: number, description: string): AsaasPixQrCodeResult {
   const formattedVal = value.toFixed(2);
@@ -282,3 +342,4 @@ function generateSimulatedPixQrCode(value: number, description: string): AsaasPi
     expirationDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
   };
 }
+

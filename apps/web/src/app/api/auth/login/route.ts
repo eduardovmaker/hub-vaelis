@@ -1,9 +1,24 @@
 import { NextResponse } from "next/server";
 import { db, COLLECTIONS } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { authRatelimit, checkRateLimit } from "@/lib/ratelimit";
 
 export async function POST(request: Request) {
   try {
+    // 🛡️ Rate limit por IP (5 req/min)
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
+    const rl = await checkRateLimit(authRatelimit, `login_${ip}`);
+
+    if (!rl.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Muitas tentativas de login. Por favor, aguarde 1 minuto antes de tentar novamente.",
+        },
+        { status: 429 }
+      );
+    }
+
     const { email, password } = await request.json();
 
     if (!email || !password) {

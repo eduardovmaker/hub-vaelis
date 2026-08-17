@@ -21,8 +21,8 @@ export const COLLECTIONS = {
   ASAAS_CONFIGS: "asaasConfigs",
 } as const;
 
-// Legacy Prisma Instance com tratativa de fallback gracioso
-const globalForPrisma = global as unknown as { prisma?: PrismaClient };
+// Prisma Singleton Instance para Vercel Serverless (evita estourar o Connection Pool)
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 export const prisma =
   globalForPrisma.prisma ||
@@ -30,4 +30,5 @@ export const prisma =
     log: ["error"],
   });
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+globalForPrisma.prisma = prisma;
+
