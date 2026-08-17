@@ -99,11 +99,29 @@ export interface TenantTvConfig {
 // Helpers para converter URLs normais de Spotify e YouTube para Iframe Embed
 export function parseSpotifyEmbedUrl(url: string): string {
   if (!url) return "https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M?utm_source=generator&theme=0";
-  if (url.includes("open.spotify.com/embed/")) return url;
+
+  const cleanUrl = url.trim();
+  if (cleanUrl.includes("open.spotify.com/embed/")) {
+    const [base] = cleanUrl.split("?");
+    return `${base}?utm_source=generator&theme=0`;
+  }
+
+  // Suporte a URI oficial do Spotify (ex: spotify:playlist:37i9dQZF1DXcBWIGoYBM5M)
+  if (cleanUrl.startsWith("spotify:")) {
+    const parts = cleanUrl.split(":");
+    if (parts.length >= 3) {
+      const type = parts[1]; // playlist | album | track | artist
+      const id = parts[2];
+      return `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`;
+    }
+  }
 
   try {
-    const parsed = new URL(url);
-    const pathname = parsed.pathname;
+    const parsed = new URL(cleanUrl);
+    // Remove prefixos regionais como /intl-pt/ ou /intl-es/
+    let pathname = parsed.pathname.replace(/^\/intl-[a-z]{2}(-[a-zA-Z]{2,4})?/, "");
+    if (!pathname.startsWith("/")) pathname = "/" + pathname;
+
     if (pathname.length > 1) {
       return `https://open.spotify.com/embed${pathname}?utm_source=generator&theme=0`;
     }

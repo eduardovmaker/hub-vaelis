@@ -223,7 +223,8 @@ type TenantTabType =
   | "loja-produtos"
   | "web-guard" 
   | "multi-unidades" 
-  | "wifi-vip";
+  | "wifi-vip"
+  | "asaas-split";
 
 export default function TenantDashboard({ params }: { params: Promise<{ tenantId: string }> }) {
   const resolvedParams = use(params);
@@ -661,50 +662,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
   const [copiedRoletaUrl, setCopiedRoletaUrl] = useState(false);
 
   // Estados da Loja de Produtos & Controle de Estoque
-  const DEFAULT_SHOP_PRODUCTS = [
-    {
-      id: "prod_1",
-      name: "Pomada Modeladora Efeito Matte 150g",
-      category: "Cabelo & Barba",
-      price: 45.00,
-      stockQty: 18,
-      description: "Fixação forte com acabamento fosco natural. Ideal para penteados modernos.",
-      imageUrl: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=400&q=80",
-      active: true,
-    },
-    {
-      id: "prod_2",
-      name: "Óleo Hidratante para Barba Premium 30ml",
-      category: "Cabelo & Barba",
-      price: 39.90,
-      stockQty: 12,
-      description: "Nutre os fios da barba, previne coceiras e deixa um perfume amadeirado exclusivo.",
-      imageUrl: "https://images.unsplash.com/photo-1608248597263-00079e960312?auto=format&fit=crop&w=400&q=80",
-      active: true,
-    },
-    {
-      id: "prod_3",
-      name: "Cerveja Heineken Long Neck 330ml",
-      category: "Bebidas & Snacks",
-      price: 12.00,
-      stockQty: 34,
-      description: "Cerveja gelada servida no balcão da loja.",
-      imageUrl: "https://images.unsplash.com/photo-1608270586620-248524c67de9?auto=format&fit=crop&w=400&q=80",
-      active: true,
-    },
-    {
-      id: "prod_4",
-      name: "Shampoo Fortalecedor Anti-Queda 250ml",
-      category: "Estética & Cuidados",
-      price: 49.00,
-      stockQty: 3,
-      description: "Limpeza profunda do couro cabeludo com ativos fortificantes de mentol.",
-      imageUrl: "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=400&q=80",
-      active: true,
-    },
-  ];
-
-  const [shopProductsList, setShopProductsList] = useState<any[]>(DEFAULT_SHOP_PRODUCTS);
+  const [shopProductsList, setShopProductsList] = useState<any[]>([]);
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
 
@@ -722,35 +680,69 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
   const [copiedProductLink, setCopiedProductLink] = useState<string | null>(null);
   const [isSpotifyConnected, setIsSpotifyConnected] = useState(false);
 
-  const [productSalesList, setProductSalesList] = useState<any[]>([
-    {
-      id: "sale_1",
-      customerName: "Lucas Mendes",
-      productName: "Pomada Modeladora Efeito Matte 150g",
-      quantity: 1,
-      totalPrice: 45.00,
-      paidAt: "Hoje, 15:30",
-      pixStatus: "PAID",
-    },
-    {
-      id: "sale_2",
-      customerName: "Gabriel Souza",
-      productName: "Cerveja Heineken Long Neck 330ml",
-      quantity: 2,
-      totalPrice: 24.00,
-      paidAt: "Hoje, 14:15",
-      pixStatus: "PAID",
-    },
-    {
-      id: "sale_3",
-      customerName: "Rodrigo Lima",
-      productName: "Óleo Hidratante para Barba Premium 30ml",
-      quantity: 1,
-      totalPrice: 39.90,
-      paidAt: "Hoje, 11:40",
-      pixStatus: "PAID",
-    },
-  ]);
+  const [productSalesList, setProductSalesList] = useState<any[]>([]);
+
+  // Estado da Configuração Asaas & Split de Pagamento
+  const [asaasConfigState, setAsaasConfigState] = useState<{
+    walletId: string;
+    apiKey: string;
+    splitEnabled: boolean;
+    splitPercentage: number;
+    platformFeePercentage: number;
+    accountStatus: string;
+  }>({
+    walletId: "",
+    apiKey: "",
+    splitEnabled: true,
+    splitPercentage: 90,
+    platformFeePercentage: 10,
+    accountStatus: "NOT_CONFIGURED",
+  });
+
+  // Carregar dados reais do Banco de Dados Firestore (Produtos, Vendas, Asaas Split, Spotify)
+  useEffect(() => {
+    if (!tenantId) return;
+
+    // 1. Carregar Produtos da Loja do Banco
+    fetch(`/api/tenant/${tenantId}/products`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.products)) {
+          setShopProductsList(data.products);
+        }
+      })
+      .catch(() => {});
+
+    // 2. Carregar Histórico de Vendas Pix
+    fetch(`/api/tenant/${tenantId}/sales`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.sales)) {
+          setProductSalesList(data.sales);
+        }
+      })
+      .catch(() => {});
+
+    // 3. Carregar Configuração do Asaas Split
+    fetch(`/api/tenant/${tenantId}/asaas`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.asaasConfig) {
+          setAsaasConfigState(data.asaasConfig);
+        }
+      })
+      .catch(() => {});
+
+    // 4. Carregar Conexão do Spotify
+    fetch(`/api/tenant/${tenantId}/spotify`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setIsSpotifyConnected(!!data.connected);
+        }
+      })
+      .catch(() => {});
+  }, [tenantId]);
 
   // Handlers para Gestão de Produtos & Links Pix
   const handleOpenNewProductModal = () => {
@@ -784,61 +776,76 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
 
     const finalImage = prodFormImageUrl.trim() || "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=400&q=80";
 
-    let updatedList: any[];
-    if (editingProduct) {
-      updatedList = shopProductsList.map((p) =>
-        p.id === editingProduct.id
-          ? {
-              ...p,
-              name: prodFormName.trim(),
-              category: prodFormCategory,
-              price: Number(prodFormPrice),
-              stockQty: Number(prodFormStock),
-              description: prodFormDescription.trim(),
-              imageUrl: finalImage,
-            }
-          : p
-      );
-      showNotification("✅ Produto atualizado no catálogo!");
-    } else {
-      const newProd = {
-        id: `prod_${Date.now()}`,
-        name: prodFormName.trim(),
-        category: prodFormCategory,
-        price: Number(prodFormPrice),
-        stockQty: Number(prodFormStock),
-        description: prodFormDescription.trim(),
-        imageUrl: finalImage,
-        active: true,
-      };
-      updatedList = [...shopProductsList, newProd];
-      showNotification("✨ Novo produto cadastrado no catálogo!");
+    try {
+      if (editingProduct) {
+        const res = await fetch(`/api/tenant/${tenantId}/products`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            productId: editingProduct.id,
+            name: prodFormName.trim(),
+            category: prodFormCategory,
+            price: Number(prodFormPrice),
+            stockQty: Number(prodFormStock),
+            description: prodFormDescription.trim(),
+            imageUrl: finalImage,
+          }),
+        });
+        const data = await res.json();
+        if (data.success && data.product) {
+          setShopProductsList((prev) => prev.map((p) => (p.id === editingProduct.id ? data.product : p)));
+          showNotification("✅ Produto atualizado no catálogo e salvo no banco!");
+        }
+      } else {
+        const res = await fetch(`/api/tenant/${tenantId}/products`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: prodFormName.trim(),
+            category: prodFormCategory,
+            price: Number(prodFormPrice),
+            stockQty: Number(prodFormStock),
+            description: prodFormDescription.trim(),
+            imageUrl: finalImage,
+          }),
+        });
+        const data = await res.json();
+        if (data.success && data.product) {
+          setShopProductsList((prev) => [...prev, data.product]);
+          showNotification("✨ Novo produto cadastrado e salvo no banco!");
+        }
+      }
+    } catch (err) {
+      showNotification("❌ Erro ao salvar produto no servidor.");
     }
 
-    setShopProductsList(updatedList);
     setShowProductModal(false);
     setEditingProduct(null);
-
-    try {
-      await fetch(`/api/portal/${tenantId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shopProductsList: updatedList }),
-      });
-    } catch (err) {
-      console.error("Erro ao salvar produto no banco:", err);
-    }
   };
 
   const handleDeleteProduct = async (productId: string) => {
-    const updated = shopProductsList.filter((p) => p.id !== productId);
-    setShopProductsList(updated);
-    showNotification("Produto removido do catálogo.");
     try {
-      await fetch(`/api/portal/${tenantId}`, {
+      const res = await fetch(`/api/tenant/${tenantId}/products?productId=${productId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setShopProductsList((prev) => prev.filter((p) => p.id !== productId));
+        showNotification("🗑️ Produto excluído com sucesso!");
+      }
+    } catch (err) {
+      showNotification("❌ Erro ao excluir produto.");
+    }
+  };
+
+  const handleAdjustStock = async (productId: string, deltaStock: number) => {
+    try {
+      setShopProductsList((prev) =>
+        prev.map((p) => (p.id === productId ? { ...p, stockQty: Math.max(0, p.stockQty + deltaStock) } : p))
+      );
+      await fetch(`/api/tenant/${tenantId}/products`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shopProductsList: updated }),
+        body: JSON.stringify({ productId, deltaStock }),
       });
     } catch (err) {}
   };
@@ -1422,6 +1429,22 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 </span>
               </button>
             )}
+
+            <button
+              onClick={() => setActiveTab("asaas-split")}
+              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
+                activeTab === "asaas-split"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                  : "hover:bg-slate-100 dark:hover:bg-slate-800"
+              }`}
+              style={{ color: activeTab === "asaas-split" ? "#ffffff" : "var(--text-primary)" }}
+            >
+              <CreditCard className="w-4 h-4 text-blue-400" />
+              <span>Asaas & Split Pix</span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] bg-blue-500/20 text-blue-300 font-extrabold uppercase">
+                Split v3
+              </span>
+            </button>
 
             {(addonStates["midia-indoor"]?.active || addonStates["captive-portal"]?.active) && (
               <button
@@ -2351,14 +2374,25 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 {/* BOTÃO DE LOGAR CONTA DO SPOTIFY */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsSpotifyConnected(true);
-                    showNotification("🟢 Conta do Spotify conectada com sucesso!");
+                  onClick={async () => {
+                    if (isSpotifyConnected) {
+                      try {
+                        await fetch(`/api/tenant/${tenantId}/spotify`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ action: "disconnect" }),
+                        });
+                        setIsSpotifyConnected(false);
+                        showNotification("🔴 Conta do Spotify desconectada.");
+                      } catch (err) {}
+                    } else {
+                      window.location.href = `/api/auth/spotify/login?tenantId=${tenantId}`;
+                    }
                   }}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition-all shrink-0"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition-all shrink-0 cursor-pointer"
                 >
                   <Music className="w-4 h-4 fill-white" />
-                  {isSpotifyConnected ? "Spotify Conectado ✓" : "Logar com Spotify"}
+                  {isSpotifyConnected ? "Desconectar Spotify ✓" : "Logar com Spotify"}
                 </button>
               </div>
 
@@ -2371,11 +2405,11 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                     </div>
                     <div>
                       <p className="text-xs font-black text-emerald-400">Conta Spotify Conectada</p>
-                      <p className="text-[11px] text-slate-300">Sua biblioteca de playlists e músicas está sincronizada com o Hub Vaelis.</p>
+                      <p className="text-[11px] text-slate-300">Sua biblioteca e playlists estão sincronizadas com o banco do Hub Vaelis.</p>
                     </div>
                   </div>
                   <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-emerald-500 text-black uppercase">
-                    Premium VIP
+                    API Ativa
                   </span>
                 </div>
               )}
@@ -3159,8 +3193,12 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="p-5 rounded-2xl border space-y-1" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
                 <span className="text-[10px] font-extrabold uppercase text-slate-400">Vendas de Produtos Hoje</span>
-                <p className="text-2xl font-black text-emerald-600">R$ 119,00</p>
-                <p className="text-[11px] text-slate-400">3 itens vendidos via Pix</p>
+                <p className="text-2xl font-black text-emerald-600">
+                  R$ {productSalesList.reduce((acc, s) => acc + (s.totalAmount || s.totalPrice || 0), 0).toFixed(2)}
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  {productSalesList.reduce((acc, s) => acc + (s.quantity || 1), 0)} item(s) vendido(s) via Pix
+                </p>
               </div>
 
               <div className="p-5 rounded-2xl border space-y-1" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
@@ -3242,12 +3280,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                         <span className="text-[11px] font-bold text-slate-400">Estoque:</span>
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => {
-                              const updated = shopProductsList.map((p) =>
-                                p.id === prod.id ? { ...p, stockQty: Math.max(0, p.stockQty - 1) } : p
-                              );
-                              setShopProductsList(updated);
-                            }}
+                            onClick={() => handleAdjustStock(prod.id, -1)}
                             className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-black text-xs flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all"
                             title="Diminuir estoque"
                           >
@@ -3257,12 +3290,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                             {prod.stockQty} un.
                           </span>
                           <button
-                            onClick={() => {
-                              const updated = shopProductsList.map((p) =>
-                                p.id === prod.id ? { ...p, stockQty: p.stockQty + 1 } : p
-                              );
-                              setShopProductsList(updated);
-                            }}
+                            onClick={() => handleAdjustStock(prod.id, 1)}
                             className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-black text-xs flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all"
                             title="Aumentar estoque"
                           >
@@ -3344,25 +3372,199 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                     </tr>
                   </thead>
                   <tbody className="divide-y" style={{ borderColor: "var(--border-color)" }}>
-                    {productSalesList.map((sale) => (
-                      <tr key={sale.id}>
-                        <td className="py-3 px-3 font-bold" style={{ color: "var(--text-primary)" }}>{sale.customerName}</td>
-                        <td className="py-3 px-3 font-semibold text-emerald-600">{sale.productName}</td>
-                        <td className="py-3 px-3 font-bold">{sale.quantity}</td>
-                        <td className="py-3 px-3 font-mono font-black text-emerald-600">R$ {sale.totalPrice.toFixed(2)}</td>
-                        <td className="py-3 px-3 text-slate-400">{sale.paidAt}</td>
-                        <td className="py-3 px-3">
-                          <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 font-extrabold text-[10px] uppercase">
-                            {sale.pixStatus} (CONFIRMADO)
-                          </span>
+                    {productSalesList.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-6 text-center text-slate-400 text-xs font-medium">
+                          Nenhuma venda de produto registrada até o momento.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      productSalesList.map((sale) => (
+                        <tr key={sale.id}>
+                          <td className="py-3 px-3 font-bold" style={{ color: "var(--text-primary)" }}>{sale.customerName || "Cliente Pix"}</td>
+                          <td className="py-3 px-3 font-semibold text-emerald-600">{sale.productName}</td>
+                          <td className="py-3 px-3 font-bold">{sale.quantity || 1}</td>
+                          <td className="py-3 px-3 font-mono font-black text-emerald-600">R$ {(sale.totalAmount || sale.totalPrice || 0).toFixed(2)}</td>
+                          <td className="py-3 px-3 text-slate-400">
+                            {sale.createdAt ? new Date(sale.createdAt).toLocaleString("pt-BR") : "Recent"}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 font-extrabold text-[10px] uppercase">
+                              {sale.paymentStatus || sale.pixStatus || "PAID"} (CONFIRMADO)
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
             </div>
 
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* ABA DEDICADA 💳 ASAAS & SPLIT DE PAGAMENTOS                              */}
+        {/* ========================================================================= */}
+        {activeTab === "asaas-split" && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
+                  <CreditCard className="w-6 h-6 text-blue-600" />
+                  Configuração Asaas & Split de Pagamento Automatico
+                </h2>
+                <p className="text-sm text-slate-400">
+                  Cadastre sua Wallet ID do gateway Asaas para receber repasses Pix com divisão automática em vendas da loja e planos Wi-Fi.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className={`px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-sm ${
+                  asaasConfigState.walletId ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" : "bg-amber-500/20 text-amber-400 border border-amber-500/40"
+                }`}>
+                  {asaasConfigState.walletId ? "🟢 Split Asaas Ativo" : "🟡 Aguardando Wallet ID"}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 rounded-2xl border p-6 space-y-5" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
+                  <Zap className="w-5 h-5 text-blue-500" /> Dados da Carteira Asaas (Subconta Tenant)
+                </h3>
+
+                <div className="space-y-4 text-xs">
+                  <div>
+                    <label className="block font-bold text-slate-400 mb-1">
+                      Wallet ID do Asaas (Chave de Split de Pagamento) *
+                    </label>
+                    <input
+                      type="text"
+                      value={asaasConfigState.walletId}
+                      onChange={(e) => setAsaasConfigState((prev) => ({ ...prev, walletId: e.target.value }))}
+                      placeholder="Ex: WAL_1234567890 (ou UUID da Carteira Asaas)"
+                      className="w-full px-4 py-2.5 rounded-xl border bg-transparent font-mono text-sm focus:outline-none focus:border-blue-500"
+                      style={{ borderColor: "var(--border-color)", color: "var(--text-primary)" }}
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Sua Wallet ID é o identificador único da sua subconta ou conta no gateway Asaas onde o repasse Pix será creditado.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-400 mb-1">
+                      Chave de API Asaas (Opcional - para consultas de saldo e relatórios)
+                    </label>
+                    <input
+                      type="password"
+                      value={asaasConfigState.apiKey}
+                      onChange={(e) => setAsaasConfigState((prev) => ({ ...prev, apiKey: e.target.value }))}
+                      placeholder="$aact_Y3J... (Cole sua API Key do Asaas)"
+                      className="w-full px-4 py-2.5 rounded-xl border bg-transparent font-mono text-xs focus:outline-none focus:border-blue-500"
+                      style={{ borderColor: "var(--border-color)", color: "var(--text-primary)" }}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <div>
+                      <label className="block font-bold text-slate-400 mb-1">
+                        Porcentagem de Repasse do Estabelecimento (%)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={asaasConfigState.splitPercentage}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setAsaasConfigState((prev) => ({
+                            ...prev,
+                            splitPercentage: val,
+                            platformFeePercentage: 100 - val,
+                          }));
+                        }}
+                        className="w-full px-4 py-2.5 rounded-xl border bg-transparent font-bold text-sm focus:outline-none focus:border-blue-500"
+                        style={{ borderColor: "var(--border-color)", color: "var(--text-primary)" }}
+                      />
+                      <p className="text-[11px] text-emerald-500 mt-1 font-semibold">
+                        {asaasConfigState.splitPercentage}% de cada Pix gerado irá direto para sua subconta Asaas
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-400 mb-1">
+                        Comissão Retida pela Plataforma Vaelis (%)
+                      </label>
+                      <input
+                        type="number"
+                        disabled
+                        value={asaasConfigState.platformFeePercentage}
+                        className="w-full px-4 py-2.5 rounded-xl border bg-slate-500/10 font-bold text-sm text-slate-400 cursor-not-allowed"
+                        style={{ borderColor: "var(--border-color)" }}
+                      />
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        {asaasConfigState.platformFeePercentage}% retido como comissão da plataforma
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t flex justify-end" style={{ borderColor: "var(--border-color)" }}>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(`/api/tenant/${tenantId}/asaas`, {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(asaasConfigState),
+                          });
+                          const data = await res.json();
+                          if (data.success) {
+                            showNotification("✅ Configuração do Asaas & Split salva com sucesso!");
+                          }
+                        } catch (err) {
+                          showNotification("❌ Erro ao salvar configuração do Asaas.");
+                        }
+                      }}
+                      className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-blue-600/20 active:scale-95 transition-all"
+                    >
+                      <Save className="w-4 h-4" /> Salvar Regras de Split Asaas
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="rounded-2xl border p-5 space-y-3" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                  <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400">Resumo da Carteira Asaas</h4>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-400">Modo de Divisão:</span>
+                      <span className="font-bold text-emerald-400">Split API v3</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-400">Carteira Asaas:</span>
+                      <span className="font-mono text-xs font-bold text-blue-400 truncate max-w-[140px]">
+                        {asaasConfigState.walletId || "Pendente"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-400">Status:</span>
+                      <span className="font-bold text-emerald-500">Pronto para Pix</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border p-5 bg-gradient-to-br from-blue-900/30 to-indigo-900/20 border-blue-500/30 space-y-2">
+                  <span className="text-[10px] font-black text-blue-400 uppercase tracking-wider">Como funciona o Split?</span>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Quando um cliente compra um produto na sua Loja Virtual ou adquire um plano Wi-Fi via Pix, o gateway Asaas divide a cobrança no momento do pagamento: {asaasConfigState.splitPercentage}% entra direto na sua carteira e {asaasConfigState.platformFeePercentage}% fica com a plataforma.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

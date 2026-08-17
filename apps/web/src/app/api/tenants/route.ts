@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db, COLLECTIONS } from "@/lib/db";
 import { INITIAL_TV_CONFIGS, TenantTvConfig } from "@/mocks/tv";
 
-// Helper para timeout ultra rápido em apresentações offline sem travar o app (200ms)
+// Helper para timeout ultra rápido em apresentações offline sem travar o app (250ms)
 async function withDbTimeout<T>(promise: Promise<T>, timeoutMs = 250): Promise<T> {
   let timer: NodeJS.Timeout;
   const timeoutPromise = new Promise<never>((_, reject) => {
@@ -177,7 +177,6 @@ export async function PATCH(request: Request) {
       );
     }
 
-    // Atualiza na memória para apresentação
     if (memoryTenants[tenantId]) {
       if (!memoryTenants[tenantId].addonStates) {
         memoryTenants[tenantId].addonStates = {} as any;
@@ -189,7 +188,6 @@ export async function PATCH(request: Request) {
       };
     }
 
-    // Persiste no Firebase Firestore
     try {
       if (db) {
         const tenantRef = db.collection(COLLECTIONS.TENANTS).doc(tenantId);
@@ -262,5 +260,41 @@ export async function PUT(request: Request) {
   } catch (error: any) {
     console.error("Erro na rota PUT /api/tenants:", error);
     return NextResponse.json({ success: false, error: "Erro ao atualizar tenant." }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const tenantId = searchParams.get("tenantId");
+
+    if (!tenantId) {
+      return NextResponse.json({ success: false, error: "tenantId é obrigatório." }, { status: 400 });
+    }
+
+    delete memoryTenants[tenantId];
+
+    try {
+      const { stopTenantMikrotikChr } = await import("@/lib/docker-mikrotik");
+      await stopTenantMikrotikChr(tenantId);
+    } catch (e) {}
+
+    if (db) {
+      const batch = db.batch();
+      batch.delete(db.collection(COLLECTIONS.TENANTS).doc(tenantId));
+      batch.delete(db.collection(COLLECTIONS.TV_CONFIGS).doc(tenantId));
+      batch.delete(db.collection(COLLECTIONS.PORTAL_CONFIGS).doc(tenantId));
+      batch.delete(db.collection(COLLECTIONS.ASAAS_CONFIGS).doc(tenantId));
+      batch.delete(db.collection(COLLECTIONS.RADIO_INDOOR_CONFIGS).doc(tenantId));
+      await withDbTimeout(batch.commit(), 500);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Estabelecimento [${tenantId}] e todos os seus dados foram excluídos com sucesso!`,
+    });
+  } catch (error: any) {
+    console.error("Erro na rota DELETE /api/tenants:", error);
+    return NextResponse.json({ success: false, error: "Erro ao excluir tenant." }, { status: 500 });
   }
 }

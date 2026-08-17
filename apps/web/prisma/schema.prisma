@@ -68,6 +68,9 @@ model Tenant {
   whatsappBotConfig    WhatsappBotConfig?
   roletaSorteConfig    RoletaSorteConfig?
   webGuardConfig       WebGuardConfig?
+  asaasConfig          AsaasConfig?
+  products             Product[]
+  sales                ProductSale[]
 }
 
 model AddonState {
@@ -222,4 +225,50 @@ model WebGuardConfig {
   tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+model AsaasConfig {
+  id                    String   @id @default(cuid())
+  tenantId              String   @unique
+  walletId              String   @default("")
+  apiKey                String   @default("")
+  splitEnabled          Boolean  @default(true)
+  splitPercentage       Float    @default(90.0) // Porcentagem do tenant (ex: 90%)
+  platformFeePercentage Float    @default(10.0) // Porcentagem da plataforma (ex: 10%)
+  accountStatus         String   @default("ACTIVE")
+  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model Product {
+  id          String        @id @default(cuid())
+  tenantId    String
+  name        String
+  category    String        @default("Geral")
+  price       Float
+  stockQty    Int           @default(0)
+  description String        @default("")
+  imageUrl    String        @default("")
+  active      Boolean       @default(true)
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sales       ProductSale[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model ProductSale {
+  id             String   @id @default(cuid())
+  tenantId       String
+  productId      String?
+  product        Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productName    String
+  quantity       Int      @default(1)
+  totalAmount    Float
+  customerName   String   @default("Cliente Balcão")
+  paymentStatus  String   @default("PAID")
+  asaasPaymentId String?
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }

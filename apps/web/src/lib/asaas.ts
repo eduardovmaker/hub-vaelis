@@ -10,12 +10,20 @@ export interface AsaasCustomerInput {
   phone?: string;
 }
 
+export interface AsaasSplitRule {
+  walletId: string;
+  fixedValue?: number;
+  percentualValue?: number;
+  totalFixedValue?: number;
+}
+
 export interface AsaasPaymentInput {
   customerId: string;
   value: number;
   description: string;
   externalReference?: string;
   dueDate?: string; // Formato YYYY-MM-DD
+  split?: AsaasSplitRule[];
 }
 
 export interface AsaasPixQrCodeResult {
@@ -133,6 +141,7 @@ export async function createAsaasPixPayment(input: AsaasPaymentInput): Promise<{
         dueDate: dueDate,
         description: input.description,
         externalReference: input.externalReference,
+        split: input.split && input.split.length > 0 ? input.split : undefined,
       }),
     });
 

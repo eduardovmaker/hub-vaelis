@@ -44,17 +44,28 @@ import {
   Unlock,
   Ban,
   AlertTriangle,
-  Key
+  Key,
+  Trash2
 } from "lucide-react";
 
 export default function MasterAdminDashboard() {
   const { user, logout } = useAuth();
   
-  // Estado da Aba do Admin Navbar ('overview' | 'tenants' | 'routers' | 'financial')
-  const [activeTab, setActiveTab] = useState<"overview" | "tenants" | "routers" | "financial">("tenants");
+  // Estado da Aba do Admin Navbar ('tenants' | 'overview' | 'store-master' | 'tv-master' | 'financial' | 'routers')
+  const [activeTab, setActiveTab] = useState<"tenants" | "overview" | "store-master" | "tv-master" | "financial" | "routers">("tenants");
 
-  // Estado dos Tenants e seus Add-ons (carregado do banco de dados PostgreSQL ou mocks)
+  // Estado dos Tenants e seus Add-ons
   const [tvConfigs, setTvConfigs] = useState<Record<string, TenantTvConfig>>({});
+  const [globalAnalytics, setGlobalAnalytics] = useState({
+    totalTenantsCount: 0,
+    totalSalesCount: 0,
+    totalSalesVolume: 0,
+    platformCommission: 0,
+    totalProductsCount: 0,
+    activeTvsCount: 0,
+    asaasWalletsConfigured: 0,
+    recentSales: [] as any[],
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [tenantFilter, setTenantFilter] = useState<"ALL" | "VIP" | "ASAAS" | "BLOCKED">("ALL");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -78,6 +89,45 @@ export default function MasterAdminDashboard() {
     setTargetResetTenant({ tenantId, tenantName });
     setResetPasswordInput("");
     setShowResetPasswordModal(true);
+  };
+
+  // Estado do Modal de Exclusão Definitiva de Tenant
+  const [showDeleteTenantModal, setShowDeleteTenantModal] = useState(false);
+  const [targetDeleteTenant, setTargetDeleteTenant] = useState<{ tenantId: string; tenantName: string } | null>(null);
+  const [isDeletingTenant, setIsDeletingTenant] = useState(false);
+
+  const handleOpenDeleteModal = (tenantId: string, tenantName: string) => {
+    setTargetDeleteTenant({ tenantId, tenantName });
+    setShowDeleteTenantModal(true);
+  };
+
+  const handleConfirmDeleteTenant = async () => {
+    if (!targetDeleteTenant) return;
+    setIsDeletingTenant(true);
+
+    try {
+      const res = await fetch(`/api/tenants?tenantId=${encodeURIComponent(targetDeleteTenant.tenantId)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setTvConfigs((prev) => {
+          const updated = { ...prev };
+          delete updated[targetDeleteTenant.tenantId];
+          return updated;
+        });
+        showToast(`🗑️ Estabelecimento [${targetDeleteTenant.tenantName}] excluído com sucesso!`);
+        setShowDeleteTenantModal(false);
+        setTargetDeleteTenant(null);
+      } else {
+        showToast(`❌ Erro: ${data.error || "Não foi possível excluir o estabelecimento."}`);
+      }
+    } catch (err) {
+      showToast("❌ Erro de conexão ao excluir o estabelecimento.");
+    } finally {
+      setIsDeletingTenant(false);
+    }
   };
 
   const handleConfirmResetPassword = async (e: React.FormEvent) => {
@@ -131,6 +181,14 @@ export default function MasterAdminDashboard() {
 
   useEffect(() => {
     fetchTenantsFromApi();
+    fetch("/api/admin/global-analytics")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.analytics) {
+          setGlobalAnalytics(data.analytics);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const showToast = (msg: string) => {
@@ -388,7 +446,7 @@ export default function MasterAdminDashboard() {
               </span>
             </div>
             <p className="text-xs text-slate-400 font-medium">
-              Gestão Centralizada de Estabelecimentos, Mídia Indoor, Receita & Infraestrutura MikroTik
+              Gestão Centralizada de Estabelecimentos, Mídia TV, Loja Virtual, Split Asaas & Infraestrutura Enterprise
             </p>
           </div>
         </div>
@@ -442,6 +500,32 @@ export default function MasterAdminDashboard() {
             >
               <TrendingUp className="w-4 h-4" />
               <span>Visão Geral & Métricas SaaS</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("store-master")}
+              className={`px-4 py-2.5 rounded-xl font-extrabold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                activeTab === "store-master"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 ring-2 ring-blue-500/20"
+                  : "hover:bg-slate-500/10"
+              }`}
+              style={{ color: activeTab === "store-master" ? "#ffffff" : "var(--text-primary)" }}
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span>Vendas & Loja Master</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("tv-master")}
+              className={`px-4 py-2.5 rounded-xl font-extrabold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                activeTab === "tv-master"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 ring-2 ring-blue-500/20"
+                  : "hover:bg-slate-500/10"
+              }`}
+              style={{ color: activeTab === "tv-master" ? "#ffffff" : "var(--text-primary)" }}
+            >
+              <Tv className="w-4 h-4" />
+              <span>Smart TV & Rádio Fleet</span>
             </button>
 
             <button
@@ -633,6 +717,15 @@ export default function MasterAdminDashboard() {
                             <span>Redefinir Senha</span>
                           </button>
 
+                          <button
+                            onClick={() => handleOpenDeleteModal(tenant.tenantId, tenant.tenantName)}
+                            className="px-3.5 py-1.5 rounded-xl border border-red-500/40 text-red-600 dark:text-red-400 hover:bg-red-500/10 font-extrabold text-[11px] flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-sm"
+                            title="Excluir este estabelecimento e seus dados permanentemente"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                            <span>Excluir Tenant</span>
+                          </button>
+
                           <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-xs font-bold border border-emerald-500/20">
                             {activeCount} Módulos Ativos
                           </span>
@@ -773,6 +866,177 @@ export default function MasterAdminDashboard() {
         )}
 
         {/* ========================================================================= */}
+        {/* ABA: LOJA & VENDAS MASTER (MONITORAMENTO DE GMV & SPLIT)                  */}
+        {/* ========================================================================= */}
+        {activeTab === "store-master" && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
+                  <ShoppingBag className="w-6 h-6 text-emerald-600" />
+                  Monitoramento Global de Vendas & Catálogos da Plataforma
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Visão consolidada das vendas Pix realizadas em todas as lojas e estabelecimentos cadastrados no Vaelis-HUB Enterprise.
+                </p>
+              </div>
+              <span className="px-3.5 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 font-extrabold text-xs border border-emerald-500/20">
+                GMV em Tempo Real
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div className="p-5 rounded-2xl border space-y-1 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                <span className="text-[10px] font-extrabold uppercase text-slate-400">Volume Total de Vendas (GMV)</span>
+                <p className="text-2xl font-black text-emerald-600">
+                  R$ {(globalAnalytics.totalSalesVolume || 0).toFixed(2)}
+                </p>
+                <p className="text-[11px] text-slate-400">{globalAnalytics.totalSalesCount || 0} pedido(s) via Pix</p>
+              </div>
+
+              <div className="p-5 rounded-2xl border space-y-1 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                <span className="text-[10px] font-extrabold uppercase text-slate-400">Comissão da Plataforma (10%)</span>
+                <p className="text-2xl font-black text-blue-600">
+                  R$ {(globalAnalytics.platformCommission || 0).toFixed(2)}
+                </p>
+                <p className="text-[11px] text-blue-500 font-medium">Retenção via Asaas Split</p>
+              </div>
+
+              <div className="p-5 rounded-2xl border space-y-1 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                <span className="text-[10px] font-extrabold uppercase text-slate-400">Produtos no Catálogo Global</span>
+                <p className="text-2xl font-black" style={{ color: "var(--text-primary)" }}>{globalAnalytics.totalProductsCount || 0} Itens</p>
+                <p className="text-[11px] text-emerald-600 font-medium">Em todos os clientes</p>
+              </div>
+
+              <div className="p-5 rounded-2xl border space-y-1 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                <span className="text-[10px] font-extrabold uppercase text-slate-400">Carteiras Asaas Conectadas</span>
+                <p className="text-2xl font-black text-purple-600">{globalAnalytics.asaasWalletsConfigured || 0} Wallet IDs</p>
+                <p className="text-[11px] text-purple-400 font-medium">Com Split Automático</p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border p-6 shadow-sm space-y-4" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+              <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
+                <DollarSign className="w-5 h-5 text-emerald-600" />
+                Stream em Tempo Real de Vendas de Produtos (Todas as Lojas)
+              </h3>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b text-slate-400 font-semibold uppercase tracking-wider" style={{ borderColor: "var(--border-color)" }}>
+                      <th className="py-2.5 px-3">Estabelecimento (Tenant)</th>
+                      <th className="py-2.5 px-3">Cliente Comprador</th>
+                      <th className="py-2.5 px-3">Produto</th>
+                      <th className="py-2.5 px-3">Qtd</th>
+                      <th className="py-2.5 px-3">Valor Total</th>
+                      <th className="py-2.5 px-3">Taxa Plataforma (10%)</th>
+                      <th className="py-2.5 px-3">Data/Hora</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ borderColor: "var(--border-color)" }}>
+                    {globalAnalytics.recentSales.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-6 text-center text-slate-400 text-xs font-medium">
+                          Nenhuma venda registrada na plataforma ainda.
+                        </td>
+                      </tr>
+                    ) : (
+                      globalAnalytics.recentSales.map((sale: any) => (
+                        <tr key={sale.id}>
+                          <td className="py-3 px-3 font-mono font-bold text-blue-500">{sale.tenantId}</td>
+                          <td className="py-3 px-3 font-bold" style={{ color: "var(--text-primary)" }}>{sale.customerName || "Cliente Pix"}</td>
+                          <td className="py-3 px-3 font-semibold text-emerald-600">{sale.productName}</td>
+                          <td className="py-3 px-3 font-bold">{sale.quantity || 1}</td>
+                          <td className="py-3 px-3 font-mono font-black text-emerald-600">R$ {(sale.totalAmount || sale.totalPrice || 0).toFixed(2)}</td>
+                          <td className="py-3 px-3 font-mono font-bold text-purple-500">R$ {((sale.totalAmount || sale.totalPrice || 0) * 0.10).toFixed(2)}</td>
+                          <td className="py-3 px-3 text-slate-400">{sale.createdAt ? new Date(sale.createdAt).toLocaleString("pt-BR") : "Recente"}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* ABA: SMART TV & RÁDIO FLEET MONITOR                                      */}
+        {/* ========================================================================= */}
+        {activeTab === "tv-master" && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
+                  <Tv className="w-6 h-6 text-purple-600" />
+                  Monitoramento da Frota de Smart TVs & Rádio Indoor
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Acompanhe os players de mídia indoor ativos, código de pareamento Smart TV e playlists em execução em cada cliente.
+                </p>
+              </div>
+              <span className="px-3.5 py-1.5 rounded-full bg-purple-500/10 text-purple-500 font-extrabold text-xs border border-purple-500/30">
+                {globalAnalytics.activeTvsCount || 0} Telas Ativas
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {tenantsList.map((tenant) => {
+                const isTvActive = tenant.addonActive !== false;
+                return (
+                  <div
+                    key={tenant.tenantId}
+                    className="p-5 rounded-2xl border space-y-3 relative overflow-hidden shadow-sm"
+                    style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center font-black">
+                          <Tv className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-xs" style={{ color: "var(--text-primary)" }}>{tenant.tenantName}</h4>
+                          <p className="text-[10px] font-mono text-purple-500 font-extrabold">Pareamento: {tenant.pairingCode || "TV-0000"}</p>
+                        </div>
+                      </div>
+
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
+                        isTvActive ? "bg-emerald-500/20 text-emerald-600 border border-emerald-500/30" : "bg-red-500/20 text-red-500 border border-red-500/30"
+                      }`}>
+                        {isTvActive ? "🟢 Player Ativo" : "🔴 Inativo"}
+                      </span>
+                    </div>
+
+                    <div className="pt-2 border-t text-xs space-y-1.5" style={{ borderColor: "var(--border-color)" }}>
+                      <div className="flex items-center justify-between text-[11px] text-slate-400">
+                        <span>Rádio Indoor:</span>
+                        <span className="font-semibold text-indigo-500">Spotify / YouTube</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-slate-400">
+                        <span>Indicadores em Tela:</span>
+                        <span className="font-semibold text-emerald-500">QR Code + Relógio</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 flex justify-end">
+                      <a
+                        href={`/tv/${tenant.tenantId}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-bold flex items-center gap-1.5 transition-all shadow"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" /> Abrir Player TV
+                      </a>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
         {/* ABA: INFRAESTRUTURA & CONTAINERS MIKROTIK ROS DOCKER                       */}
         {/* ========================================================================= */}
         {activeTab === "routers" && (
@@ -782,10 +1046,10 @@ export default function MasterAdminDashboard() {
                 <div>
                   <h3 className="text-lg font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
                     <Server className="w-5 h-5 text-blue-600" />
-                    Infraestrutura de Roteadores Virtuais MikroTik CHR (Docker ROS v7)
+                    Infraestrutura Cloud Gateway & Conectividade Empresarial
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Containers virtuais MikroTik Cloud Hosted Router rodando isolados para clientes com Wi-Fi ativado.
+                    Instâncias Cloud Gateway rodando isoladas para gestão de conectividade e Wi-Fi de alta disponibilidade.
                   </p>
                 </div>
 
@@ -1125,6 +1389,63 @@ export default function MasterAdminDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DEFINITIVA DE TENANT */}
+      {showDeleteTenantModal && targetDeleteTenant && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div 
+            className="max-w-md w-full rounded-2xl border p-6 shadow-2xl space-y-5 animate-scale-up"
+            style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}
+          >
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "var(--border-color)" }}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-red-500/10 flex items-center justify-center font-bold text-red-500">
+                  <AlertTriangle className="w-5 h-5 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Excluir Estabelecimento</h3>
+                  <p className="text-xs text-slate-400 font-mono">{targetDeleteTenant.tenantName} ({targetDeleteTenant.tenantId})</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowDeleteTenantModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-500/10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                Tem certeza que deseja excluir o estabelecimento <strong className="text-red-500 font-black">{targetDeleteTenant.tenantName}</strong>?
+              </p>
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 font-semibold flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>Esta ação é IRREVERSÍVEL! Todos os dados de TV, Produtos, Vendas, Rádio e Conectividade serão permanentemente apagados do banco de dados.</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t pt-4" style={{ borderColor: "var(--border-color)" }}>
+              <button
+                type="button"
+                onClick={() => setShowDeleteTenantModal(false)}
+                className="px-4 py-2 rounded-xl border text-xs font-bold text-slate-400 hover:bg-slate-500/10"
+                style={{ borderColor: "var(--border-color)" }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingTenant}
+                onClick={handleConfirmDeleteTenant}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/30 flex items-center gap-2 cursor-pointer disabled:opacity-60"
+              >
+                {isDeletingTenant ? "Excluindo..." : "Sim, Excluir Definitivamente"}
+              </button>
+            </div>
           </div>
         </div>
       )}

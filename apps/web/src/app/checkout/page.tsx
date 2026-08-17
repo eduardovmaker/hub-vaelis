@@ -50,7 +50,7 @@ export default function PublicCheckoutPage() {
     { id: "whatsapp-bot", label: "💬 WhatsApp Bot & CRM de Leads", badge: "CRM", priceMensal: 29.90 },
     { id: "roleta-da-sorte", label: "🎯 Roleta da Sorte & Gamificação", badge: "Engajamento", priceMensal: 19.90 },
     { id: "loja-produtos", label: "🛍️ Loja Virtual & Vendas Pix", badge: "Vendas", priceMensal: 29.90 },
-    { id: "captive-portal", label: "🌐 Hotspot Wi-Fi Captive Portal", badge: "MikroTik", priceMensal: 29.90 },
+    { id: "captive-portal", label: "🌐 Hotspot Wi-Fi Captive Portal", badge: "Conectividade Enterprise", priceMensal: 29.90 },
   ];
 
   // Inicia com NADA SELECIONADO para o cliente escolher apenas o que desejar
@@ -608,7 +608,7 @@ export default function PublicCheckoutPage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3" style={{ borderColor: "var(--border-color)" }}>
                 <div className="flex items-center gap-2">
                   <Terminal className="w-5 h-5 text-blue-600" />
-                  <h3 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>Script de Automação MikroTik RouterOS v7</h3>
+                  <h3 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>Script de Conectividade Cloud Gateway (RouterOS v7)</h3>
                 </div>
                 <button
                   onClick={copyMikrotikScript}

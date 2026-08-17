@@ -69,14 +69,14 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* Banner de Cadastro Auto-Serviço */}
-            <div className="mb-6 p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-center space-y-1">
-              <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 block">
-                🚀 Ainda não possui uma conta?
+            {/* Banner de Cadastro Auto-Serviço (Inativo no momento) */}
+            <div className="mb-6 p-3.5 rounded-xl bg-slate-500/10 border border-slate-500/20 text-center space-y-1">
+              <span className="text-[11px] font-bold text-slate-400 block">
+                🔒 Cadastros de novos estabelecimentos fechados no momento
               </span>
-              <a href="/checkout" className="inline-flex items-center gap-1 text-xs font-black text-blue-600 dark:text-blue-400 hover:underline">
-                Criar Conta & Ativar Estabelecimento <ArrowRight className="w-3.5 h-3.5" />
-              </a>
+              <p className="text-xs font-semibold text-slate-500">
+                Abertura de novas contas realizada exclusivamente via equipe administrativa.
+              </p>
             </div>
 
             {error && (

@@ -211,7 +211,7 @@ export default function DynamicCaptivePortal({ params }: { params: Promise<{ ten
 
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-                Autenticação Mikrotik OK
+                Acesso Wi-Fi Autorizado ✓
               </span>
               <h2 className="text-2xl font-black text-white mt-2">Você está Conectado!</h2>
               <p className="text-xs text-slate-400 mt-1">
@@ -424,7 +424,7 @@ export default function DynamicCaptivePortal({ params }: { params: Promise<{ ten
 
         {/* Footer */}
         <footer className="text-center text-[10px] text-slate-500 py-2">
-          Powered by <span className="font-bold text-slate-400">Vaelis-HUB</span> • Protegido por MikroTik RouterOS
+          Powered by <span className="font-bold text-slate-400">Vaelis-HUB Enterprise</span> • Plataforma de Gestão Empresarial & Experiência
         </footer>
       </div>
 

@@ -88,7 +88,7 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
       }
     }
     loadTvConfig();
-    const pollInterval = setInterval(loadTvConfig, 2000);
+    const pollInterval = setInterval(loadTvConfig, 10000);
     return () => clearInterval(pollInterval);
   }, [tenantId]);
 
@@ -433,22 +433,14 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
       <div className="absolute inset-0 z-0 bg-slate-950 flex items-center justify-center overflow-hidden">
         {currentItem.type === "video" ? (
           <div className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden">
-            {/* SE FOR VÍDEO VERTICAL (REELS / INSTAGRAM / TIKTOK 9:16): BACKDROP AMBIENTE DESFOCADO DYNÂMICO */}
+            {/* SE FOR VÍDEO VERTICAL (REELS 9:16): BACKDROP AMBIENTE LEVE EM CSS (SEM DUPLICAR REPRODUÇÃO DE VÍDEO) */}
             {isVideoVertical && (
-              <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-                <video
-                  src={currentItem.url}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  className="w-full h-full object-cover filter blur-3xl scale-125 opacity-40"
-                />
+              <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.25)_0%,rgba(15,23,42,0.98)_75%)]">
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/60" />
               </div>
             )}
 
-            {/* VÍDEO PRINCIPAL */}
+            {/* VÍDEO PRINCIPAL OTIMIZADO PARA TV */}
             <video
               ref={videoRef}
               key={currentItem.id}
@@ -460,6 +452,7 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
               onEnded={handleVideoEnded}
               onLoadedMetadata={handleVideoLoadedMetadata}
               onError={nextSlide}
+              style={{ transform: "translateZ(0)", willChange: "transform" }}
               className={`relative z-10 ${
                 isVideoVertical
                   ? "h-full w-auto max-w-full object-contain rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.9)] border border-white/10"

@@ -16,6 +16,9 @@ export const COLLECTIONS = {
   WHATSAPP_BOT_CONFIGS: "whatsappBotConfigs",
   ROLETA_SORTE_CONFIGS: "roletaSorteConfigs",
   WEB_GUARD_CONFIGS: "webGuardConfigs",
+  PRODUCTS: "products",
+  SALES: "sales",
+  ASAAS_CONFIGS: "asaasConfigs",
 } as const;
 
 // Legacy Prisma Instance com tratativa de fallback gracioso
