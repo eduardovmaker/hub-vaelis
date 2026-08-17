@@ -224,6 +224,22 @@ export async function createAsaasPixPayment(input: AsaasPaymentInput): Promise<{
       const errJson = await res.json().catch(() => null);
       const errMsg = errJson?.errors?.[0]?.description || (await res.text());
       console.error("[Asaas SDK] Erro ao criar pagamento no Asaas:", errMsg);
+
+      // Tratamento especial para conta Asaas pendente de aprovação de documentos (KYC)
+      if (errMsg.includes("precisa estar aprovada") || errMsg.includes("não está disponível")) {
+        console.warn("[Asaas SDK] Conta Asaas pendente de aprovação no painel Asaas.");
+        if (process.env.ASAAS_ALLOW_SIMULATED_FALLBACK === "true") {
+          const simPaymentId = `pay_sim_approval_${Math.floor(100000 + Math.random() * 900000)}`;
+          return {
+            id: simPaymentId,
+            status: "PENDING",
+            invoiceUrl: `https://www.asaas.com/i/${simPaymentId}`,
+            pixQrCode: generateSimulatedPixQrCode(input.value, input.description),
+          };
+        }
+        throw new Error("Sua conta no Asaas ainda está em processo de análise/aprovação de documentos. Acesse o painel do Asaas (asaas.com) para concluir o envio dos documentos ou ative ASAAS_ALLOW_SIMULATED_FALLBACK=true no .env para testes.");
+      }
+
       throw new Error(`Erro na API do Asaas ao criar cobrança Pix: ${errMsg}`);
     }
   } catch (err: any) {
