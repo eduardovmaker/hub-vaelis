@@ -77,8 +77,8 @@ export async function PUT(
 
     // 2. Atualizar no Prisma PostgreSQL (se conectado)
     try {
-      if (prisma) {
-        await prisma.asaasConfig.upsert({
+      if (prisma && (prisma as any).asaasConfig) {
+        await (prisma as any).asaasConfig.upsert({
           where: { tenantId: cleanTenantId },
           update: {
             platformFeePercentage: cleanFee,
