@@ -44,6 +44,8 @@ export async function GET() {
     recentSalesList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
     const platformCommission = totalSalesVolume * 0.10; // 10% de taxa da plataforma
+    const hasMasterAsaasKey = !!process.env.ASAAS_API_KEY;
+    const asaasEnvironment = process.env.ASAAS_API_URL?.includes("sandbox") ? "SANDBOX" : process.env.ASAAS_API_KEY ? "PRODUCTION" : "SIMULATED";
 
     return NextResponse.json({
       success: true,
@@ -55,6 +57,8 @@ export async function GET() {
         totalProductsCount,
         activeTvsCount,
         asaasWalletsConfigured,
+        hasMasterAsaasKey,
+        asaasEnvironment,
         recentSales: recentSalesList.slice(0, 10),
       },
     });

@@ -112,6 +112,25 @@ export async function POST(
     const pixPayload = qrCodeData?.payload || "";
     const pixEncodedImage = qrCodeData?.encodedImage || "";
 
+    if (!pixPayload && !pixEncodedImage) {
+      console.error("[Asaas Addon Checkout Failure Payload]", {
+        tenantId,
+        addonId,
+        cycle,
+        customer,
+        payment,
+        qrCodeData,
+        message: "Falha na geração dos dados do QR Code Pix pelo Asaas Master.",
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Não foi possível carregar o QR Code Pix. Verifique as credenciais ASAAS_API_KEY da plataforma.",
+        },
+        { status: 500 }
+      );
+    }
+
     // 4. Salvar estado de pendência de pagamento no Firestore se db ativo
     if (db) {
       try {
@@ -146,9 +165,13 @@ export async function POST(
       expirationDate: qrCodeData?.expirationDate || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     });
   } catch (error: any) {
-    console.error("[Addon Checkout] Erro ao gerar cobrança de Add-on:", error);
+    console.error("[Asaas Addon Checkout Exception Payload]", {
+      errorMessage: error?.message,
+      errorStack: error?.stack,
+      rawError: error,
+    });
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao processar cobrança do Add-on via Asaas." },
+      { success: false, error: error?.message || "Erro ao processar cobrança do Add-on via Asaas." },
       { status: 500 }
     );
   }

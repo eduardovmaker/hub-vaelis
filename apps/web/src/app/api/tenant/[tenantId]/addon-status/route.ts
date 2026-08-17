@@ -25,11 +25,11 @@ export async function GET(
         const addonState = data?.addonStates?.[addonId];
         
         if (addonState) {
-          const isPaid = addonState.paymentStatus === "PAID" || addonState.active === true;
+          const isActive = addonState.active === true && addonState.paymentStatus !== "OVERDUE";
           return NextResponse.json({
             success: true,
-            active: isPaid,
-            paymentStatus: addonState.paymentStatus || (isPaid ? "PAID" : "PENDING"),
+            active: isActive,
+            paymentStatus: addonState.paymentStatus || (isActive ? "PAID" : "OVERDUE"),
             planCycle: addonState.planCycle || "MENSAL",
             subscriptionExpiresAt: addonState.subscriptionExpiresAt,
             asaasPaymentId: addonState.asaasPaymentId || paymentId,
@@ -43,11 +43,11 @@ export async function GET(
         const tvData = tvDoc.data();
         const addonState = tvData?.addonStates?.[addonId];
         if (addonState) {
-          const isPaid = addonState.paymentStatus === "PAID" || addonState.active === true;
+          const isActive = addonState.active === true && addonState.paymentStatus !== "OVERDUE";
           return NextResponse.json({
             success: true,
-            active: isPaid,
-            paymentStatus: addonState.paymentStatus || (isPaid ? "PAID" : "PENDING"),
+            active: isActive,
+            paymentStatus: addonState.paymentStatus || (isActive ? "PAID" : "OVERDUE"),
             planCycle: addonState.planCycle || "MENSAL",
             subscriptionExpiresAt: addonState.subscriptionExpiresAt,
             asaasPaymentId: addonState.asaasPaymentId || paymentId,

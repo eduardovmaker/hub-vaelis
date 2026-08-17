@@ -12,6 +12,7 @@ export type PlanCycle = 'MENSAL' | 'TRIMESTRAL' | 'ANUAL';
 export type AsaasPaymentStatus = 'PAID' | 'PENDING' | 'OVERDUE';
 
 export type AddonModuleId = 
+  | 'checkin-qrcode'
   | 'midia-indoor' 
   | 'radio-indoor' 
   | 'google-reviews' 
@@ -189,6 +190,7 @@ export const INITIAL_TV_CONFIGS: Record<string, TenantTvConfig> = {
       },
     ],
     addonStates: {
+      "checkin-qrcode": { active: true, paymentStatus: "PAID", planCycle: "ANUAL" },
       "midia-indoor": { active: true, paymentStatus: "PAID", planCycle: "ANUAL" },
       "radio-indoor": { active: true, paymentStatus: "PAID", planCycle: "ANUAL" },
       "google-reviews": { active: true, paymentStatus: "PAID", planCycle: "ANUAL" },

@@ -3843,6 +3843,8 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                       src={
                         pixQrCodeImage.startsWith("data:") || pixQrCodeImage.startsWith("http")
                           ? pixQrCodeImage
+                          : pixQrCodeImage.startsWith("PHN2Zw") || pixQrCodeImage.startsWith("<svg")
+                          ? `data:image/svg+xml;base64,${pixQrCodeImage}`
                           : `data:image/png;base64,${pixQrCodeImage}`
                       }
                       alt="QR Code Pix Asaas"

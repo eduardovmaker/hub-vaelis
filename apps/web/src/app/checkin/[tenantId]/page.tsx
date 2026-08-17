@@ -196,9 +196,9 @@ export default function StandaloneCheckinPage({ params }: { params: Promise<{ te
 
       </main>
 
-      {/* Footer */}
+      {/* Footer White-Label */}
       <footer className="py-4 text-center text-[11px] text-slate-400 border-t" style={{ borderColor: "var(--border-color)" }}>
-        Vaelis-HUB © {new Date().getFullYear()} — Powered by {tenantName}
+        © {new Date().getFullYear()} {tenantName}. Todos os direitos reservados.
       </footer>
 
     </div>

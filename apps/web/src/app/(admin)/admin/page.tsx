@@ -46,7 +46,8 @@ import {
   AlertTriangle,
   Key,
   Trash2,
-  Save
+  Save,
+  Loader2
 } from "lucide-react";
 
 export default function MasterAdminDashboard() {
@@ -70,6 +71,7 @@ export default function MasterAdminDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [tenantFilter, setTenantFilter] = useState<"ALL" | "VIP" | "ASAAS" | "BLOCKED">("ALL");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [loadingModules, setLoadingModules] = useState<Record<string, boolean>>({});
 
   // Estado do Modal de Cadastro de Novo Tenant
   const [showCreateTenantModal, setShowCreateTenantModal] = useState(false);
@@ -224,6 +226,9 @@ export default function MasterAdminDashboard() {
   };
 
   const handleToggleAddonModule = async (tenantId: string, addonId: AddonModuleId) => {
+    const key = `${tenantId}_${addonId}`;
+    setLoadingModules((prev) => ({ ...prev, [key]: true }));
+
     const currentAddonState = tvConfigs[tenantId]?.addonStates?.[addonId];
     const nextActive = !currentAddonState?.active;
 
@@ -240,7 +245,7 @@ export default function MasterAdminDashboard() {
       },
     };
 
-    // Atualização na UI
+    // Atualização otimista na UI
     setTvConfigs((prev) => ({
       ...prev,
       [tenantId]: {
@@ -250,9 +255,12 @@ export default function MasterAdminDashboard() {
       },
     }));
 
+    const tenantName = tvConfigs[tenantId]?.tenantName || tenantId;
+    const nextStatusText = nextActive ? "LIBERADO (ON)" : "DESATIVADO (OFF)";
+
     // Persistência no Firebase Firestore via API
     try {
-      await fetch("/api/tenants", {
+      const res = await fetch("/api/tenants", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -260,15 +268,22 @@ export default function MasterAdminDashboard() {
           addonStates: updatedAddonStates,
         }),
       });
-    } catch (e) {}
-
-    const tenantName = tvConfigs[tenantId]?.tenantName || tenantId;
-    const nextStatus = nextActive ? "LIBERADO" : "BLOQUEADO";
-    showToast(`Add-on [${addonId}] ${nextStatus} para ${tenantName}`);
+      const data = await res.json();
+      if (data.success) {
+        showToast(`✅ Módulo [${addonId}] ${nextStatusText} para ${tenantName}`);
+      } else {
+        showToast(`❌ Erro ao salvar no banco: ${data.error || "Falha na API"}`);
+      }
+    } catch (e) {
+      showToast(`❌ Erro de conexão ao atualizar o módulo [${addonId}]`);
+    } finally {
+      setLoadingModules((prev) => ({ ...prev, [key]: false }));
+    }
   };
 
   const handleActivateVipPilot = async (tenantId: string) => {
     const allActiveStates = {
+      "checkin-qrcode": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
       "captive-portal": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
       "midia-indoor": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
       "radio-indoor": { active: true, paymentStatus: "PAID", subscriptionExpiresAt: "2099-12-31T23:59:59Z" },
@@ -783,24 +798,30 @@ export default function MasterAdminDashboard() {
                         ].map((m) => {
                           const isActive = states[m.id]?.active || false;
                           const MIcon = m.icon;
+                          const isLoading = Boolean(loadingModules[`${tenant.tenantId}_${m.id}`]);
 
                           return (
                             <button
                               key={m.id}
                               type="button"
+                              disabled={isLoading}
                               onClick={() => handleToggleAddonModule(tenant.tenantId, m.id)}
-                              className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1.5 text-[10px] font-bold transition-all active:scale-95 cursor-pointer ${
+                              className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1.5 text-[10px] font-bold transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                                 isActive
                                   ? m.activeClass
                                   : "bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700"
                               }`}
                             >
-                              <MIcon className="w-4 h-4" />
+                              {isLoading ? (
+                                <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                              ) : (
+                                <MIcon className="w-4 h-4" />
+                              )}
                               <span className="truncate max-w-full">{m.label}</span>
-                              <span className={`text-[9px] px-1.5 rounded-full uppercase font-extrabold ${
+                              <span className={`text-[9px] px-1.5 rounded-full uppercase font-extrabold flex items-center gap-1 ${
                                 isActive ? "bg-white/20 text-white" : "bg-slate-300 dark:bg-slate-700 text-slate-500"
                               }`}>
-                                {isActive ? "ON" : "OFF"}
+                                {isLoading ? "SALVANDO..." : (isActive ? "ON" : "OFF")}
                               </span>
                             </button>
                           );
@@ -1194,9 +1215,18 @@ export default function MasterAdminDashboard() {
                   </p>
                 </div>
 
-                <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-xs font-bold border border-emerald-500/20">
-                  Asaas API v3 Conectado
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                    (globalAnalytics as any).hasMasterAsaasKey 
+                      ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" 
+                      : "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                  }`}>
+                    {(globalAnalytics as any).hasMasterAsaasKey ? "Asaas Master API (.env Active)" : "Asaas Master (Modo Simulado / Env Pendente)"}
+                  </span>
+                  <span className="px-3 py-1 rounded-full bg-slate-500/10 text-slate-400 text-xs font-mono border border-slate-500/20">
+                    Ambiente: {(globalAnalytics as any).asaasEnvironment || "SANDBOX"}
+                  </span>
+                </div>
               </div>
 
               <div className="overflow-x-auto">

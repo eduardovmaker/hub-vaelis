@@ -445,9 +445,9 @@ export default function DynamicCaptivePortal({ params }: { params: Promise<{ ten
           </>
         )}
 
-        {/* Footer */}
-        <footer className="text-center text-[10px] text-slate-500 py-2">
-          Powered by <span className="font-bold text-slate-400">Vaelis-HUB Enterprise</span> • Plataforma de Gestão Empresarial & Experiência
+        {/* Footer White-Label */}
+        <footer className="text-center text-[11px] text-slate-500 py-3">
+          © {new Date().getFullYear()} {portalConfig.tenantName}. Todos os direitos reservados.
         </footer>
       </div>
 

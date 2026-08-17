@@ -78,6 +78,7 @@ export async function POST(request: Request) {
     const finalPairingCode = pairingCode || `TV-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const defaultAddonStates = {
+      "checkin-qrcode": { active: false, paymentStatus: "PENDING" },
       "captive-portal": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
       "midia-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
       "radio-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
@@ -219,6 +220,7 @@ export async function PATCH(request: Request) {
                 },
               },
             },
+            { merge: true }
           ),
           300
         );
@@ -250,6 +252,10 @@ export async function PUT(request: Request) {
       memoryTenants[tenantId] = {
         ...memoryTenants[tenantId],
         ...body,
+        addonStates: {
+          ...(memoryTenants[tenantId].addonStates || {}),
+          ...(addonStates || {}),
+        },
       };
     }
 
