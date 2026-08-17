@@ -157,4 +157,39 @@ export function parseYouTubeEmbedUrl(url: string): string {
   return "https://www.youtube.com/embed/videoseries?list=PL4fGSI1pDJn6jWSV0Tz2uWp6h-Zly-gM-&autoplay=1&enablejsapi=1";
 }
 
-export const INITIAL_TV_CONFIGS: Record<string, TenantTvConfig> = {};
+export const INITIAL_TV_CONFIGS: Record<string, TenantTvConfig> = {
+  tenant_martinelli_barbearia_8598: {
+    tenantId: "tenant_martinelli_barbearia_8598",
+    tenantName: "Martinelli Barbearia",
+    pairingCode: "TV-8598",
+    addonActive: true,
+    showQrOverlay: true,
+    showClockOverlay: true,
+    showRadioBadge: true,
+    showTitleOverlay: true,
+    showHeaderLogo: true,
+    planCycle: "ANUAL",
+    paymentStatus: "PAID",
+    subscriptionExpiresAt: "2099-12-31T23:59:59.000Z",
+    playlist: [
+      {
+        id: "tv_martinelli_1",
+        title: "Martinelli Barbearia - Estilo & Corte",
+        type: "image",
+        url: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1920&q=80",
+        durationSeconds: 12,
+        active: true,
+      },
+    ],
+    addonStates: {
+      "midia-indoor": { active: true, paymentStatus: "PAID", planCycle: "ANUAL" },
+      "radio-indoor": { active: true, paymentStatus: "PAID", planCycle: "ANUAL" },
+      "google-reviews": { active: true, paymentStatus: "PAID", planCycle: "ANUAL" },
+      "whatsapp-bot": { active: true, paymentStatus: "PAID", planCycle: "ANUAL" },
+      "roleta-da-sorte": { active: true, paymentStatus: "PAID", planCycle: "ANUAL" },
+      "loja-produtos": { active: true, paymentStatus: "PAID", planCycle: "ANUAL" },
+      "web-guard": { active: true, paymentStatus: "PAID", planCycle: "ANUAL" },
+      "captive-portal": { active: true, paymentStatus: "PAID", planCycle: "ANUAL" },
+    },
+  },
+};
