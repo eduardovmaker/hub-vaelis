@@ -4,14 +4,15 @@ import bcrypt from "bcryptjs";
 import { INITIAL_TV_CONFIGS, TenantTvConfig } from "@/mocks/tv";
 import { INITIAL_PORTAL_CONFIGS } from "@/mocks/portal";
 
-// Helper para timeout rápido de banco (250ms) para não travar modo apresentação
-async function withDbTimeout<T>(promise: Promise<T>, timeoutMs = 250): Promise<T> {
+// Helper para timeout resiliente do banco (5000ms)
+async function withDbTimeout<T>(promise: Promise<T>, timeoutMs = 5000): Promise<T> {
   let timer: NodeJS.Timeout;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new Error("DB Timeout")), timeoutMs);
   });
   return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
 }
+
 
 export async function POST(request: Request) {
   try {

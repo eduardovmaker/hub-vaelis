@@ -1,9 +1,12 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { NextResponse } from "next/server";
 import { db, COLLECTIONS } from "@/lib/db";
 import { INITIAL_TV_CONFIGS, TenantTvConfig } from "@/mocks/tv";
 
-// Helper para timeout ultra rápido em apresentações offline sem travar o app (250ms)
-async function withDbTimeout<T>(promise: Promise<T>, timeoutMs = 250): Promise<T> {
+// Helper para timeout resiliente do banco de dados Firebase Firestore (5000ms)
+async function withDbTimeout<T>(promise: Promise<T>, timeoutMs = 5000): Promise<T> {
   let timer: NodeJS.Timeout;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new Error("DB Timeout")), timeoutMs);
@@ -13,6 +16,7 @@ async function withDbTimeout<T>(promise: Promise<T>, timeoutMs = 250): Promise<T
 
 // In-memory fallback para novos tenants criados no modo apresentação sem banco
 const memoryTenants: Record<string, TenantTvConfig> = { ...INITIAL_TV_CONFIGS };
+
 
 export async function GET() {
   try {
@@ -52,7 +56,7 @@ export async function GET() {
         return null;
       })();
 
-      const tenants = await withDbTimeout(getTenantsPromise, 600);
+      const tenants = await withDbTimeout(getTenantsPromise, 5000);
       if (tenants && tenants.length > 0) {
         return NextResponse.json({ success: true, tenants });
       }
@@ -164,7 +168,7 @@ export async function POST(request: Request) {
           updatedAt: new Date().toISOString(),
         });
 
-        await withDbTimeout(batch.commit(), 350);
+        await withDbTimeout(batch.commit(), 5000);
       }
     } catch (e) {}
 
@@ -222,7 +226,7 @@ export async function PATCH(request: Request) {
             },
             { merge: true }
           ),
-          300
+          5000
         );
       }
     } catch (dbErr) {}
@@ -248,16 +252,14 @@ export async function PUT(request: Request) {
       return NextResponse.json({ success: false, error: "tenantId é obrigatório." }, { status: 400 });
     }
 
-    if (memoryTenants[tenantId]) {
-      memoryTenants[tenantId] = {
-        ...memoryTenants[tenantId],
-        ...body,
-        addonStates: {
-          ...(memoryTenants[tenantId].addonStates || {}),
-          ...(addonStates || {}),
-        },
-      };
-    }
+    memoryTenants[tenantId] = {
+      ...(memoryTenants[tenantId] || { tenantId, tenantName: tenantId, pairingCode: `TV-${Math.floor(1000 + Math.random() * 9000)}`, addonActive: true, showQrOverlay: true, showClockOverlay: true, planCycle: "MENSAL", paymentStatus: "PAID", playlist: [] }),
+      ...body,
+      addonStates: {
+        ...(memoryTenants[tenantId]?.addonStates || {}),
+        ...(addonStates || {}),
+      },
+    };
 
     if (db) {
       const updateData: Record<string, any> = { updatedAt: new Date().toISOString() };

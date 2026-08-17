@@ -1,8 +1,12 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { NextResponse } from "next/server";
 import { db, COLLECTIONS } from "@/lib/db";
 import { INITIAL_TV_CONFIGS, TenantTvConfig } from "@/mocks/tv";
 
-async function withDbTimeout<T>(promise: Promise<T>, timeoutMs = 3000): Promise<T> {
+async function withDbTimeout<T>(promise: Promise<T>, timeoutMs = 5000): Promise<T> {
+
   let timer: NodeJS.Timeout;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new Error("DB Timeout")), timeoutMs);

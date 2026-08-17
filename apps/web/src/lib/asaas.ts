@@ -40,11 +40,23 @@ export interface AsaasPaymentLinkInput {
 }
 
 const getAsaasApiConfig = () => {
-  const apiKey = process.env.ASAAS_API_KEY || "";
-  const apiUrl = (process.env.ASAAS_API_URL || "https://sandbox.asaas.com/api/v3").replace(/\/$/, "");
-  const isProduction = process.env.NODE_ENV === "production" || !!process.env.ASAAS_API_KEY;
+  const rawApiKey = process.env.ASAAS_API_KEY || "";
+  const apiKey = rawApiKey.replace(/^["']|["']$/g, "").trim();
+  
+  let rawUrl = process.env.ASAAS_API_URL || "";
+  if (!rawUrl) {
+    if (apiKey.startsWith("$aact_prod_") || process.env.NODE_ENV === "production") {
+      rawUrl = "https://www.asaas.com/api/v3";
+    } else {
+      rawUrl = "https://sandbox.asaas.com/api/v3";
+    }
+  }
+  
+  const apiUrl = rawUrl.replace(/\/$/, "");
+  const isProduction = apiKey.startsWith("$aact_prod_") || process.env.NODE_ENV === "production";
   return { apiKey, apiUrl, isProduction };
 };
+
 
 /**
  * Sanitiza CPF/CNPJ removendo caracteres especiais (máscaras)
