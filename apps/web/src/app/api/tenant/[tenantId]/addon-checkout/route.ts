@@ -77,14 +77,18 @@ export async function POST(
     // Buscar dados adicionais do Tenant se disponível
     let tenantName = customerName || tenantId;
     let tenantEmail = customerEmail || `${tenantId}@tenant.vaelis.com.br`;
+    let tenantCpfCnpj = cpfCnpj || undefined;
 
     if (db) {
       try {
         const tenantDoc = await db.collection(COLLECTIONS.TENANTS).doc(tenantId).get();
         if (tenantDoc.exists) {
           const tData = tenantDoc.data();
-          if (tData?.name) tenantName = tData.name;
+          if (tData?.tenantName) tenantName = tData.tenantName;
           if (tData?.email) tenantEmail = tData.email;
+          if (!tenantCpfCnpj) {
+            tenantCpfCnpj = tData?.cpfCnpj || tData?.customerCpf || tData?.document || undefined;
+          }
         }
       } catch (dbErr) {
         console.warn("[Addon Checkout] Aviso ao carregar dados do tenant:", dbErr);
@@ -95,7 +99,7 @@ export async function POST(
     const customer = await createOrGetAsaasCustomer({
       name: tenantName,
       email: tenantEmail,
-      cpfCnpj: cpfCnpj || undefined,
+      cpfCnpj: tenantCpfCnpj,
     });
 
     // 2. Criar Cobrança Pix para a Conta Master (sem split rules, pois é mensalidade do módulo da plataforma)

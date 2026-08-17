@@ -120,7 +120,26 @@ export async function createOrGetAsaasCustomer(input: AsaasCustomerInput): Promi
     if (searchRes.ok) {
       const searchData = await searchRes.json();
       if (searchData?.data && searchData.data.length > 0) {
-        return { id: searchData.data[0].id };
+        const existingCus = searchData.data[0];
+        // Se o cliente já existe no Asaas mas não tem CPF/CNPJ cadastrado e recebemos um CPF/CNPJ válido agora, atualizar no Asaas
+        if (!existingCus.cpfCnpj && cleanCpfCnpj) {
+          try {
+            await fetch(`${apiUrl}/customers/${existingCus.id}`, {
+              method: "PUT",
+              headers: {
+                "access_token": apiKey,
+                "Content-Type": "application/json",
+              },
+              signal: AbortSignal.timeout(10000),
+              body: JSON.stringify({
+                cpfCnpj: cleanCpfCnpj,
+              }),
+            });
+          } catch (e) {
+            console.warn("[Asaas SDK] Aviso ao atualizar CPF/CNPJ do cliente existente no Asaas:", e);
+          }
+        }
+        return { id: existingCus.id };
       }
     }
 
