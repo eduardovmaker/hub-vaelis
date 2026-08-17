@@ -116,6 +116,50 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
   // Estado de Interação Inicial (Autoplay Policy unlock)
   const [userInteracted, setUserInteracted] = useState(false);
 
+  // MISSÃO 1: Lógica do Timer e Exibição Periódica do Popup de CTA (Independente do Fade Out do Mouse)
+  const ctaEnabled = tvConfig.customCtaEnabled ?? true;
+  const ctaInterval = tvConfig.customCtaIntervalMinutes || 5;
+  const ctaDuration = tvConfig.customCtaDurationSeconds || 15;
+
+  const [isCtaVisible, setIsCtaVisible] = useState(false);
+
+  // Efeito para iniciar e agendar a exibição periódica do CTA conforme a frequência (intervalo em minutos)
+  useEffect(() => {
+    if (!ctaEnabled || !userInteracted) {
+      setIsCtaVisible(false);
+      return;
+    }
+
+    const intervalMs = Math.max(ctaInterval, 0.1) * 60 * 1000;
+
+    // Dispara a 1ª exibição do CTA 3 segundos após desbloquear a mídia indoor
+    const initialTimer = setTimeout(() => {
+      setIsCtaVisible(true);
+    }, 3000);
+
+    // Agenda as exibições periódicas
+    const intervalTimer = setInterval(() => {
+      setIsCtaVisible(true);
+    }, intervalMs);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(intervalTimer);
+    };
+  }, [ctaEnabled, ctaInterval, userInteracted]);
+
+  // Efeito para ocultar automaticamente o Popup de CTA após a duração configurada (em segundos)
+  useEffect(() => {
+    if (!isCtaVisible) return;
+
+    const durationMs = Math.max(ctaDuration, 1) * 1000;
+    const hideTimer = setTimeout(() => {
+      setIsCtaVisible(false);
+    }, durationMs);
+
+    return () => clearTimeout(hideTimer);
+  }, [isCtaVisible, ctaDuration]);
+
   // Detecção de movimento de cursor ou toque para restaurar os controles
   useEffect(() => {
     const handleMouseMove = () => {
@@ -317,41 +361,66 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
   return (
     <div className="relative w-screen h-screen bg-black text-white overflow-hidden font-sans select-none flex flex-col justify-between">
       
-      {/* 1. OVERLAY DE INTERAÇÃO INICIAL (DESTRAVA O AUTOPLAY DE ÁUDIO NO NAVEGADOR) */}
+      {/* 1. OVERLAY DE INTERAÇÃO INICIAL (TV MODE - SMART TV & FIRE STICK COMPATIBLE) */}
       {!userInteracted && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-6 text-center">
-          <div className="max-w-md space-y-6 animate-scale-up">
-            <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-purple-600 via-pink-600 to-amber-500 p-0.5 mx-auto shadow-[0_0_50px_rgba(236,72,153,0.4)]">
+        <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center overflow-y-auto">
+          <div className="max-w-xl w-full space-y-6 animate-scale-up flex flex-col items-center">
+            
+            {/* Ícone e Identificação da TV */}
+            <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-purple-600 via-pink-600 to-amber-500 p-0.5 shadow-[0_0_50px_rgba(236,72,153,0.3)]">
               <div className="w-full h-full bg-slate-950 rounded-[22px] flex items-center justify-center">
-                <Tv className="w-12 h-12 text-white animate-pulse" />
+                <Radio className="w-10 h-10 text-pink-400 animate-pulse" />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <span className="px-3 py-1 rounded-full bg-pink-500/10 text-pink-400 border border-pink-500/20 text-[10px] font-extrabold uppercase tracking-wider">
+            <div className="space-y-2 max-w-lg">
+              <span className="px-3.5 py-1 rounded-full bg-pink-500/10 text-pink-400 border border-pink-500/20 text-[11px] font-extrabold uppercase tracking-wider">
                 Digital Signage & Rádio Indoor
               </span>
-              <h2 className="text-2xl font-black text-white">{displayName}</h2>
-              <p className="text-xs text-slate-400">
-                Clique no botão abaixo para liberar o som ambiente da Rádio Indoor (Spotify) e iniciar a transmissão da TV sem interrupções.
-              </p>
+              <h2 className="text-2xl sm:text-3xl font-black text-white">{displayName}</h2>
+              
+              <div className="p-3.5 rounded-2xl bg-purple-950/40 border border-purple-500/30 text-xs text-purple-200 text-left space-y-1.5 mt-2">
+                <p className="font-bold flex items-center gap-1.5 text-amber-300">
+                  <Sparkles className="w-4 h-4" /> Instruções para Controle Remoto (Smart TV / Fire Stick):
+                </p>
+                <p className="text-[11px] text-slate-300">
+                  1. Use as setas do controle remoto e dê <strong>PLAY</strong> na música da Rádio Spotify abaixo.
+                </p>
+                <p className="text-[11px] text-slate-300">
+                  2. Após a música começar, clique no botão <strong>"Já dei Play! Iniciar Telão"</strong>.
+                </p>
+              </div>
             </div>
 
+            {/* Espaço reservado para o container do iFrame posicionado em z-60 */}
+            <div className="w-full h-[152px] sm:h-[180px] my-2" />
+
+            {/* Botão Secundário: Já dei Play! Iniciar Telão */}
             <button
               onClick={handleUnlockAudio}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white font-black text-sm shadow-2xl hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+              tabIndex={0}
+              className="w-full max-w-lg py-4 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white font-black text-sm sm:text-base shadow-2xl hover:scale-[1.02] focus:scale-[1.03] focus:ring-4 focus:ring-amber-300 focus:outline-none transition-all flex items-center justify-center gap-3 cursor-pointer"
             >
-              <Play className="w-5 h-5 fill-white" /> Iniciar Mídia Indoor
+              <Play className="w-5 h-5 fill-white" /> Passo 2: Já dei Play! Iniciar Telão
             </button>
+
+            <p className="text-[11px] text-slate-400 max-w-md">
+              Ao iniciar, a música continuará tocando continuamente em segundo plano por trás da rotação dos vídeos.
+            </p>
           </div>
         </div>
       )}
 
-      {/* 2. REPRODUÇÃO EM BACKGROUND DA RÁDIO INDOOR (SPOTIFY WEB CONTROLLER / EMBED FLUIDO SEM INTERRUPÇÃO) */}
+      {/* 2. CONTAINER PERSISTENTE DA RÁDIO INDOOR (SPOTIFY EMBED COMPATÍVEL COM SMART TV) */}
       {isRadioIndoorActive && activeEmbedUrl && (
         <div 
           key="static_radio_audio_container"
-          className="fixed -bottom-96 -left-96 w-1 h-1 opacity-0 pointer-events-none overflow-hidden z-0"
+          tabIndex={0}
+          className={
+            !userInteracted
+              ? "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] w-[90vw] max-w-lg h-[152px] sm:h-[180px] rounded-2xl border-2 border-purple-500/50 bg-slate-900 overflow-hidden shadow-[0_0_50px_rgba(168,85,247,0.4)] focus-within:ring-4 focus-within:ring-purple-400 focus:ring-4 focus:ring-purple-400 focus:outline-none transition-all"
+              : "fixed -bottom-96 -left-96 w-1 h-1 opacity-0 pointer-events-none overflow-hidden z-0"
+          }
         >
           <iframe
             id="spotify_radio_iframe_player"
@@ -365,6 +434,8 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
             height="100%"
             frameBorder="0"
             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            tabIndex={0}
+            className="w-full h-full border-0 focus:outline-none"
           />
         </div>
       )}
@@ -467,9 +538,9 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
         </div>
       </header>
 
-      {/* 5. FOOTER MINIMALISTA: TÍTULO DA MÍDIA E CTA DO INSTAGRAM NO CANTO INFERIOR DIREITO */}
+      {/* 5. FOOTER MINIMALISTA: TÍTULO DA MÍDIA */}
       <footer
-        className={`relative z-20 p-6 flex flex-col md:flex-row items-end justify-between gap-6 transition-opacity duration-700 ${
+        className={`relative z-20 p-6 flex items-end justify-between transition-opacity duration-700 ${
           isUiVisible || isDrawerOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
       >
@@ -494,40 +565,71 @@ export default function SmartTvPlayer({ params }: { params: Promise<{ tenantId: 
             </p>
           </div>
         )}
-
-        {/* REPLICANDO REQUISITO DO CLIENTE: CTA DE INSTAGRAM SUBISTITUINDO O QR CODE DE WIFI/PIX */}
-        <div className="bg-black/50 backdrop-blur-xl border border-white/10 p-3.5 rounded-2xl shadow-2xl flex items-center gap-3.5 max-w-xs shrink-0">
-          <div className="bg-white p-2 rounded-xl w-20 h-20 shrink-0 shadow-inner flex items-center justify-center">
-            <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
-                tvConfig.customCtaUrl || `https://instagram.com`
-              )}`}
-              alt="QR Code Instagram"
-              className="w-full h-full object-contain"
-            />
-          </div>
-
-          <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-1 text-[10px] font-black text-pink-400 uppercase tracking-wider">
-              <Instagram className="w-3.5 h-3.5 text-pink-500" /> Siga no Instagram
-            </div>
-
-            <h3 className="text-xs font-extrabold text-white truncate leading-tight">
-              {tvConfig.customCtaTitle || `@${displayName.toLowerCase().replace(/\s+/g, "_")}`}
-            </h3>
-            
-            <p className="text-[10px] text-slate-300 leading-snug line-clamp-2">
-              Aponte a câmera do celular para conferir novidades e fotos da loja.
-            </p>
-
-            {currentTime && (
-              <p className="text-[10px] font-mono font-bold text-amber-400 pt-0.5">{currentTime}</p>
-            )}
-          </div>
-        </div>
       </footer>
 
-      {/* 6. DRAWER LATERAL RETRÁTIL PARA RÁDIO INDOOR & NAVEGAÇÃO DA TV */}
+      {/* 6. POPUP DE CTA PERIÓDICO E QR CODE (GERENCIADO VIA TV CONFIG & INDEPENDENTE DA INATIVIDADE DO MOUSE) */}
+      {ctaEnabled && (
+        <div
+          className={`fixed bottom-6 right-6 z-40 transition-all duration-700 transform ${
+            isCtaVisible
+              ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+              : "opacity-0 translate-y-8 scale-95 pointer-events-none"
+          }`}
+        >
+          <div className="bg-slate-950/90 backdrop-blur-2xl border-2 border-pink-500/40 p-4 rounded-3xl shadow-[0_0_50px_rgba(236,72,153,0.35)] flex items-center gap-4 max-w-sm shrink-0 relative overflow-hidden group">
+            {/* Ambient Glow Gradient */}
+            <div className="absolute -top-12 -right-12 w-24 h-24 bg-gradient-to-br from-pink-500/30 to-purple-500/30 rounded-full blur-xl pointer-events-none" />
+
+            {/* CONTAINER QR CODE DINÂMICO DA BANCA DO TENANT */}
+            <div className="bg-white p-2.5 rounded-2xl w-24 h-24 shrink-0 shadow-xl flex items-center justify-center border border-white/20 relative z-10">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                  tvConfig.customCtaUrl || "https://instagram.com"
+                )}`}
+                alt="QR Code CTA"
+                className="w-full h-full object-contain"
+              />
+            </div>
+
+            {/* TEXTOS E INFORMAÇÕES DO CTA REGISTRADOS NO PAINEL */}
+            <div className="space-y-1.5 min-w-0 relative z-10">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-[10px] font-black text-pink-400 uppercase tracking-wider">
+                  <Instagram className="w-3.5 h-3.5 text-pink-500 animate-pulse" />
+                  <span>Popup de CTA</span>
+                </div>
+
+                <button
+                  onClick={() => setIsCtaVisible(false)}
+                  className="w-5 h-5 rounded-full bg-white/10 hover:bg-white/20 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                  title="Fechar Popup"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+
+              <h3 className="text-xs font-black text-white truncate leading-tight">
+                {tvConfig.customCtaTitle || `@${displayName.toLowerCase().replace(/\s+/g, "_")}`}
+              </h3>
+
+              <p className="text-[10px] text-slate-300 leading-snug line-clamp-2">
+                {tvConfig.customCtaSubtitle || "Aponte a câmera do celular para conferir novidades e fotos da loja."}
+              </p>
+
+              {currentTime && (
+                <div className="flex items-center justify-between pt-1 border-t border-white/10">
+                  <p className="text-[10px] font-mono font-bold text-amber-400">{currentTime}</p>
+                  <span className="text-[9px] font-mono text-pink-300 font-semibold">
+                    Visível por {ctaDuration}s
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 7. DRAWER LATERAL RETRÁTIL PARA RÁDIO INDOOR & NAVEGAÇÃO DA TV */}
       {isDrawerOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end animate-fade-in">
           <div className="w-full max-w-md bg-slate-900/95 backdrop-blur-2xl border-l border-white/10 h-full p-6 space-y-6 shadow-2xl flex flex-col justify-between overflow-y-auto animate-slide-left">
