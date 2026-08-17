@@ -20,8 +20,21 @@ export async function GET() {
       const getTenantsPromise = (async () => {
         const snapshot = await db.collection(COLLECTIONS.TENANTS).get();
         if (!snapshot.empty) {
+          // Fetch asaas configs map
+          const asaasSnapshot = await db.collection(COLLECTIONS.ASAAS_CONFIGS).get();
+          const asaasMap: Record<string, any> = {};
+          if (!asaasSnapshot.empty) {
+            asaasSnapshot.docs.forEach((doc) => {
+              asaasMap[doc.id] = doc.data();
+            });
+          }
+
           return snapshot.docs.map((doc: any) => {
             const data = doc.data();
+            const asaasConf = asaasMap[doc.id] || {};
+            const platformFee = typeof asaasConf.platformFeePercentage === "number" ? asaasConf.platformFeePercentage : 10;
+            const splitPct = typeof asaasConf.splitPercentage === "number" ? asaasConf.splitPercentage : (100 - platformFee);
+
             return {
               tenantId: doc.id,
               tenantName: data.tenantName,
@@ -30,6 +43,9 @@ export async function GET() {
               subscriptionExpiresAt: data.subscriptionExpiresAt,
               addonActive: data.addonStates?.["midia-indoor"]?.active || false,
               addonStates: data.addonStates || {},
+              walletId: asaasConf.walletId || "",
+              platformFeePercentage: platformFee,
+              splitPercentage: splitPct,
             };
           });
         }

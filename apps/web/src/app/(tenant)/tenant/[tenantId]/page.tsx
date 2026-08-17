@@ -3467,45 +3467,14 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                    <div>
-                      <label className="block font-bold text-slate-400 mb-1">
-                        Porcentagem de Repasse do Estabelecimento (%)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={asaasConfigState.splitPercentage}
-                        onChange={(e) => {
-                          const val = Number(e.target.value);
-                          setAsaasConfigState((prev) => ({
-                            ...prev,
-                            splitPercentage: val,
-                            platformFeePercentage: 100 - val,
-                          }));
-                        }}
-                        className="w-full px-4 py-2.5 rounded-xl border bg-transparent font-bold text-sm focus:outline-none focus:border-blue-500"
-                        style={{ borderColor: "var(--border-color)", color: "var(--text-primary)" }}
-                      />
-                      <p className="text-[11px] text-emerald-500 mt-1 font-semibold">
-                        {asaasConfigState.splitPercentage}% de cada Pix gerado irá direto para sua subconta Asaas
+                  <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-start gap-3 my-2">
+                    <ShieldCheck className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-blue-200">
+                        Taxa de intermediação da plataforma: <span className="text-sm font-black text-white">{asaasConfigState.platformFeePercentage}%</span> (configurada automaticamente conforme o seu plano)
                       </p>
-                    </div>
-
-                    <div>
-                      <label className="block font-bold text-slate-400 mb-1">
-                        Comissão Retida pela Plataforma Vaelis (%)
-                      </label>
-                      <input
-                        type="number"
-                        disabled
-                        value={asaasConfigState.platformFeePercentage}
-                        className="w-full px-4 py-2.5 rounded-xl border bg-slate-500/10 font-bold text-sm text-slate-400 cursor-not-allowed"
-                        style={{ borderColor: "var(--border-color)" }}
-                      />
-                      <p className="text-[11px] text-slate-400 mt-1">
-                        {asaasConfigState.platformFeePercentage}% retido como comissão da plataforma
+                      <p className="text-[11px] text-slate-400">
+                        Seu repasse líquido é de <strong className="text-emerald-400 font-bold">{asaasConfigState.splitPercentage}%</strong>, transferido automaticamente para sua carteira Asaas a cada venda Pix.
                       </p>
                     </div>
                   </div>
@@ -3517,11 +3486,20 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                           const res = await fetch(`/api/tenant/${tenantId}/asaas`, {
                             method: "PUT",
                             headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify(asaasConfigState),
+                            body: JSON.stringify({
+                              walletId: asaasConfigState.walletId,
+                              apiKey: asaasConfigState.apiKey,
+                              splitEnabled: asaasConfigState.splitEnabled,
+                            }),
                           });
                           const data = await res.json();
                           if (data.success) {
-                            showNotification("✅ Configuração do Asaas & Split salva com sucesso!");
+                            if (data.asaasConfig) {
+                              setAsaasConfigState(data.asaasConfig);
+                            }
+                            showNotification("✅ Configuração do Asaas (Wallet ID & API Key) salva com sucesso!");
+                          } else {
+                            showNotification("❌ Erro ao salvar configuração do Asaas.");
                           }
                         } catch (err) {
                           showNotification("❌ Erro ao salvar configuração do Asaas.");
@@ -3529,7 +3507,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                       }}
                       className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-blue-600/20 active:scale-95 transition-all"
                     >
-                      <Save className="w-4 h-4" /> Salvar Regras de Split Asaas
+                      <Save className="w-4 h-4" /> Salvar Carteira Asaas
                     </button>
                   </div>
                 </div>

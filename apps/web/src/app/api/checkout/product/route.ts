@@ -48,20 +48,21 @@ export async function POST(request: Request) {
     const qty = Number(quantity) || 1;
     const totalValue = product.price * qty;
 
-    // Buscar configuração de Split Asaas do Tenant
+    // Buscar configuração de Split Asaas do Tenant (taxa da plataforma gerenciada via Admin)
     let splitRules = undefined;
     if (db) {
       const asaasDoc = await db.collection(COLLECTIONS.ASAAS_CONFIGS).doc(tenantId).get();
       if (asaasDoc.exists) {
         const asaasData = asaasDoc.data();
         const rawWalletId = (asaasData?.walletId || "").trim();
-        const splitPct = typeof asaasData?.splitPercentage === "number" ? asaasData.splitPercentage : 90;
+        const platformFee = typeof asaasData?.platformFeePercentage === "number" ? asaasData.platformFeePercentage : 10;
+        const tenantSplitPercent = Math.max(0, 100 - platformFee);
 
         if (asaasData?.splitEnabled && rawWalletId) {
           splitRules = [
             {
               walletId: rawWalletId,
-              percentualValue: Math.min(100, Math.max(0, splitPct)),
+              percentualValue: Math.min(100, Math.max(0, tenantSplitPercent)),
             },
           ];
         }

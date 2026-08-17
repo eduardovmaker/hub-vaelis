@@ -45,7 +45,8 @@ import {
   Ban,
   AlertTriangle,
   Key,
-  Trash2
+  Trash2,
+  Save
 } from "lucide-react";
 
 export default function MasterAdminDashboard() {
@@ -190,6 +191,32 @@ export default function MasterAdminDashboard() {
       })
       .catch(() => {});
   }, []);
+
+  const handleUpdatePlatformFee = async (tenantId: string, newFee: number) => {
+    try {
+      const res = await fetch(`/api/admin/tenants/${tenantId}/asaas-fee`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platformFeePercentage: newFee }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTvConfigs((prev) => ({
+          ...prev,
+          [tenantId]: {
+            ...prev[tenantId],
+            platformFeePercentage: data.platformFeePercentage,
+            splitPercentage: data.splitPercentage,
+          } as any,
+        }));
+        showToast(`✅ Taxa da plataforma do tenant [${tenantId}] alterada para ${data.platformFeePercentage}%!`);
+      } else {
+        showToast(`❌ Erro: ${data.error || "Não foi possível atualizar a taxa."}`);
+      }
+    } catch (err) {
+      showToast("❌ Erro de conexão ao atualizar a taxa da plataforma.");
+    }
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -778,6 +805,47 @@ export default function MasterAdminDashboard() {
                             </button>
                           );
                         })}
+                      </div>
+
+                      {/* Controle de Taxa do Asaas & Split (Super Admin Exclusivo) */}
+                      <div className="pt-3 border-t flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs bg-slate-500/5 p-3 rounded-xl" style={{ borderColor: "var(--border-color)" }}>
+                        <div className="flex items-center gap-3">
+                          <CreditCard className="w-4 h-4 text-emerald-500 shrink-0" />
+                          <div>
+                            <p className="font-bold" style={{ color: "var(--text-primary)" }}>
+                              Carteira Asaas: <span className="font-mono text-emerald-400 font-bold">{(tenant as any).walletId || "Não cadastrada"}</span>
+                            </p>
+                            <p className="text-[11px] text-slate-400">
+                              Taxa Plataforma: <strong className="text-blue-400 font-bold">{(tenant as any).platformFeePercentage ?? 10}%</strong> | Repasse Tenant: <strong className="text-emerald-400 font-bold">{(tenant as any).splitPercentage ?? 90}%</strong>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <label className="text-[11px] font-bold text-slate-400">Taxa da Plataforma (%):</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.5"
+                            defaultValue={(tenant as any).platformFeePercentage ?? 10}
+                            id={`fee-input-${tenant.tenantId}`}
+                            className="w-16 px-2 py-1 rounded-lg border bg-transparent font-bold text-xs text-center focus:outline-none focus:border-blue-500"
+                            style={{ borderColor: "var(--border-color)", color: "var(--text-primary)" }}
+                          />
+                          <button
+                            onClick={() => {
+                              const input = document.getElementById(`fee-input-${tenant.tenantId}`) as HTMLInputElement;
+                              if (input) {
+                                const val = Number(input.value);
+                                handleUpdatePlatformFee(tenant.tenantId, val);
+                              }
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-[11px] flex items-center gap-1 shadow-sm active:scale-95 transition-all cursor-pointer"
+                          >
+                            <Save className="w-3.5 h-3.5" /> Salvar Taxa
+                          </button>
+                        </div>
                       </div>
 
                     </div>

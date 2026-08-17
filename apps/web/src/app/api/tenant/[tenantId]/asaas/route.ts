@@ -62,28 +62,34 @@ export async function PUT(
   try {
     const body = await request.json();
     const { walletId, apiKey, splitEnabled, splitPercentage } = body;
-
-    // Sanitização e limites de valores
     const cleanWalletId = (walletId || "").trim().replace(/[^\w-]/g, "");
-    const tenantSplitPercent = typeof splitPercentage === "number" 
-      ? Math.min(100, Math.max(0, splitPercentage)) 
-      : 90;
-    const platformFee = 100 - tenantSplitPercent;
 
+    // Seguranca: A taxa da plataforma e definida exclusivamente pelo Admin.
+    // Ignoramos qualquer tentativa de envio de porcentagem via body pelo tenant.
+    let existingPlatformFee = 10;
     let finalApiKey = "";
+
     if (db) {
       const existingDoc = await db.collection(COLLECTIONS.ASAAS_CONFIGS).doc(cleanTenantId).get();
-      const existingData = existingDoc.exists ? existingDoc.data() : {};
-
-      // Se a chave enviada for mascarada (****), mantém a chave original armazenada no banco de dados
-      if (apiKey && apiKey.startsWith("****")) {
-        finalApiKey = existingData?.apiKey || "";
+      if (existingDoc.exists) {
+        const existingData = existingDoc.data() || {};
+        if (typeof existingData.platformFeePercentage === "number") {
+          existingPlatformFee = Math.min(100, Math.max(0, existingData.platformFeePercentage));
+        }
+        if (apiKey && apiKey.startsWith("****")) {
+          finalApiKey = existingData?.apiKey || "";
+        } else {
+          finalApiKey = (apiKey || "").trim();
+        }
       } else {
         finalApiKey = (apiKey || "").trim();
       }
     } else {
       finalApiKey = (apiKey || "").trim();
     }
+
+    const platformFee = existingPlatformFee;
+    const tenantSplitPercent = Math.max(0, 100 - platformFee);
 
     const updatedConfig = {
       tenantId: cleanTenantId,
