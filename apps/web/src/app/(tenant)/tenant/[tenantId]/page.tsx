@@ -261,20 +261,13 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
     autoRedirectToMenu: false,
   };
   
+  const [isMounted, setIsMounted] = useState(false);
+
   const [tvConfig, setTvConfig] = useState<TenantTvConfig>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("captive_hub_tv_configs");
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (parsed[tenantId]) return parsed[tenantId];
-        } catch (e) {}
-      }
-    }
     return INITIAL_TV_CONFIGS[tenantId] || {
       tenantId,
       tenantName: derivedTenantName,
-      pairingCode: `TV-${Math.floor(1000 + Math.random() * 9000)}`,
+      pairingCode: `TV-8492`,
       addonActive: false,
       showQrOverlay: true,
       showClockOverlay: true,
@@ -289,6 +282,21 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
       },
     };
   });
+
+  useEffect(() => {
+    setIsMounted(true);
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("captive_hub_tv_configs");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed[tenantId]) {
+            setTvConfig(parsed[tenantId]);
+          }
+        } catch (e) {}
+      }
+    }
+  }, [tenantId]);
 
   useEffect(() => {
     async function loadTenantConfigs() {
@@ -1324,7 +1332,10 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
   const addonStates = tvConfig.addonStates || {};
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--bg-primary)" }}>
+    <div className="min-h-screen relative flex flex-col justify-between bg-[#F9FAFB] dark:bg-[#161C24] transition-colors duration-200 font-sans overflow-x-hidden">
+      {/* Background Soft Aura Gradient (Inspiração Minimal UI & Tela de Login) */}
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-blue-100/50 via-indigo-50/30 to-transparent dark:from-blue-900/10 dark:via-transparent pointer-events-none rounded-full blur-3xl -z-10 transform translate-x-1/3 -translate-y-1/3" />
+      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-sky-100/40 via-purple-50/20 to-transparent dark:from-purple-950/10 dark:via-transparent pointer-events-none rounded-full blur-3xl -z-10 transform -translate-x-1/3 translate-y-1/3" />
       
       {/* Toast Notification */}
       {toastMessage && (
@@ -1334,228 +1345,210 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
         </div>
       )}
 
-      {/* Header do Tenant */}
-      <header className="border-b px-6 py-4 flex items-center justify-between shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-bold">
-            <Store className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-              {displayTenantName}
-            </h1>
-            <p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
-              Painel de Gestão Empresarial
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <ThemeToggle />
-          <div className="h-6 w-px" style={{ backgroundColor: "var(--border-color)" }} />
-          <div className="text-right hidden sm:block">
-            <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>{user?.name}</p>
-            <p className="text-[10px]" style={{ color: "var(--text-secondary)" }}>{user?.email}</p>
-          </div>
-          <button
-            onClick={logout}
-            className="p-2 rounded-lg border text-red-600 hover:bg-red-500/10 transition-all flex items-center gap-1.5 text-xs font-semibold"
-            style={{ borderColor: "var(--border-color)" }}
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Sair</span>
-          </button>
-        </div>
-      </header>
-
-      {/* NAVBAR DE NAVEGAÇÃO PRINCIPAL DO TENANT (BOTÕES DINÂMICOS PARA CADA ADD-ON COM LOOP DE SETAS) */}
-      <nav className="border-b px-4 py-2.5 shadow-sm sticky top-0 z-40 backdrop-blur select-none" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
-          
-          {/* Botão de Rolagem Esquerda (Com Loop Infinito) */}
-          <button
-            onClick={() => scrollNav("left")}
-            className="p-2 rounded-xl border hover:bg-purple-600 hover:text-white transition-all shadow-sm shrink-0 flex items-center justify-center cursor-pointer active:scale-95"
-            style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
-            title="Aba Anterior"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-
-          {/* Container Scrollável das Abas (Sem barra de rolagem nativa) */}
-          <div 
-            ref={navContainerRef}
-            className="flex items-center gap-2 overflow-x-auto scroll-smooth py-0.5 no-scrollbar flex-1"
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-          >
-            <button
-              onClick={() => setActiveTab("dashboard")}
-              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
-                activeTab === "dashboard"
-                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
-                  : "hover:bg-slate-100 dark:hover:bg-slate-800"
-              }`}
-              style={{ color: activeTab === "dashboard" ? "#ffffff" : "var(--text-primary)" }}
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              <span>Início (Dashboard)</span>
-            </button>
-
-            {addonStates["midia-indoor"]?.active && (
-              <button
-                onClick={() => setActiveTab("midia-indoor")}
-                className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
-                  activeTab === "midia-indoor"
-                    ? "bg-purple-600 text-white shadow-md shadow-purple-600/20"
-                    : "hover:bg-slate-100 dark:hover:bg-slate-800"
-                }`}
-                style={{ color: activeTab === "midia-indoor" ? "#ffffff" : "var(--text-primary)" }}
-              >
-                <Tv className="w-4 h-4 text-purple-400" />
-                <span>Mídia TV & Rádio Indoor</span>
-              </button>
-            )}
-
-            {addonStates["google-reviews"]?.active && (
-              <button
-                onClick={() => setActiveTab("google-reviews")}
-                className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
-                  activeTab === "google-reviews"
-                    ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
-                    : "hover:bg-slate-100 dark:hover:bg-slate-800"
-                }`}
-                style={{ color: activeTab === "google-reviews" ? "#000000" : "var(--text-primary)" }}
-              >
-                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                <span>Reputação Google</span>
-              </button>
-            )}
-
-            {addonStates["whatsapp-bot"]?.active && (
-              <button
-                onClick={() => setActiveTab("whatsapp-bot")}
-                className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
-                  activeTab === "whatsapp-bot"
-                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
-                    : "hover:bg-slate-100 dark:hover:bg-slate-800"
-                }`}
-                style={{ color: activeTab === "whatsapp-bot" ? "#ffffff" : "var(--text-primary)" }}
-              >
-                <MessageSquare className="w-4 h-4 text-emerald-400" />
-                <span>WhatsApp Bot</span>
-              </button>
-            )}
-
-            {addonStates["roleta-da-sorte"]?.active && (
-              <button
-                onClick={() => setActiveTab("roleta-da-sorte")}
-                className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
-                  activeTab === "roleta-da-sorte"
-                    ? "bg-rose-600 text-white shadow-md shadow-rose-600/20"
-                    : "hover:bg-slate-100 dark:hover:bg-slate-800"
-                }`}
-                style={{ color: activeTab === "roleta-da-sorte" ? "#ffffff" : "var(--text-primary)" }}
-              >
-                <Dices className="w-4 h-4 text-rose-300" />
-                <span>Roleta da Sorte</span>
-              </button>
-            )}
-
-            {addonStates["loja-produtos"]?.active && (
-              <button
-                onClick={() => setActiveTab("loja-produtos")}
-                className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
-                  activeTab === "loja-produtos"
-                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
-                    : "hover:bg-slate-100 dark:hover:bg-slate-800"
-                }`}
-                style={{ color: activeTab === "loja-produtos" ? "#ffffff" : "var(--text-primary)" }}
-              >
-                <ShoppingBag className="w-4 h-4 text-emerald-400" />
-                <span>Loja & Estoque</span>
-                <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-500/20 text-emerald-300 font-extrabold uppercase">
-                  Vendas Pix
+      <div className="flex-1 flex flex-col lg:flex-row min-h-screen">
+        {/* LEFT SIDEMENU DO TENANT (SIDEBAR NA ESQUERDA - PADRÃO MINIMAL UI KIT) */}
+        <aside className="w-full lg:w-72 shrink-0 bg-white dark:bg-[#212B36] border-r border-[#919EAB]/12 flex flex-col justify-between p-6 sticky top-0 lg:h-screen select-none">
+          <div className="space-y-6">
+            {/* LOGO DO HUB VAELIS */}
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#2065D1] text-white flex items-center justify-center font-bold shadow-md shadow-blue-600/20">
+                <Store className="w-5 h-5" />
+              </div>
+              <div>
+                <h1 className="text-base font-extrabold tracking-tight text-[#212B36] dark:text-white">
+                  Vaelis<span className="text-[#2065D1]">.HUB</span>
+                </h1>
+                <span className="px-2 py-0.5 rounded text-[9px] font-extrabold uppercase bg-[#00A76F]/10 text-[#00A76F]">
+                  Gestão Tenant
                 </span>
-              </button>
-            )}
+              </div>
+            </div>
 
-            <button
-              onClick={() => setActiveTab("cupons")}
-              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
-                activeTab === "cupons"
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                  : "hover:bg-slate-100 dark:hover:bg-slate-800"
-              }`}
-              style={{ color: activeTab === "cupons" ? "#ffffff" : "var(--text-primary)" }}
-            >
-              <Tag className="w-4 h-4 text-blue-400" />
-              <span>Cupons de Desconto</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-blue-500/20 text-blue-300 font-extrabold uppercase">
-                Marketing
-              </span>
-            </button>
+            {/* CARD SELETOR DE ESTABELECIMENTO */}
+            <div className="p-3.5 rounded-2xl bg-gray-100/80 dark:bg-zinc-800/60 flex items-center gap-3 border border-[#919EAB]/12">
+              <div className="w-9 h-9 rounded-xl bg-[#2065D1] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                <Building className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-[#212B36] dark:text-white truncate">{displayTenantName}</p>
+                <span className="text-[10px] text-[#00A76F] block font-extrabold uppercase">● Loja Ativa</span>
+              </div>
+            </div>
 
-            <button
-              onClick={() => setActiveTab("asaas-split")}
-              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
-                activeTab === "asaas-split"
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                  : "hover:bg-slate-100 dark:hover:bg-slate-800"
-              }`}
-              style={{ color: activeTab === "asaas-split" ? "#ffffff" : "var(--text-primary)" }}
-            >
-              <CreditCard className="w-4 h-4 text-blue-400" />
-              <span>Asaas & Split Pix</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] bg-blue-500/20 text-blue-300 font-extrabold uppercase">
-                Split v3
-              </span>
-            </button>
+            {/* MENU DE NAVEGAÇÃO VERTICAL DA TENANT NA ESQUERDA */}
+            <nav className="space-y-1.5 overflow-y-auto max-h-[calc(100vh-220px)] no-scrollbar">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#919EAB] px-3 pb-1">
+                Menu do Estabelecimento
+              </p>
 
-
-
-            {addonStates["multi-unidades"]?.active && (
               <button
-                onClick={() => setActiveTab("multi-unidades")}
-                className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
-                  activeTab === "multi-unidades"
-                    ? "bg-cyan-600 text-white shadow-md shadow-cyan-600/20"
-                    : "hover:bg-slate-100 dark:hover:bg-slate-800"
+                onClick={() => setActiveTab("dashboard")}
+                className={`w-full px-4 py-3 rounded-xl font-bold text-xs flex items-center gap-3 transition-all cursor-pointer ${
+                  activeTab === "dashboard"
+                    ? "bg-[#D6E4FF] dark:bg-[#2065D1]/20 text-[#2065D1] dark:text-[#84A9FF] shadow-sm"
+                    : "text-[#637381] dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800/70"
                 }`}
-                style={{ color: activeTab === "multi-unidades" ? "#ffffff" : "var(--text-primary)" }}
               >
-                <Building className="w-4 h-4 text-cyan-300" />
-                <span>Multi-Unidades</span>
+                <LayoutDashboard className="w-4 h-4" />
+                <span>Início (Dashboard)</span>
               </button>
-            )}
 
-            <button
-              onClick={() => setActiveTab("servicos")}
-              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
-                activeTab === "servicos"
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                  : "hover:bg-slate-100 dark:hover:bg-slate-800 text-blue-600 dark:text-blue-400"
-              }`}
-            >
-              <ShoppingCart className="w-4 h-4" />
-              <span>Contratar Serviços</span>
-            </button>
+              {isMounted && addonStates["midia-indoor"]?.active && (
+                <button
+                  onClick={() => setActiveTab("midia-indoor")}
+                  className={`w-full px-4 py-3 rounded-xl font-bold text-xs flex items-center gap-3 transition-all cursor-pointer ${
+                    activeTab === "midia-indoor"
+                      ? "bg-[#D6E4FF] dark:bg-[#2065D1]/20 text-[#2065D1] dark:text-[#84A9FF] shadow-sm"
+                      : "text-[#637381] dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800/70"
+                  }`}
+                >
+                  <Tv className="w-4 h-4" />
+                  <span>Mídia TV & Rádio Indoor</span>
+                </button>
+              )}
+
+              {isMounted && addonStates["google-reviews"]?.active && (
+                <button
+                  onClick={() => setActiveTab("google-reviews")}
+                  className={`w-full px-4 py-3 rounded-xl font-bold text-xs flex items-center gap-3 transition-all cursor-pointer ${
+                    activeTab === "google-reviews"
+                      ? "bg-[#D6E4FF] dark:bg-[#2065D1]/20 text-[#2065D1] dark:text-[#84A9FF] shadow-sm"
+                      : "text-[#637381] dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800/70"
+                  }`}
+                >
+                  <Star className="w-4 h-4" />
+                  <span>Reputação Google (NPS)</span>
+                </button>
+              )}
+
+              {isMounted && addonStates["whatsapp-bot"]?.active && (
+                <button
+                  onClick={() => setActiveTab("whatsapp-bot")}
+                  className={`w-full px-4 py-3 rounded-xl font-bold text-xs flex items-center gap-3 transition-all cursor-pointer ${
+                    activeTab === "whatsapp-bot"
+                      ? "bg-[#D6E4FF] dark:bg-[#2065D1]/20 text-[#2065D1] dark:text-[#84A9FF] shadow-sm"
+                      : "text-[#637381] dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800/70"
+                  }`}
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>WhatsApp Bot AI</span>
+                </button>
+              )}
+
+              {isMounted && addonStates["roleta-da-sorte"]?.active && (
+                <button
+                  onClick={() => setActiveTab("roleta-da-sorte")}
+                  className={`w-full px-4 py-3 rounded-xl font-bold text-xs flex items-center gap-3 transition-all cursor-pointer ${
+                    activeTab === "roleta-da-sorte"
+                      ? "bg-[#D6E4FF] dark:bg-[#2065D1]/20 text-[#2065D1] dark:text-[#84A9FF] shadow-sm"
+                      : "text-[#637381] dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800/70"
+                  }`}
+                >
+                  <Dices className="w-4 h-4" />
+                  <span>Roleta da Sorte</span>
+                </button>
+              )}
+
+              {isMounted && addonStates["loja-produtos"]?.active && (
+                <button
+                  onClick={() => setActiveTab("loja-produtos")}
+                  className={`w-full px-4 py-3 rounded-xl font-bold text-xs flex items-center gap-3 transition-all cursor-pointer ${
+                    activeTab === "loja-produtos"
+                      ? "bg-[#D6E4FF] dark:bg-[#2065D1]/20 text-[#2065D1] dark:text-[#84A9FF] shadow-sm"
+                      : "text-[#637381] dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800/70"
+                  }`}
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>Loja & Estoque</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => setActiveTab("cupons")}
+                className={`w-full px-4 py-3 rounded-xl font-bold text-xs flex items-center gap-3 transition-all cursor-pointer ${
+                  activeTab === "cupons"
+                    ? "bg-[#D6E4FF] dark:bg-[#2065D1]/20 text-[#2065D1] dark:text-[#84A9FF] shadow-sm"
+                    : "text-[#637381] dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800/70"
+                }`}
+              >
+                <Tag className="w-4 h-4" />
+                <span>Cupons de Desconto</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab("asaas-split")}
+                className={`w-full px-4 py-3 rounded-xl font-bold text-xs flex items-center gap-3 transition-all cursor-pointer ${
+                  activeTab === "asaas-split"
+                    ? "bg-[#D6E4FF] dark:bg-[#2065D1]/20 text-[#2065D1] dark:text-[#84A9FF] shadow-sm"
+                    : "text-[#637381] dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800/70"
+                }`}
+              >
+                <CreditCard className="w-4 h-4" />
+                <span>Asaas & Split Pix</span>
+              </button>
+
+              {isMounted && addonStates["multi-unidades"]?.active && (
+                <button
+                  onClick={() => setActiveTab("multi-unidades")}
+                  className={`w-full px-4 py-3 rounded-xl font-bold text-xs flex items-center gap-3 transition-all cursor-pointer ${
+                    activeTab === "multi-unidades"
+                      ? "bg-[#D6E4FF] dark:bg-[#2065D1]/20 text-[#2065D1] dark:text-[#84A9FF] shadow-sm"
+                      : "text-[#637381] dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800/70"
+                  }`}
+                >
+                  <Building className="w-4 h-4" />
+                  <span>Multi-Unidades</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => setActiveTab("servicos")}
+                className={`w-full px-4 py-3 rounded-xl font-bold text-xs flex items-center gap-3 transition-all cursor-pointer ${
+                  activeTab === "servicos"
+                    ? "bg-[#D6E4FF] dark:bg-[#2065D1]/20 text-[#2065D1] dark:text-[#84A9FF] shadow-sm"
+                    : "text-[#637381] dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800/70"
+                }`}
+              >
+                <ShoppingCart className="w-4 h-4" />
+                <span>Contratar Módulos</span>
+              </button>
+            </nav>
           </div>
+        </aside>
 
-          {/* Botão de Rolagem Direita (Com Loop Infinito) */}
-          <button
-            onClick={() => scrollNav("right")}
-            className="p-2 rounded-xl border hover:bg-purple-600 hover:text-white transition-all shadow-sm shrink-0 flex items-center justify-center cursor-pointer active:scale-95"
-            style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
-            title="Próxima Aba"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
+        {/* CONTAINER DIREITO (HEADER TOPO + CONTEÚDO DAS ABAS) */}
+        <div className="flex-1 flex flex-col min-w-0">
+          
+          {/* HEADER TOPO DA TENANT */}
+          <header className="w-full border-b border-[#919EAB]/12 px-6 py-4 flex items-center justify-between sticky top-0 z-30 bg-white/80 dark:bg-[#161C24]/80 backdrop-blur-md shadow-sm">
+            <div>
+              <h2 className="text-base font-bold text-[#212B36] dark:text-white flex items-center gap-2">
+                {displayTenantName}
+              </h2>
+              <p className="text-xs text-[#637381] dark:text-gray-400">
+                Painel de Gestão Empresarial & Automações
+              </p>
+            </div>
 
-        </div>
-      </nav>
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <div className="h-6 w-px bg-[#919EAB]/20" />
+              <div className="text-right hidden sm:block">
+                <p className="text-xs font-semibold text-[#212B36] dark:text-white">{user?.name}</p>
+                <p className="text-[10px] text-[#637381] dark:text-gray-400">{user?.email}</p>
+              </div>
+              <button
+                onClick={logout}
+                className="p-2 rounded-xl text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-all flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Sair</span>
+              </button>
+            </div>
+          </header>
 
-      {/* Conteúdo Principal base de acordo com a aba selecionada */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
+          {/* ÁREA DE CONTEÚDO PRINCIPAL */}
+          <main className="flex-1 p-6 space-y-6">
 
         {/* ========================================================================= */}
         {activeTab === "captive-portal" && (
@@ -1592,7 +1585,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleSaveCaptivePortalSettings}
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-emerald-600/20 transition-all"
+                  className="px-5 py-2.5 rounded-xl bg-[#2065D1] hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
                 >
                   <CheckCircle2 className="w-4 h-4" /> Salvar Alterações
                 </button>
@@ -1600,7 +1593,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
             </div>
 
             {/* SEÇÃO 1: PLANOS PIX MONETIZADOS & LIMITES DE BANDA */}
-            <div className="rounded-2xl border p-6 shadow-sm space-y-5" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+            <div className="rounded-2xl border-0 p-6 shadow-minimal space-y-5" style={{ backgroundColor: "var(--bg-surface)" }}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4" style={{ borderColor: "var(--border-color)" }}>
                 <div>
                   <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
@@ -1614,7 +1607,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
 
                 <button
                   onClick={() => setShowAddPlanModal(true)}
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-blue-600/20 shrink-0"
+                  className="px-4 py-2 rounded-xl bg-[#212B36] hover:bg-black text-white font-bold text-xs flex items-center gap-2 shadow-md shrink-0 cursor-pointer"
                 >
                   <Plus className="w-4 h-4" /> Novo Plano
                 </button>
@@ -1682,7 +1675,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
             </div>
 
             {/* SEÇÃO 2: REGRA DE ACESSO GRÁTIS COM PATROCÍNIO/ANÚNCIO */}
-            <div className="rounded-2xl border p-6 shadow-sm space-y-5" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+            <div className="rounded-2xl border-0 p-6 shadow-minimal space-y-5" style={{ backgroundColor: "var(--bg-surface)" }}>
               <div>
                 <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
                   <ShieldCheck className="w-5 h-5 text-emerald-500" />
@@ -1762,46 +1755,58 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
               </a>
             </div>
 
-            {/* Grid de Cards Principais de Estatística do Estabelecimento */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-5 rounded-2xl border-0 shadow-minimal space-y-2" style={{ backgroundColor: "var(--bg-surface)" }}>
+            {/* Grid de Cards Principais de Estatística do Estabelecimento (Minimal UI Soft Pastel Gradients) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {/* Card 1: Leads (Soft Cyan/Blue) */}
+              <div className="p-6 rounded-2xl border-0 shadow-minimal space-y-3 bg-gradient-to-br from-[#EDF6FF] to-[#D6E4FF] dark:from-blue-950/40 dark:to-cyan-950/30 transition-all hover:scale-[1.01]">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Leads & Contatos</span>
-                  <MessageSquare className="w-5 h-5 text-[#00A76F]" />
+                  <span className="text-xs font-bold text-[#0038FF] uppercase tracking-wider">Leads & Contatos</span>
+                  <div className="p-2.5 rounded-xl bg-white/70 dark:bg-blue-900/50 text-[#0038FF]">
+                    <MessageSquare className="w-6 h-6" />
+                  </div>
                 </div>
-                <p className="text-2xl font-extrabold text-[#00A76F]">{capturedLeadsList.length} Clientes</p>
-                <p className="text-xs text-[#00A76F] font-medium">{capturedLeadsList.length > 0 ? "Capturados via WhatsApp / Roleta" : "Nenhum lead capturado ainda"}</p>
+                <p className="text-3xl font-extrabold text-[#002B99] dark:text-[#84A9FF]">{capturedLeadsList.length} Clientes</p>
+                <p className="text-xs text-[#0038FF] dark:text-cyan-300 font-semibold">{capturedLeadsList.length > 0 ? "Capturados via WhatsApp / Roleta" : "Nenhum lead capturado ainda"}</p>
               </div>
 
+              {/* Card 2: Google (Soft Lavender/Purple) */}
               {addonStates["google-reviews"]?.active && (
-                <div className="p-5 rounded-2xl border-0 shadow-minimal space-y-2" style={{ backgroundColor: "var(--bg-surface)" }}>
+                <div className="p-6 rounded-2xl border-0 shadow-minimal space-y-3 bg-gradient-to-br from-[#F5EEFE] to-[#E5D5FC] dark:from-purple-950/40 dark:to-indigo-950/30 transition-all hover:scale-[1.01]">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Reputação Google</span>
-                    <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+                    <span className="text-xs font-bold text-[#7635DC] uppercase tracking-wider">Reputação Google</span>
+                    <div className="p-2.5 rounded-xl bg-white/70 dark:bg-purple-900/50 text-[#7635DC]">
+                      <Star className="w-6 h-6 fill-[#7635DC]" />
+                    </div>
                   </div>
-                  <p className="text-2xl font-extrabold text-amber-500">0 Votos</p>
-                  <p className="text-xs font-medium text-amber-600">Aguardando avaliações NPS</p>
+                  <p className="text-3xl font-extrabold text-[#5119B7] dark:text-purple-300">0 Votos</p>
+                  <p className="text-xs text-[#7635DC] dark:text-purple-300 font-semibold">Aguardando avaliações NPS</p>
                 </div>
               )}
 
+              {/* Card 3: Mídia TV (Soft Amber/Yellow) */}
               {addonStates["midia-indoor"]?.active && (
-                <div className="p-5 rounded-2xl border-0 shadow-minimal space-y-2" style={{ backgroundColor: "var(--bg-surface)" }}>
+                <div className="p-6 rounded-2xl border-0 shadow-minimal space-y-3 bg-gradient-to-br from-[#FFF9E6] to-[#FFF1C2] dark:from-amber-950/40 dark:to-yellow-950/30 transition-all hover:scale-[1.01]">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Mídia TV & Exibições</span>
-                    <Tv className="w-5 h-5 text-purple-600" />
+                    <span className="text-xs font-bold text-[#B76E00] uppercase tracking-wider">Mídia TV & Indoor</span>
+                    <div className="p-2.5 rounded-xl bg-white/70 dark:bg-amber-900/50 text-[#B76E00]">
+                      <Tv className="w-6 h-6" />
+                    </div>
                   </div>
-                  <p className="text-2xl font-extrabold text-purple-600">{tvPlaylist.length} Mídias</p>
-                  <p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Ativas na Playlist da TV</p>
+                  <p className="text-3xl font-extrabold text-[#7A4100] dark:text-amber-300">{tvPlaylist.length} Mídias</p>
+                  <p className="text-xs text-[#B76E00] dark:text-amber-300 font-semibold">Ativas na Playlist da TV</p>
                 </div>
               )}
 
-              <div className="p-5 rounded-2xl border-0 shadow-minimal space-y-2" style={{ backgroundColor: "var(--bg-surface)" }}>
+              {/* Card 4: Vendas (Soft Coral/Rose) */}
+              <div className="p-6 rounded-2xl border-0 shadow-minimal space-y-3 bg-gradient-to-br from-[#FFECCC] to-[#FFD8BF] dark:from-rose-950/40 dark:to-red-950/30 transition-all hover:scale-[1.01]">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Vendas Pix & Cupons</span>
-                  <ShoppingCart className="w-5 h-5 text-[#078DEE]" />
+                  <span className="text-xs font-bold text-[#B72136] uppercase tracking-wider">Vendas Pix & Cupons</span>
+                  <div className="p-2.5 rounded-xl bg-white/70 dark:bg-rose-900/50 text-[#B72136]">
+                    <ShoppingCart className="w-6 h-6" />
+                  </div>
                 </div>
-                <p className="text-2xl font-extrabold text-[#078DEE]">{productSalesList.length} Transações</p>
-                <p className="text-xs font-medium text-[#078DEE]">Vendas Loja & Resgates Pix</p>
+                <p className="text-3xl font-extrabold text-[#7A0C2E] dark:text-rose-300">{productSalesList.length} Transações</p>
+                <p className="text-xs text-[#B72136] dark:text-rose-300 font-semibold">Vendas Loja & Resgates Pix</p>
               </div>
             </div>
 
@@ -2196,7 +2201,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                     navigator.clipboard.writeText(tvUrl);
                     showNotification("📋 URL da Mídia Indoor copiada com sucesso!");
                   }}
-                  className="px-3.5 py-2.5 rounded-xl border border-purple-500/40 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 font-bold text-xs flex items-center gap-2 transition-all"
+                  className="px-3.5 py-2.5 rounded-xl border border-[#919EAB]/30 text-[#212B36] dark:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer"
                 >
                   <Copy className="w-4 h-4" /> Copiar URL da TV
                 </button>
@@ -2204,7 +2209,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                   href={`/tv/${tenantId}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all"
+                  className="px-4 py-2.5 rounded-xl bg-[#212B36] hover:bg-black text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
                 >
                   <Tv className="w-4 h-4" /> Lançar TV Player em Nova Aba
                 </a>
@@ -2216,7 +2221,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 <h3 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Playlist Transmitida na Smart TV</h3>
                 <button
                   onClick={() => setShowAddTvMediaModal(true)}
-                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-2 shadow-md"
+                  className="px-4 py-2 rounded-xl bg-[#2065D1] hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-2 shadow-md cursor-pointer"
                 >
                   <Plus className="w-4 h-4" /> Adicionar Foto ou Vídeo MP4
                 </button>
@@ -2266,7 +2271,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 <button
                   onClick={handleSaveTvOverlaySettings}
                   disabled={isSavingTvOverlays}
-                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shrink-0"
+                  className="px-5 py-2.5 rounded-xl bg-[#2065D1] hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shrink-0 cursor-pointer"
                 >
                   <Save className="w-4 h-4" /> {isSavingTvOverlays ? "Salvando..." : "Salvar Personalização do Layout"}
                 </button>
@@ -2373,7 +2378,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 <button
                   onClick={handleSaveTvOverlaySettings}
                   disabled={isSavingTvOverlays}
-                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shrink-0"
+                  className="px-5 py-2.5 rounded-xl bg-[#2065D1] hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shrink-0 cursor-pointer"
                 >
                   <Save className="w-4 h-4" /> {isSavingTvOverlays ? "Salvando..." : "Salvar Configurações de CTA"}
                 </button>
@@ -2499,7 +2504,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                       window.location.href = `/api/auth/spotify/login?tenantId=${tenantId}`;
                     }
                   }}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition-all shrink-0 cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-[#212B36] hover:bg-black text-white font-extrabold text-xs flex items-center gap-2 shadow-md transition-all shrink-0 cursor-pointer"
                 >
                   <Music className="w-4 h-4 fill-white" />
                   {isSpotifyConnected ? "Desconectar Spotify ✓" : "Logar com Spotify"}
@@ -2928,7 +2933,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 </div>
                 <button
                   onClick={() => showNotification("Configurações do WhatsApp Bot salvas com sucesso!")}
-                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all active:scale-95"
+                  className="px-4 py-2.5 rounded-xl bg-[#2065D1] hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
                 >
                   <Check className="w-4 h-4" /> Salvar Mensagens
                 </button>
@@ -3092,7 +3097,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                     className="px-3 py-1.5 rounded-lg border text-xs"
                     style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
                   />
-                  <button type="submit" className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs shrink-0">
+                  <button type="submit" className="px-3 py-1.5 rounded-lg bg-[#2065D1] hover:bg-blue-700 text-white font-bold text-xs shrink-0 cursor-pointer">
                     + Adicionar
                   </button>
                 </form>
@@ -3131,7 +3136,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                               href={waUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] inline-flex items-center gap-1.5 shadow-sm transition-all"
+                              className="px-3 py-1.5 rounded-lg bg-[#212B36] hover:bg-black text-white font-bold text-[11px] inline-flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                             >
                               <MessageSquare className="w-3.5 h-3.5" /> Disparar Lembrete WhatsApp
                             </a>
@@ -3199,7 +3204,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                   href={`/roleta/${tenantId}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-rose-600/20"
+                  className="px-4 py-2 rounded-xl bg-[#212B36] hover:bg-black text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
                 >
                   <ExternalLink className="w-4 h-4" /> Abrir Roleta Externa
                 </a>
@@ -3234,7 +3239,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                       className="w-20 p-2.5 rounded-xl border text-xs font-bold text-center"
                       style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
                     />
-                    <button type="submit" className="px-4 py-2.5 rounded-xl bg-rose-600 text-white font-bold text-xs shadow-md">+ Adicionar</button>
+                    <button type="submit" className="px-4 py-2.5 rounded-xl bg-[#2065D1] hover:bg-blue-700 text-white font-bold text-xs shadow-md cursor-pointer">+ Adicionar</button>
                   </form>
 
                   <div className="space-y-2">
@@ -3306,7 +3311,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                     </div>
                   </div>
 
-                  <button onClick={handleSpinWheelSim} disabled={isSpinningWheel} className="w-full py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-md shadow-rose-600/20 active:scale-95 transition-all">
+                  <button onClick={handleSpinWheelSim} disabled={isSpinningWheel} className="w-full py-3 rounded-xl bg-[#212B36] hover:bg-black text-white font-extrabold text-xs shadow-md active:scale-95 transition-all cursor-pointer">
                     {isSpinningWheel ? "Girando Roleta de Teste..." : "Girar Roleta de Teste"}
                   </button>
 
@@ -3340,7 +3345,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowStoreQrModal(true)}
-                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/20 active:scale-95 transition-all shrink-0"
+                  className="px-4 py-2.5 rounded-xl bg-[#212B36] hover:bg-black text-white font-extrabold text-xs flex items-center gap-2 shadow-md cursor-pointer transition-all shrink-0"
                 >
                   <QrCode className="w-4 h-4" /> Acessar PDV / E-commerce do Cliente
                 </button>
@@ -3389,7 +3394,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
 
                 <button
                   onClick={handleOpenNewProductModal}
-                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/20 active:scale-95 transition-all shrink-0"
+                  className="px-4 py-2.5 rounded-xl bg-[#2065D1] hover:bg-blue-700 text-white font-extrabold text-xs flex items-center gap-2 shadow-md cursor-pointer transition-all shrink-0"
                 >
                   <Plus className="w-4 h-4 stroke-[3]" /> Cadastrar Novo Produto
                 </button>
@@ -3826,8 +3831,8 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
         )}
 
       </main>
-
-      {/* MODAL ADICIONAR MÍDIA NA TV */}
+        </div>
+      </div>
       {showAddTvMediaModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="rounded-3xl border p-6 max-w-md w-full space-y-4 shadow-2xl animate-scale-up" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>

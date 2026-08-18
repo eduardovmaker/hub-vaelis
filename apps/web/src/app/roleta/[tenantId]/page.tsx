@@ -176,19 +176,19 @@ export default function ExternalRoletaPage({ params }: { params: Promise<{ tenan
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-between" style={{ backgroundColor: "var(--bg-primary)" }}>
+    <div className="min-h-screen flex flex-col justify-between bg-[#F9FAFB] dark:bg-[#161C24] transition-colors duration-200 font-sans">
       
-      {/* Header com Marca do Estabelecimento */}
-      <header className="w-full max-w-md mx-auto px-4 py-4 flex items-center justify-between border-b" style={{ borderColor: "var(--border-color)" }}>
+      {/* Header com Marca do Estabelecimento (Minimal Glassmorphism) */}
+      <header className="w-full max-w-md mx-auto px-4 py-4 flex items-center justify-between sticky top-0 z-40 bg-white/80 dark:bg-[#161C24]/80 backdrop-blur-md border-0 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-bold shadow-lg" style={{ backgroundColor: primaryColor }}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold shadow-md" style={{ backgroundColor: primaryColor }}>
             <Store className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-base font-extrabold tracking-tight" style={{ color: "var(--text-primary)" }}>
+            <h1 className="text-base font-bold tracking-tight text-[#212B36] dark:text-white">
               {tenantName}
             </h1>
-            <p className="text-[11px] font-semibold text-rose-500 flex items-center gap-1">
+            <p className="text-[11px] font-semibold text-[#2065D1] flex items-center gap-1">
               <Dices className="w-3.5 h-3.5" /> Roleta da Sorte Digital
             </p>
           </div>

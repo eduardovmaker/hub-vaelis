@@ -290,7 +290,7 @@ export function CouponManagement({ tenantId }: CouponManagementProps) {
           Carregando cupons da loja...
         </div>
       ) : filteredCoupons.length === 0 ? (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl p-12 text-center border border-zinc-200/80 dark:border-zinc-800">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl p-12 text-center border-0 shadow-minimal">
           <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 flex items-center justify-center mx-auto mb-4">
             <Tag className="w-6 h-6" />
           </div>
@@ -305,7 +305,7 @@ export function CouponManagement({ tenantId }: CouponManagementProps) {
           {!searchQuery && (
             <button
               onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-all"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#2065D1] hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-md transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Criar Primeiro Cupom
@@ -435,7 +435,7 @@ export function CouponManagement({ tenantId }: CouponManagementProps) {
 
                   <button
                     onClick={() => handleDeleteCoupon(coupon.id)}
-                    className="p-1.5 text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-all"
+                    className="p-1.5 text-[#FF5630] hover:text-red-700 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 transition-all cursor-pointer"
                     title="Excluir cupom"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -450,7 +450,7 @@ export function CouponManagement({ tenantId }: CouponManagementProps) {
       {/* Modal de Criação de Cupom - Minimal Kit Style */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border-0 max-w-md w-full p-6 shadow-minimal-dialog space-y-5 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                 <Tag className="w-5 h-5 text-blue-600" />
@@ -577,7 +577,7 @@ export function CouponManagement({ tenantId }: CouponManagementProps) {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 rounded-xl text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white transition-all disabled:opacity-50 flex items-center gap-2"
+                  className="px-5 py-2 rounded-xl text-sm font-bold bg-[#2065D1] hover:bg-blue-700 text-white transition-all disabled:opacity-50 flex items-center gap-2 shadow-md cursor-pointer"
                 >
                   {submitting ? "Criando..." : "Salvar Cupom"}
                 </button>

@@ -164,25 +164,25 @@ export default function PublicCheckoutPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-between" style={{ backgroundColor: "var(--bg-primary)" }}>
-      {/* Header com Logo Vaelis-HUB e Theme Toggle */}
-      <header className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between border-b" style={{ borderColor: "var(--border-color)" }}>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-600/30">
+    <div className="min-h-screen flex flex-col justify-between bg-[#F9FAFB] dark:bg-[#161C24] transition-colors duration-200 font-sans">
+      {/* Header com Logo Vaelis-HUB e Theme Toggle (Minimal Glassmorphism) */}
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-[#161C24]/80 backdrop-blur-md border-0 px-6 py-4 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-[#2065D1] flex items-center justify-center text-white shadow-md shadow-blue-600/20">
             <Zap className="w-5 h-5 stroke-[2.5]" />
           </div>
           <div>
-            <h1 className="text-xl font-extrabold tracking-tight" style={{ color: "var(--text-primary)" }}>
-              Vaelis<span style={{ color: "var(--brand-primary)" }}>-HUB</span>
+            <h1 className="text-xl font-bold tracking-tight text-[#212B36] dark:text-white">
+              Vaelis<span className="text-[#2065D1]">.HUB</span>
             </h1>
-            <p className="text-xs font-medium text-slate-400">
+            <p className="text-xs font-medium text-[#637381] dark:text-gray-400">
               Plataforma Omnichannel de Engajamento, Mídia Indoor & Captive Portal
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <a href="/login" className="px-3.5 py-1.5 rounded-xl border text-xs font-bold text-slate-400 hover:text-white transition-all" style={{ borderColor: "var(--border-color)" }}>
+          <a href="/login" className="px-3.5 py-1.5 rounded-xl border border-[#919EAB]/20 text-xs font-semibold text-[#637381] hover:text-[#212B36] dark:hover:text-white transition-all">
             Já sou cliente (Login)
           </a>
           <ThemeToggle />
@@ -194,17 +194,17 @@ export default function PublicCheckoutPage() {
         
         {/* Indicador dos Passos */}
         <div className="flex items-center justify-center gap-2 sm:gap-4 text-xs font-bold">
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${step >= 1 ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400"}`}>
+          <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full ${step >= 1 ? "bg-[#2065D1] text-white shadow-sm" : "bg-gray-200 dark:bg-zinc-800 text-gray-500"}`}>
             <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">1</span>
             <span>Dados do Estabelecimento</span>
           </div>
-          <div className="w-6 h-px bg-slate-700" />
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${step >= 2 ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400"}`}>
+          <div className="w-6 h-px bg-gray-300 dark:bg-zinc-700" />
+          <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full ${step >= 2 ? "bg-[#2065D1] text-white shadow-sm" : "bg-gray-200 dark:bg-zinc-800 text-gray-500"}`}>
             <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">2</span>
             <span>Pagamento Instantâneo</span>
           </div>
-          <div className="w-6 h-px bg-slate-700" />
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${step === 3 ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400"}`}>
+          <div className="w-6 h-px bg-gray-300 dark:bg-zinc-700" />
+          <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full ${step === 3 ? "bg-[#00A76F] text-white shadow-sm" : "bg-gray-200 dark:bg-zinc-800 text-gray-500"}`}>
             <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">3</span>
             <span>Ativação & Acesso ao Painel</span>
           </div>
@@ -214,15 +214,15 @@ export default function PublicCheckoutPage() {
         {/* PASSO 1: DADOS CADASTRAIS DO CLIENTE & ESTABELECIMENTO                    */}
         {/* ========================================================================= */}
         {step === 1 && (
-          <div className="rounded-2xl border p-6 sm:p-8 shadow-2xl space-y-6 animate-fade-in" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-            <div className="space-y-1 text-center">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Ativação Imediata & Instantânea
+          <div className="bg-white dark:bg-[#212B36] rounded-2xl border-0 p-6 sm:p-8 shadow-minimal space-y-6 animate-fade-in">
+            <div className="space-y-1.5 text-center">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#2065D1]/10 text-[#2065D1] dark:text-[#84A9FF]">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Ativação Imediata & Instantânea
               </span>
-              <h2 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
+              <h2 className="text-2xl font-bold tracking-tight text-[#212B36] dark:text-white">
                 Ativar Plataforma Vaelis-HUB
               </h2>
-              <p className="text-xs text-slate-400 leading-relaxed max-w-xl mx-auto">
+              <p className="text-xs text-[#637381] dark:text-gray-400 leading-relaxed max-w-xl mx-auto">
                 Cadastre sua empresa para liberar o painel completo com Mídia Indoor TV, Rádio Comercial sem anúncios, Automação de Avaliações Google e Módulo Wi-Fi.
               </p>
             </div>

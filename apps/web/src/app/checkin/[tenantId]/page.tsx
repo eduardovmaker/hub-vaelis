@@ -68,19 +68,19 @@ export default function StandaloneCheckinPage({ params }: { params: Promise<{ te
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-between transition-colors duration-200" style={{ backgroundColor: "var(--bg-primary)" }}>
+    <div className="min-h-screen flex flex-col justify-between bg-[#F9FAFB] dark:bg-[#161C24] transition-colors duration-200 font-sans">
       
-      {/* Header com a Marca do Estabelecimento */}
-      <header className="w-full max-w-md mx-auto px-4 py-4 flex items-center justify-between border-b" style={{ borderColor: "var(--border-color)" }}>
+      {/* Header com a Marca do Estabelecimento (Minimal Glassmorphism) */}
+      <header className="w-full max-w-md mx-auto px-4 py-4 flex items-center justify-between sticky top-0 z-40 bg-white/80 dark:bg-[#161C24]/80 backdrop-blur-md border-0 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-bold shadow-lg" style={{ backgroundColor: primaryColor }}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold shadow-md" style={{ backgroundColor: primaryColor }}>
             <Store className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-base font-extrabold tracking-tight" style={{ color: "var(--text-primary)" }}>
+            <h1 className="text-base font-bold tracking-tight text-[#212B36] dark:text-white">
               {tenantName}
             </h1>
-            <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+            <p className="text-[11px] font-semibold text-[#2065D1] flex items-center gap-1">
               <HeartHandshake className="w-3.5 h-3.5" /> Cadastro VIP do Cliente
             </p>
           </div>
@@ -92,15 +92,15 @@ export default function StandaloneCheckinPage({ params }: { params: Promise<{ te
       <main className="flex-1 max-w-md w-full mx-auto p-4 flex flex-col items-center justify-center space-y-6">
         
         {!isSubmitted ? (
-          <div className="w-full rounded-3xl border p-6 shadow-2xl space-y-5 animate-fade-in" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+          <div className="w-full bg-white dark:bg-[#212B36] rounded-2xl border-0 p-6 sm:p-8 shadow-minimal space-y-5 animate-fade-in">
             <div className="text-center space-y-1">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Clube VIP Sem Wi-Fi
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#2065D1]/10 text-[#2065D1] dark:text-[#84A9FF]">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Clube VIP Sem Wi-Fi
               </span>
-              <h2 className="text-xl font-black tracking-tight" style={{ color: "var(--text-primary)" }}>
+              <h2 className="text-xl font-bold tracking-tight text-[#212B36] dark:text-white">
                 Cadastre-se & Receba Vantagens!
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[#637381] dark:text-gray-400">
                 Preencha seus dados para receber cupons exclusivos e presentes no seu aniversário na <strong>{tenantName}</strong>.
               </p>
             </div>

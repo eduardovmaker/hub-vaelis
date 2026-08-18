@@ -40,8 +40,11 @@ export interface AsaasPaymentLinkInput {
 }
 
 const getAsaasApiConfig = () => {
-  const rawApiKey = process.env.ASAAS_API_KEY || "";
-  const apiKey = rawApiKey.replace(/^["']|["']$/g, "").trim();
+  let rawApiKey = process.env.ASAAS_API_KEY || "";
+  let apiKey = rawApiKey.replace(/^["']|["']$/g, "").trim();
+  if (apiKey.startsWith("aact_prod_") || apiKey.startsWith("aact_hml_")) {
+    apiKey = "$" + apiKey;
+  }
   
   let rawUrl = process.env.ASAAS_API_URL || "";
   if (!rawUrl) {
@@ -145,11 +148,11 @@ export async function createOrGetAsaasCustomer(input: AsaasCustomerInput): Promi
           const existingCus = emailSearchData.data[0];
           console.log(`[Asaas SDK] Cliente existente encontrado por E-mail (${cleanEmail}): ${existingCus.id}`);
 
-          // Se o cliente existe no Asaas por e-mail mas não tinha CPF/CNPJ salvo e agora foi fornecido, atualizar no Asaas
-          if (!existingCus.cpfCnpj && cleanCpfCnpj) {
+          // Garantir atualização do CPF/CNPJ no Asaas via POST /v3/customers/{id}
+          if (cleanCpfCnpj) {
             try {
-              await fetch(`${apiUrl}/customers/${existingCus.id}`, {
-                method: "PUT",
+              const updateRes = await fetch(`${apiUrl}/customers/${existingCus.id}`, {
+                method: "POST",
                 headers: {
                   "access_token": apiKey,
                   "Content-Type": "application/json",
@@ -157,8 +160,12 @@ export async function createOrGetAsaasCustomer(input: AsaasCustomerInput): Promi
                 signal: AbortSignal.timeout(10000),
                 body: JSON.stringify({
                   cpfCnpj: cleanCpfCnpj,
+                  name: input.name || existingCus.name,
                 }),
               });
+              if (updateRes.ok) {
+                console.log(`[Asaas SDK] CPF/CNPJ (${cleanCpfCnpj}) atualizado com sucesso no cliente Asaas ${existingCus.id}`);
+              }
             } catch (e) {
               console.warn("[Asaas SDK] Aviso ao atualizar CPF/CNPJ do cliente existente no Asaas:", e);
             }
