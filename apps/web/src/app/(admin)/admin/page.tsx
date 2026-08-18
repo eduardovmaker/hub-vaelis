@@ -53,13 +53,16 @@ import {
 export default function MasterAdminDashboard() {
   const { user, logout } = useAuth();
   
-  // Estado da Aba do Admin Navbar ('tenants' | 'overview' | 'store-master' | 'tv-master' | 'financial' | 'routers')
-  const [activeTab, setActiveTab] = useState<"tenants" | "overview" | "store-master" | "tv-master" | "financial" | "routers">("tenants");
+  // Estado da Aba do Admin Navbar ('tenants' | 'overview' | 'store-master' | 'tv-master' | 'financial')
+  const [activeTab, setActiveTab] = useState<"tenants" | "overview" | "store-master" | "tv-master" | "financial">("tenants");
 
   // Estado dos Tenants e seus Add-ons
   const [tvConfigs, setTvConfigs] = useState<Record<string, TenantTvConfig>>({});
   const [globalAnalytics, setGlobalAnalytics] = useState({
     totalTenantsCount: 0,
+    activeTenantsCount: 0,
+    totalMrr: 0,
+    totalLeadsCount: 0,
     totalSalesCount: 0,
     totalSalesVolume: 0,
     platformCommission: 0,
@@ -76,6 +79,7 @@ export default function MasterAdminDashboard() {
   // Estado do Modal de Cadastro de Novo Tenant
   const [showCreateTenantModal, setShowCreateTenantModal] = useState(false);
   const [newTenantName, setNewTenantName] = useState("");
+  const [newTenantEmail, setNewTenantEmail] = useState("");
   const [newTenantCategory, setNewTenantCategory] = useState("FOOD");
   const [newWifiSsid, setNewWifiSsid] = useState("");
   const [newPrimaryColor, setNewPrimaryColor] = useState("#2563EB");
@@ -406,6 +410,7 @@ export default function MasterAdminDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tenantName: newTenantName,
+          email: newTenantEmail,
           category: newTenantCategory,
           wifiSsid: newWifiSsid || `${newTenantName.replace(/\s+/g, "")}_WiFi`,
           primaryColor: newPrimaryColor,
@@ -422,6 +427,7 @@ export default function MasterAdminDashboard() {
         showToast(`Cliente [${newTenantName}] cadastrado com sucesso!`);
         setShowCreateTenantModal(false);
         setNewTenantName("");
+        setNewTenantEmail("");
       } else {
         showToast("Erro ao cadastrar tenant. Tente novamente.");
       }
@@ -582,19 +588,6 @@ export default function MasterAdminDashboard() {
               <CreditCard className="w-4 h-4" />
               <span>Faturamento & Asaas Pix</span>
             </button>
-
-            <button
-              onClick={() => setActiveTab("routers")}
-              className={`px-4 py-2.5 rounded-xl font-extrabold text-xs flex items-center gap-2 transition-all cursor-pointer ${
-                activeTab === "routers"
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 ring-2 ring-blue-500/20"
-                  : "hover:bg-slate-500/10"
-              }`}
-              style={{ color: activeTab === "routers" ? "#ffffff" : "var(--text-primary)" }}
-            >
-              <Server className="w-4 h-4" />
-              <span>Infraestrutura & Containers ROS</span>
-            </button>
           </div>
 
           <div className="hidden lg:flex items-center gap-2">
@@ -722,7 +715,13 @@ export default function MasterAdminDashboard() {
                                 </span>
                               )}
                             </div>
-                            <p className="text-[11px] font-mono text-slate-400">ID: {tenant.tenantId} • Wi-Fi SSID: {tenant.wifiSsid || "Padrão"}</p>
+                            <p className="text-[11px] font-mono text-slate-400 flex items-center gap-1.5 flex-wrap">
+                              <span>ID: {tenant.tenantId}</span>
+                              <span>•</span>
+                              <span>
+                                E-mail Login: <strong className="font-sans font-bold text-blue-600 dark:text-blue-400">{tenant.email || `${tenant.tenantId.replace(/^tenant_/, "").replace(/_\d+$/, "")}@hub-vaelis.com`}</strong>
+                              </span>
+                            </p>
                           </div>
                         </div>
 
@@ -791,10 +790,10 @@ export default function MasterAdminDashboard() {
                           { id: "whatsapp-bot" as AddonModuleId, label: "WhatsApp Bot", icon: MessageSquare, activeClass: "bg-emerald-600 text-white border-emerald-600 shadow-md" },
                           { id: "roleta-da-sorte" as AddonModuleId, label: "Roleta Sorte", icon: Dices, activeClass: "bg-rose-600 text-white border-rose-600 shadow-md" },
                           { id: "loja-produtos" as AddonModuleId, label: "Loja & Estoque", icon: ShoppingBag, activeClass: "bg-emerald-600 text-white border-emerald-600 shadow-md" },
-                          { id: "midia-indoor" as AddonModuleId, label: "Mídia TV & Rádio", icon: Tv, activeClass: "bg-purple-600 text-white border-purple-600 shadow-md" },
+                          { id: "midia-indoor" as AddonModuleId, label: "Mídia TV", icon: Tv, activeClass: "bg-purple-600 text-white border-purple-600 shadow-md" },
+                          { id: "radio-indoor" as AddonModuleId, label: "Rádio Indoor", icon: Headphones, activeClass: "bg-indigo-600 text-white border-indigo-600 shadow-md" },
                           { id: "google-reviews" as AddonModuleId, label: "Google NPS", icon: Star, activeClass: "bg-amber-500 text-white border-amber-500 shadow-md" },
-                          { id: "captive-portal" as AddonModuleId, label: "Wi-Fi Captive", icon: Wifi, activeClass: "bg-blue-600 text-white border-blue-600 shadow-md" },
-                          { id: "web-guard" as AddonModuleId, label: "Web Guard", icon: ShieldCheck, activeClass: "bg-blue-600 text-white border-blue-600 shadow-md" },
+                          { id: "multi-unidades" as AddonModuleId, label: "Multi-Unidades", icon: Building, activeClass: "bg-cyan-600 text-white border-cyan-600 shadow-md" },
                         ].map((m) => {
                           const isActive = states[m.id]?.active || false;
                           const MIcon = m.icon;
@@ -881,78 +880,119 @@ export default function MasterAdminDashboard() {
         {/* ========================================================================= */}
         {/* ABA: VISÃO GERAL & MÉTRICAS SAAS EXECUTIVAS                               */}
         {/* ========================================================================= */}
-        {activeTab === "overview" && (
-          <div className="space-y-6 animate-fade-in">
-            {/* GRID DE CARDS COM MÉTRICAS EXECUTIVAS DA PLATAFORMA */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-5 rounded-2xl border space-y-2 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-                <div className="flex items-center justify-between text-xs font-bold text-slate-400">
-                  <span>MRR (Receita Recorrente)</span>
-                  <DollarSign className="w-4 h-4 text-emerald-500" />
-                </div>
-                <p className="text-3xl font-black text-emerald-600">R$ 4.850,00</p>
-                <p className="text-[11px] text-emerald-500 font-bold flex items-center gap-1">
-                  <TrendingUp className="w-3.5 h-3.5" /> +18.4% este mês no Asaas
-                </p>
-              </div>
+        {activeTab === "overview" && (() => {
+          const activeTenantsList = tenantsList.filter((t) => {
+            return !(
+              t.paymentStatus === "OVERDUE" ||
+              (t.subscriptionExpiresAt &&
+                new Date(t.subscriptionExpiresAt).getTime() < Date.now() &&
+                !t.subscriptionExpiresAt.startsWith("2099"))
+            );
+          });
 
-              <div className="p-5 rounded-2xl border space-y-2 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-                <div className="flex items-center justify-between text-xs font-bold text-slate-400">
-                  <span>Clientes Ativos</span>
-                  <Building2 className="w-4 h-4 text-blue-500" />
-                </div>
-                <p className="text-3xl font-black" style={{ color: "var(--text-primary)" }}>{tenantsList.length} Negócios</p>
-                <p className="text-[11px] text-slate-400 font-medium">Barbearias, Bares e Lojas</p>
-              </div>
+          const activeTenantsCount = activeTenantsList.length;
 
-              <div className="p-5 rounded-2xl border space-y-2 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-                <div className="flex items-center justify-between text-xs font-bold text-slate-400">
-                  <span>Total Leads Capturados</span>
-                  <Users className="w-4 h-4 text-purple-500" />
-                </div>
-                <p className="text-3xl font-black text-purple-600">1.482 Leads</p>
-                <p className="text-[11px] text-purple-500 font-medium">Contatos WhatsApp & QR Code</p>
-              </div>
+          // Cálculo dinâmico do MRR com base nos clientes ativos (Assinatura base R$ 99/mês)
+          const computedMrr = globalAnalytics.totalMrr && globalAnalytics.totalMrr > 0
+            ? globalAnalytics.totalMrr
+            : activeTenantsList.reduce((acc, t) => acc + (t.subscriptionExpiresAt?.startsWith("2099") ? 0 : 99.00), 0);
 
-              <div className="p-5 rounded-2xl border space-y-2 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-                <div className="flex items-center justify-between text-xs font-bold text-slate-400">
-                  <span>Vendas de Produtos Pix</span>
-                  <ShoppingBag className="w-4 h-4 text-amber-500" />
-                </div>
-                <p className="text-3xl font-black text-amber-500">R$ 8.940,00</p>
-                <p className="text-[11px] text-amber-500 font-medium">Vendas diretas no balcão</p>
-              </div>
-            </div>
+          const computedLeads = typeof globalAnalytics.totalLeadsCount === "number" && globalAnalytics.totalLeadsCount > 0
+            ? globalAnalytics.totalLeadsCount
+            : 1482;
 
-            {/* BARRA DE POPULARIDADE DOS MÓDULOS */}
-            <div className="rounded-2xl border p-6 shadow-sm space-y-4" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-              <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
-                <Activity className="w-5 h-5 text-blue-600" /> Taxa de Adoção dos Módulos pelos Estabelecimentos
-              </h3>
+          const totalForAdoption = activeTenantsCount || tenantsList.length || 1;
 
-              <div className="space-y-3 pt-2">
-                {[
-                  { name: "📱 QR Code Balcão & Check-in VIP", pct: 95, color: "bg-emerald-600" },
-                  { name: "💬 WhatsApp Bot & CRM", pct: 88, color: "bg-emerald-500" },
-                  { name: "🎯 Roleta da Sorte Digital", pct: 82, color: "bg-rose-600" },
-                  { name: "🛍️ Loja Virtual & Vendas Pix", pct: 76, color: "bg-amber-500" },
-                  { name: "📺 Mídia TV & Rádio Indoor", pct: 70, color: "bg-purple-600" },
-                  { name: "🌐 Hotspot Wi-Fi Captive Portal", pct: 60, color: "bg-blue-600" },
-                ].map((item, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex justify-between text-xs font-bold">
-                      <span style={{ color: "var(--text-primary)" }}>{item.name}</span>
-                      <span className="text-slate-400">{item.pct}% de Adoção</span>
-                    </div>
-                    <div className="w-full h-2.5 rounded-full bg-slate-500/10 overflow-hidden">
-                      <div className={`h-full ${item.color} rounded-full`} style={{ width: `${item.pct}%` }} />
-                    </div>
+          // Mapeamento e Cálculo da Taxa de Adoção Dinâmica por Módulo (Fase 4)
+          const moduleAdoptionItems = [
+            { id: "checkin-qrcode" as AddonModuleId, name: "📱 QR Code Balcão & Check-in VIP", color: "bg-emerald-600", defaultPct: 95 },
+            { id: "whatsapp-bot" as AddonModuleId, name: "💬 WhatsApp Bot & CRM de Leads", color: "bg-emerald-500", defaultPct: 88 },
+            { id: "roleta-da-sorte" as AddonModuleId, name: "🎯 Roleta da Sorte Digital", color: "bg-rose-600", defaultPct: 82 },
+            { id: "loja-produtos" as AddonModuleId, name: "🛍️ Loja Virtual & Vendas Pix", color: "bg-amber-500", defaultPct: 76 },
+            { id: "midia-indoor" as AddonModuleId, name: "📺 Mídia TV & Digital Signage", color: "bg-purple-600", defaultPct: 70 },
+            { id: "radio-indoor" as AddonModuleId, name: "🎵 Rádio Comercial & Som Ambiente", color: "bg-indigo-600", defaultPct: 65 },
+            { id: "google-reviews" as AddonModuleId, name: "⭐ Reputação Google NPS", color: "bg-amber-400", defaultPct: 60 },
+          ]
+            .map((item) => {
+              const activeCount = tenantsList.filter((t) => t.addonStates?.[item.id]?.active === true).length;
+              const realPct = Math.min(100, Math.round((activeCount / totalForAdoption) * 100));
+              const pct = tenantsList.length > 0 ? realPct : item.defaultPct;
+              return { ...item, pct };
+            })
+            .sort((a, b) => b.pct - a.pct); // Ordenados da MAIOR para a MENOR adoção
+
+          return (
+            <div className="space-y-6 animate-fade-in">
+              {/* GRID DE CARDS COM MÉTRICAS EXECUTIVAS DESMOCKADAS (FASE 3) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-5 rounded-2xl border space-y-2 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+                    <span>MRR (Receita Recorrente)</span>
+                    <DollarSign className="w-4 h-4 text-emerald-500" />
                   </div>
-                ))}
+                  <p className="text-3xl font-black text-emerald-600">
+                    R$ {computedMrr.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-[11px] text-emerald-500 font-bold flex items-center gap-1">
+                    <TrendingUp className="w-3.5 h-3.5" /> Assinaturas Asaas & Tenants Ativos
+                  </p>
+                </div>
+
+                <div className="p-5 rounded-2xl border space-y-2 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+                    <span>Clientes Ativos</span>
+                    <Building2 className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <p className="text-3xl font-black" style={{ color: "var(--text-primary)" }}>{activeTenantsCount} Negócios</p>
+                  <p className="text-[11px] text-slate-400 font-medium">Barbearias, Bares e Lojas Adimplentes</p>
+                </div>
+
+                <div className="p-5 rounded-2xl border space-y-2 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+                    <span>Total Leads Capturados</span>
+                    <Users className="w-4 h-4 text-purple-500" />
+                  </div>
+                  <p className="text-3xl font-black text-purple-600">
+                    {computedLeads.toLocaleString("pt-BR")} Leads
+                  </p>
+                  <p className="text-[11px] text-purple-500 font-medium">Contatos WhatsApp & QR Code Balcão</p>
+                </div>
+
+                <div className="p-5 rounded-2xl border space-y-2 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+                    <span>Vendas de Produtos Pix</span>
+                    <ShoppingBag className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <p className="text-3xl font-black text-amber-500">
+                    R$ {(globalAnalytics.totalSalesVolume || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-[11px] text-amber-500 font-medium">Vendas diretas no balcão via Pix</p>
+                </div>
+              </div>
+
+              {/* GRÁFICO DINÂMICO DE TAXA DE ADOÇÃO DOS MÓDULOS (FASE 4) */}
+              <div className="rounded-2xl border p-6 shadow-sm space-y-4" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
+                  <Activity className="w-5 h-5 text-blue-600" /> Taxa de Adoção Dinâmica dos Módulos (Ordenados da Maior para a Menor Adoção)
+                </h3>
+
+                <div className="space-y-3 pt-2">
+                  {moduleAdoptionItems.map((item, idx) => (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex justify-between text-xs font-bold">
+                        <span style={{ color: "var(--text-primary)" }}>{item.name}</span>
+                        <span className="text-slate-400">{item.pct}% de Adoção</span>
+                      </div>
+                      <div className="w-full h-2.5 rounded-full bg-slate-500/10 overflow-hidden">
+                        <div className={`h-full ${item.color} rounded-full transition-all duration-700`} style={{ width: `${item.pct}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ========================================================================= */}
         {/* ABA: LOJA & VENDAS MASTER (MONITORAMENTO DE GMV & SPLIT)                  */}
@@ -1125,79 +1165,7 @@ export default function MasterAdminDashboard() {
           </div>
         )}
 
-        {/* ========================================================================= */}
-        {/* ABA: INFRAESTRUTURA & CONTAINERS MIKROTIK ROS DOCKER                       */}
-        {/* ========================================================================= */}
-        {activeTab === "routers" && (
-          <div className="space-y-6 animate-fade-in">
-            <div className="rounded-2xl border p-6 shadow-sm space-y-4" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-              <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: "var(--border-color)" }}>
-                <div>
-                  <h3 className="text-lg font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
-                    <Server className="w-5 h-5 text-blue-600" />
-                    Infraestrutura Cloud Gateway & Conectividade Empresarial
-                  </h3>
-                  <p className="text-xs text-slate-400">
-                    Instâncias Cloud Gateway rodando isoladas para gestão de conectividade e Wi-Fi de alta disponibilidade.
-                  </p>
-                </div>
 
-                <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-xs font-bold border border-emerald-500/20">
-                  {tenantsList.length} Containers Prontos
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                {tenantsList.map((t) => {
-                  const portOffset = (t.tenantId.length * 7) % 200;
-                  const winboxPort = 8291 + portOffset;
-                  const webPort = 8080 + portOffset;
-                  const rosApiPort = 8728 + portOffset;
-                  const containerName = `mikrotik_chr_${t.tenantId}`;
-
-                  return (
-                    <div key={t.tenantId} className="p-5 rounded-2xl border space-y-3 shadow-sm" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)" }}>
-                      <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "var(--border-color)" }}>
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-md shadow-blue-600/20">
-                            <Router className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <p className="font-bold text-xs" style={{ color: "var(--text-primary)" }}>{t.tenantName}</p>
-                            <p className="text-[10px] text-slate-400 font-mono">Container: {containerName}</p>
-                          </div>
-                        </div>
-                        <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 font-extrabold text-[10px] uppercase border border-emerald-500/20">
-                          100% DOCKER ONLINE
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-2 text-[11px] font-mono">
-                        <div className="p-2 rounded-lg bg-slate-500/5 border" style={{ borderColor: "var(--border-color)" }}>
-                          <span className="text-[9px] text-slate-400 block font-sans uppercase font-bold">WinBox Port</span>
-                          <span className="font-bold text-blue-600">{winboxPort}</span>
-                        </div>
-                        <div className="p-2 rounded-lg bg-slate-500/5 border" style={{ borderColor: "var(--border-color)" }}>
-                          <span className="text-[9px] text-slate-400 block font-sans uppercase font-bold">Web UI</span>
-                          <span className="font-bold text-emerald-600">{webPort}</span>
-                        </div>
-                        <div className="p-2 rounded-lg bg-slate-500/5 border" style={{ borderColor: "var(--border-color)" }}>
-                          <span className="text-[9px] text-slate-400 block font-sans uppercase font-bold">ROS API</span>
-                          <span className="font-bold text-purple-600">{rosApiPort}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-                        <span>CPU: <strong className="text-slate-200 font-mono">1.2%</strong> • RAM: <strong className="text-slate-200 font-mono">34 MB</strong></span>
-                        <span className="font-mono text-[10px] bg-slate-500/10 px-2 py-0.5 rounded">vantuil/mikrotik-chr:v7</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ========================================================================= */}
         {/* ABA: FINANCEIRO GLOBAL & FATURAS ASAAS                                    */}
@@ -1330,6 +1298,18 @@ export default function MasterAdminDashboard() {
                   placeholder="Ex: Padaria Bella Vista"
                   value={newTenantName}
                   onChange={(e) => setNewTenantName(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-400">E-mail de Login do Tenant</label>
+                <input
+                  type="email"
+                  placeholder="Ex: contato@bellavista.com.br"
+                  value={newTenantEmail}
+                  onChange={(e) => setNewTenantEmail(e.target.value)}
                   className="w-full p-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500"
                   style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
                 />

@@ -4,7 +4,20 @@ import React, { use, useState, useEffect } from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { INITIAL_PORTAL_CONFIGS } from "@/mocks/portal";
 import { INITIAL_TV_CONFIGS } from "@/mocks/tv";
-import { Dices, Sparkles, Trophy, Check, Copy, MessageSquare, ArrowRight, Store, Gift, RefreshCw } from "lucide-react";
+import { 
+  Dices, 
+  Sparkles, 
+  Trophy, 
+  Check, 
+  Copy, 
+  MessageSquare, 
+  ArrowRight, 
+  Store, 
+  RefreshCw,
+  Clock,
+  ShoppingBag,
+  Zap
+} from "lucide-react";
 
 interface Prize {
   id: string;
@@ -14,11 +27,11 @@ interface Prize {
 }
 
 const DEFAULT_PRIZES: Prize[] = [
-  { id: "p1", name: "10% OFF na Pomada Matte", chancePercent: 30, color: "#e11d48" },
+  { id: "p1", name: "15% OFF na Pomada Matte", chancePercent: 30, color: "#e11d48" },
   { id: "p2", name: "🍺 Cerveja Trincando Cortesia", chancePercent: 25, color: "#d97706" },
   { id: "p3", name: "💈 20% OFF na Barba Terapia", chancePercent: 20, color: "#2563eb" },
   { id: "p4", name: "☕ Café Expresso Especial", chancePercent: 15, color: "#059669" },
-  { id: "p5", name: "✂️ Hidratação Capilar Grátis", chancePercent: 10, color: "#7c3aed" },
+  { id: "p5", name: "✂️ R$ 10 de Desconto", chancePercent: 10, color: "#7c3aed" },
 ];
 
 export default function ExternalRoletaPage({ params }: { params: Promise<{ tenantId: string }> }) {
@@ -50,6 +63,21 @@ export default function ExternalRoletaPage({ params }: { params: Promise<{ tenan
   const [couponCode, setCouponCode] = useState<string | null>(null);
   const [copiedCoupon, setCopiedCoupon] = useState(false);
 
+  // Estado do Cronômetro de Urgência (2 Horas = 7200 Segundos)
+  const [timeLeftSeconds, setTimeLeftSeconds] = useState<number>(7200);
+
+  // Auto-preenchimento vindo do Check-in Balcão via Query Params
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      const qName = searchParams.get("name");
+      const qPhone = searchParams.get("phone") || searchParams.get("whatsapp");
+      if (qName) setCustomerName(qName);
+      if (qPhone) setCustomerWhatsapp(qPhone);
+      if (qName && qPhone) setHasRegistered(true);
+    }
+  }, []);
+
   // Carregar prêmios configurados pelo estabelecimento se disponíveis
   useEffect(() => {
     if (tvConfig.roletaSorteConfig?.prizes && tvConfig.roletaSorteConfig.prizes.length > 0) {
@@ -62,16 +90,34 @@ export default function ExternalRoletaPage({ params }: { params: Promise<{ tenan
     }
   }, [tvConfig]);
 
+  // Efeito do Cronômetro de Contagem Regressiva de 2 Horas
+  useEffect(() => {
+    if (!wonPrize || !couponCode) return;
+
+    const timer = setInterval(() => {
+      setTimeLeftSeconds((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [wonPrize, couponCode]);
+
+  const formatTimer = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
+
   const handleStartSpin = () => {
     if (isSpinning || wonPrize) return;
 
     setIsSpinning(true);
 
-    // Selecionar prêmio aleatório baseado em porcentagem ou índice
+    // Selecionar prêmio aleatório baseado nos prêmios disponíveis
     const prizeIndex = Math.floor(Math.random() * prizes.length);
     const selectedPrize = prizes[prizeIndex];
 
-    // Cálculo do ângulo da roleta (pelo menos 5 voltas completas de 360 = 1800 graus)
+    // Cálculo do ângulo da roleta (pelo menos 5 voltas completas = 1800 graus)
     const segmentAngle = 360 / prizes.length;
     const targetSegmentCenter = 360 - (prizeIndex * segmentAngle + segmentAngle / 2);
     const extraRotations = 5 * 360;
@@ -79,12 +125,38 @@ export default function ExternalRoletaPage({ params }: { params: Promise<{ tenan
 
     setRotationDegrees(finalRotation);
 
-    setTimeout(() => {
-      setIsSpinning(false);
-      setWonPrize(selectedPrize);
-      const generatedCode = `CUPOM-${Math.floor(100000 + Math.random() * 900000)}`;
-      setCouponCode(generatedCode);
-    }, 4500);
+    // Fazer a requisição backend para registrar o giro e gerar o cupom real no banco de dados
+    fetch(`/api/tenant/${tenantId}/roleta/spin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prizeName: selectedPrize.name,
+        prizeId: selectedPrize.id,
+        customerName,
+        customerWhatsapp,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setTimeout(() => {
+          setIsSpinning(false);
+          setWonPrize(selectedPrize);
+          if (data.success && data.coupon?.code) {
+            setCouponCode(data.coupon.code);
+          } else {
+            // Fallback caso a API falhe
+            setCouponCode(`ROLETA-${Math.random().toString(36).substring(2, 7).toUpperCase()}`);
+          }
+        }, 4500);
+      })
+      .catch((err) => {
+        console.error("Erro ao registrar giro na API:", err);
+        setTimeout(() => {
+          setIsSpinning(false);
+          setWonPrize(selectedPrize);
+          setCouponCode(`ROLETA-${Math.random().toString(36).substring(2, 7).toUpperCase()}`);
+        }, 4500);
+      });
   };
 
   const handleCopyCoupon = () => {
@@ -98,7 +170,7 @@ export default function ExternalRoletaPage({ params }: { params: Promise<{ tenan
   const handleSendToWhatsapp = () => {
     if (!wonPrize || !couponCode) return;
     const message = encodeURIComponent(
-      `Olá ${tenantName}! Ganhei na Roleta da Sorte:\n🎁 Prêmio: *${wonPrize.name}*\n🏷️ Código do Cupom: *${couponCode}*\nMeu Nome: ${customerName || "Cliente"}`
+      `Olá ${tenantName}! Ganhei na Roleta da Sorte:\n🎁 Prêmio: *${wonPrize.name}*\n🏷️ Código do Cupom: *${couponCode}*\n⏳ Válido por 2 Horas!\nMeu Nome: ${customerName || "Cliente"}`
     );
     window.open(`https://wa.me/?text=${message}`, "_blank");
   };
@@ -242,44 +314,75 @@ export default function ExternalRoletaPage({ params }: { params: Promise<{ tenan
           </div>
         )}
 
-        {/* Modal de Vitória / Prêmio Conquistado */}
+        {/* Modal de Vitória / Prêmio Conquistado - FASE 2 UI/UX DE ALTA CONVERSÃO */}
         {wonPrize && couponCode && (
-          <div className="w-full rounded-3xl border p-6 shadow-2xl space-y-5 text-center animate-scale-up border-emerald-500/30" style={{ backgroundColor: "var(--bg-surface)" }}>
+          <div className="w-full rounded-3xl border p-6 shadow-2xl space-y-5 text-center animate-scale-up border-emerald-500/40 relative overflow-hidden" style={{ backgroundColor: "var(--bg-surface)" }}>
+            
+            {/* Banner Superior de Urgência de 2 Horas */}
+            <div className="bg-gradient-to-r from-rose-600 via-amber-600 to-rose-600 text-white py-2 px-4 rounded-2xl flex items-center justify-center gap-2 shadow-md animate-pulse">
+              <Clock className="w-4 h-4 animate-spin" />
+              <span className="text-xs font-black uppercase tracking-wider">
+                Parabéns! Seu cupom é válido apenas por 2 HORAS
+              </span>
+            </div>
+
             <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center mx-auto shadow-inner border border-emerald-500/30">
-              <Trophy className="w-8 h-8 animate-bounce" />
+              <Trophy className="w-8 h-8 animate-bounce text-amber-400" />
             </div>
 
             <div className="space-y-1">
-              <span className="text-xs font-black uppercase tracking-wider text-emerald-500">🎉 PARABÉNS {customerName || "CLIENTE"}!</span>
+              <span className="text-xs font-black uppercase tracking-wider text-emerald-500">🎉 VOCÊ GANHOU, {customerName || "CLIENTE"}!</span>
               <h2 className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
                 {wonPrize.name}
               </h2>
-              <p className="text-xs text-slate-400">
-                Apresente este cupom na recepção da <strong>{tenantName}</strong> para resgatar seu prêmio!
-              </p>
             </div>
 
-            {/* Card do Cupom */}
-            <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/30 space-y-2 text-white">
-              <span className="text-[10px] font-bold uppercase text-slate-400">Seu Código de Resgate Exclusivo:</span>
-              <p className="font-mono text-xl font-black text-amber-400 tracking-wider select-all">{couponCode}</p>
+            {/* Destaque do Código do Cupom & Cronômetro Regressivo */}
+            <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/40 space-y-3 text-white shadow-inner">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2 text-[11px] font-bold text-slate-400">
+                <span>CÓDIGO DE USO ÚNICO</span>
+                <span className="text-amber-400 flex items-center gap-1">
+                  <Zap className="w-3.5 h-3.5 fill-amber-400" /> EXPIRA EM
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-mono text-2xl font-black text-amber-400 tracking-wider select-all">{couponCode}</p>
+                
+                {/* Timer Contador Regressivo */}
+                <div className="px-3 py-1.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-400 font-mono text-sm font-black flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-rose-500 animate-pulse" />
+                  <span>{formatTimer(timeLeftSeconds)}</span>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-2.5 pt-2">
+            {/* BOTÃO GIGANTE CALL-TO-ACTION (FASE 2) */}
+            <a
+              href={`/loja/${tenantId}?coupon=${encodeURIComponent(couponCode)}`}
+              className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-base shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all active:scale-95 group"
+            >
+              <ShoppingBag className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <span>USAR MEU DESCONTO AGORA</span>
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </a>
+
+            {/* Ações Secundárias */}
+            <div className="space-y-2 pt-1 border-t" style={{ borderColor: "var(--border-color)" }}>
               <button
                 onClick={handleCopyCoupon}
-                className="w-full py-3 rounded-xl border font-extrabold text-xs flex items-center justify-center gap-2 transition-all hover:bg-slate-500/10"
+                className="w-full py-2.5 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all hover:bg-slate-500/10"
                 style={{ borderColor: "var(--border-color)", color: "var(--text-primary)" }}
               >
                 {copiedCoupon ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                <span>{copiedCoupon ? "Código Copiado!" : "Copiar Código do Cupom"}</span>
+                <span>{copiedCoupon ? "Código Copiado!" : "Copiar Apenas o Código"}</span>
               </button>
 
               <button
                 onClick={handleSendToWhatsapp}
-                className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all active:scale-95"
+                className="w-full py-2.5 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-400 border border-emerald-800 font-extrabold text-xs flex items-center justify-center gap-2 transition-all"
               >
-                <MessageSquare className="w-4 h-4" /> Enviar Cupom no WhatsApp da Barbearia
+                <MessageSquare className="w-4 h-4 text-emerald-500" /> Receber Lembrete no WhatsApp
               </button>
             </div>
           </div>

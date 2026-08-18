@@ -19,6 +19,8 @@ export const COLLECTIONS = {
   PRODUCTS: "products",
   SALES: "sales",
   ASAAS_CONFIGS: "asaasConfigs",
+  NOTIFICATIONS: "notifications",
+  COUPONS: "coupons",
 } as const;
 
 // Prisma Singleton Instance para Vercel Serverless (evita estourar o Connection Pool)

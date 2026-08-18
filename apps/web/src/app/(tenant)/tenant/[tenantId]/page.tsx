@@ -20,6 +20,7 @@ import {
 } from "@/mocks/tv";
 import { BannerCarousel } from "@/components/BannerCarousel";
 import { MobileDeviceSimulator } from "@/components/MobileDeviceSimulator";
+import { CouponManagement } from "@/components/CouponManagement";
 import { 
   Store, 
   Wifi, 
@@ -90,7 +91,8 @@ import {
   Package,
   Tag,
   UploadCloud,
-  FileVideo
+  FileVideo,
+  Printer
 } from "lucide-react";
 
 interface ConnectedDevice {
@@ -176,17 +178,6 @@ const ADDONS_CATALOG = [
     badge: "Engajamento",
   },
   {
-    id: "web-guard" as AddonModuleId,
-    title: "🛡️ Add-on Filtro de Conteúdo & Guardião MikroTik",
-    description: "Bloqueio de sites adultos, apostas e torrents na rede + limite dinâmico de velocidade por dispositivo.",
-    priceMensal: 49,
-    priceTrimestral: 129,
-    priceAnual: 440,
-    icon: ShieldCheck,
-    color: "blue",
-    badge: "Segurança Wi-Fi",
-  },
-  {
     id: "multi-unidades" as AddonModuleId,
     title: "🏢 Add-on Multi-Unidades / Franquias & Analytics",
     description: "Gestão unificada de múltiplas filiais, comparativo de acessos entre lojas e mapas de calor de pico.",
@@ -221,6 +212,7 @@ type TenantTabType =
   | "whatsapp-bot" 
   | "roleta-da-sorte" 
   | "loja-produtos"
+  | "cupons"
   | "web-guard" 
   | "multi-unidades" 
   | "wifi-vip"
@@ -1325,20 +1317,13 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
             <h1 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
               {displayTenantName}
             </h1>
-            <p className="text-xs font-mono" style={{ color: "var(--text-secondary)" }}>
-              Rede Wi-Fi: <span className="font-semibold text-emerald-600">{displayWifiSsid}</span>
+            <p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
+              Painel de Gestão Empresarial
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowSimulatorModal(true)}
-            className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-600/20 flex items-center gap-2 transition-all active:scale-95"
-          >
-            <Smartphone className="w-4 h-4" /> Visão do Cliente (Mobile)
-          </button>
-          
           <ThemeToggle />
           <div className="h-6 w-px" style={{ backgroundColor: "var(--border-color)" }} />
           <div className="text-right hidden sm:block">
@@ -1468,6 +1453,22 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
             )}
 
             <button
+              onClick={() => setActiveTab("cupons")}
+              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
+                activeTab === "cupons"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                  : "hover:bg-slate-100 dark:hover:bg-slate-800"
+              }`}
+              style={{ color: activeTab === "cupons" ? "#ffffff" : "var(--text-primary)" }}
+            >
+              <Tag className="w-4 h-4 text-blue-400" />
+              <span>Cupons de Desconto</span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] bg-blue-500/20 text-blue-300 font-extrabold uppercase">
+                Marketing
+              </span>
+            </button>
+
+            <button
               onClick={() => setActiveTab("asaas-split")}
               className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
                 activeTab === "asaas-split"
@@ -1483,53 +1484,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
               </span>
             </button>
 
-            {(addonStates["midia-indoor"]?.active || addonStates["captive-portal"]?.active) && (
-              <button
-                onClick={() => setActiveTab("carrossel")}
-                className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
-                  activeTab === "carrossel"
-                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
-                    : "hover:bg-slate-100 dark:hover:bg-slate-800"
-                }`}
-                style={{ color: activeTab === "carrossel" ? "#ffffff" : "var(--text-primary)" }}
-              >
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                <span>Anúncios & Banners</span>
-              </button>
-            )}
 
-            {(addonStates["captive-portal"]?.active) && (
-              <button
-                onClick={() => setActiveTab("captive-portal")}
-                className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
-                  activeTab === "captive-portal"
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                    : "hover:bg-slate-100 dark:hover:bg-slate-800"
-                }`}
-                style={{ color: activeTab === "captive-portal" ? "#ffffff" : "var(--text-primary)" }}
-              >
-                <Wifi className="w-4 h-4 text-blue-400 stroke-[2.5]" />
-                <span>Módulo Wi-Fi & Captive Portal</span>
-                <span className="px-1.5 py-0.5 rounded text-[9px] bg-blue-500/20 text-blue-300 font-extrabold uppercase">
-                  Módulo Ativo
-                </span>
-              </button>
-            )}
-
-            {addonStates["web-guard"]?.active && (
-              <button
-                onClick={() => setActiveTab("web-guard")}
-                className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shrink-0 ${
-                  activeTab === "web-guard"
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                    : "hover:bg-slate-100 dark:hover:bg-slate-800"
-                }`}
-                style={{ color: activeTab === "web-guard" ? "#ffffff" : "var(--text-primary)" }}
-              >
-                <ShieldCheck className="w-4 h-4 text-blue-300" />
-                <span>Web Guard</span>
-              </button>
-            )}
 
             {addonStates["multi-unidades"]?.active && (
               <button
@@ -3451,6 +3406,15 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
         )}
 
         {/* ========================================================================= */}
+        {/* ABA DEDICADA 🏷️ GERENCIAMENTO DE CUPONS DE DESCONTO                       */}
+        {/* ========================================================================= */}
+        {activeTab === "cupons" && (
+          <div className="space-y-6 animate-fade-in">
+            <CouponManagement tenantId={tenantId} />
+          </div>
+        )}
+
+        {/* ========================================================================= */}
         {/* ABA DEDICADA 💳 ASAAS & SPLIT DE PAGAMENTOS                              */}
         {/* ========================================================================= */}
         {activeTab === "asaas-split" && (
@@ -3917,15 +3881,15 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
                   onClick={() => {
                     const url = typeof window !== "undefined" ? `${window.location.origin}/loja/${tenantId}` : `/loja/${tenantId}`;
                     window.open(url, "_blank");
                   }}
-                  className="py-3 px-3 rounded-xl bg-emerald-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-emerald-500 shadow-md active:scale-95 transition-all"
+                  className="py-2.5 px-3 rounded-xl bg-emerald-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-emerald-500 shadow-md active:scale-95 transition-all"
                 >
-                  <ExternalLink className="w-4 h-4" /> Abrir Loja em Nova Aba
+                  <ExternalLink className="w-4 h-4" /> Abrir Loja
                 </button>
 
                 <button
@@ -3935,11 +3899,51 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                     setCopiedStoreUrl(true);
                     setTimeout(() => setCopiedStoreUrl(false), 3000);
                   }}
-                  className="py-3 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-500/10 active:scale-95 transition-all"
+                  className="py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-500/10 active:scale-95 transition-all"
                 >
                   {copiedStoreUrl ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                   <span>{copiedStoreUrl ? "URL Copiada!" : "Copiar Link"}</span>
                 </button>
+
+                <button
+                  onClick={() => window.print()}
+                  className="py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Imprimir QR Code (Adesivo)</span>
+                </button>
+              </div>
+
+              {/* CONTAINER DEDICADO À IMPRESSÃO DE ADESIVO DE BALCÃO */}
+              <div className="printable-qr-sticker hidden print:block">
+                <div className="space-y-4 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-bold">
+                      <Store className="w-6 h-6 text-white" />
+                    </div>
+                    <h2 className="text-xl font-black tracking-tight text-slate-900">{displayTenantName}</h2>
+                  </div>
+                  <p className="text-xs font-semibold text-slate-600 max-w-xs mx-auto">
+                    Escaneie o QR Code abaixo para acessar nossa loja e fazer seu pedido instantâneo!
+                  </p>
+                  <div className="p-4 bg-white rounded-2xl border-2 border-slate-900 inline-block mx-auto shadow-sm">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+                        typeof window !== "undefined" ? `${window.location.origin}/loja/${tenantId}` : `https://${tenantId}.hub-vaelis.com/loja`
+                      )}`}
+                      alt="QR Code Impressão Adesivo"
+                      className="w-56 h-56 object-contain mx-auto"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-mono font-bold text-slate-700">
+                      {typeof window !== "undefined" ? `${window.location.origin}/loja/${tenantId}` : `https://${tenantId}.hub-vaelis.com/loja`}
+                    </p>
+                    <p className="text-[10px] font-black uppercase text-emerald-600 tracking-wider">
+                      ⚡ Vendas & Pagamento Instantâneo via Pix
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center gap-2">

@@ -2,34 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Light Mode (Padrão) */
+/* Light Mode (Minimal Kit React Palette) */
 :root {
-  --bg-primary: #F8FAFC;       /* Off-white / Slate 50 */
-  --bg-surface: #FFFFFF;       /* Cards e Modais */
-  --border-color: #E2E8F0;    /* Linhas suaves / Slate 200 */
-  --text-primary: #0F172A;    /* Texto principal / Slate 900 */
-  --text-secondary: #64748B;  /* Legendas / Slate 500 */
-  --brand-primary: #2563EB;   /* Azul Ação / Blue 600 */
-  --brand-accent: #16A34A;    /* Pix / Confirmações / Green 600 */
+  --bg-primary: #F9FAFB;       /* Soft Light Gray / Minimal Neutral 100 */
+  --bg-surface: #FFFFFF;       /* Pure White Cards */
+  --border-color: rgba(145, 158, 171, 0.16); /* Subtle Grey Border */
+  --text-primary: #212B36;    /* Dark Charcoal Text / Minimal Neutral 800 */
+  --text-secondary: #637381;  /* Muted Grey Text / Minimal Neutral 600 */
+  --brand-primary: #00A76F;   /* Iconic Minimal Green Primary */
+  --brand-accent: #078DEE;    /* Minimal Soft Blue Accent */
+  --card-shadow: 0 0 2px 0 rgba(145, 158, 171, 0.2), 0 12px 24px -4px rgba(145, 158, 171, 0.12);
+  --card-shadow-hover: 0 0 2px 0 rgba(145, 158, 171, 0.24), 0 20px 40px -4px rgba(145, 158, 171, 0.24);
+  --radius-minimal: 16px;
 }
 
-/* Dark Mode (Opcional via Toggle) */
+/* Dark Mode (Minimal Kit Dark Palette) */
 [data-theme="dark"] {
-  --bg-primary: #0B0F17;
-  --bg-surface: #1E293B;
-  --border-color: #334155;
-  --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
-  --brand-primary: #3B82F6;
-  --brand-accent: #22C55E;
+  --bg-primary: #161C24;
+  --bg-surface: #212B36;
+  --border-color: rgba(145, 158, 171, 0.12);
+  --text-primary: #FFFFFF;
+  --text-secondary: #919EAB;
+  --brand-primary: #00A76F;
+  --brand-accent: #078DEE;
+  --card-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.4), 0 12px 24px -4px rgba(0, 0, 0, 0.36);
+  --card-shadow-hover: 0 0 2px 0 rgba(0, 0, 0, 0.5), 0 20px 40px -4px rgba(0, 0, 0, 0.48);
 }
 
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-family: 'Public Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   transition: background-color 0.25s ease-in-out, color 0.25s ease-in-out;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Minimal Kit UI Helper Utilities */
+.minimal-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-minimal);
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.minimal-card:hover {
+  box-shadow: var(--card-shadow-hover);
+}
+
+.minimal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
 }
 
 /* Ocultar Barra de Rolagem Nativa mantendo a rolagem ativa */
@@ -40,3 +70,34 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Suporte à Impressão de QR Code / Adesivo da Loja */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  .printable-qr-sticker,
+  .printable-qr-sticker * {
+    visibility: visible !important;
+  }
+  .printable-qr-sticker {
+    position: fixed !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 90% !important;
+    max-width: 440px !important;
+    padding: 32px !important;
+    border: 3px solid #0f172a !important;
+    border-radius: 24px !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    text-align: center !important;
+    box-shadow: none !important;
+    z-index: 999999 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
+

@@ -8,13 +8,30 @@ export async function GET() {
     let totalProductsCount = 0;
     let activeTvsCount = 0;
     let totalTenantsCount = 0;
+    let activeTenantsCount = 0;
+    let totalLeadsCount = 0;
+    let totalMrr = 0;
     let asaasWalletsConfigured = 0;
     let recentSalesList: any[] = [];
 
     if (db) {
-      // 1. Tenants count
+      // 1. Tenants analytics & MRR calculation
       const tenantsSnapshot = await db.collection(COLLECTIONS.TENANTS).get();
       totalTenantsCount = tenantsSnapshot.size;
+
+      tenantsSnapshot.docs.forEach((doc) => {
+        const tData = doc.data();
+        const isBlocked = tData.paymentStatus === "OVERDUE";
+        const isVip = tData.subscriptionExpiresAt?.startsWith("2099");
+
+        if (!isBlocked) {
+          activeTenantsCount++;
+          if (!isVip) {
+            // MRR base de assinatura R$ 99 por cliente Asaas ativo
+            totalMrr += 99.00;
+          }
+        }
+      });
 
       // 2. Sales analytics
       const salesSnapshot = await db.collection(COLLECTIONS.SALES).get();
@@ -27,15 +44,23 @@ export async function GET() {
         });
       }
 
-      // 3. Products count
+      // 3. Leads aggregation
+      const botSnapshot = await db.collection(COLLECTIONS.WHATSAPP_BOT_CONFIGS).get();
+      if (!botSnapshot.empty) {
+        botSnapshot.docs.forEach((doc) => {
+          totalLeadsCount += Number(doc.data()?.capturedLeadsCount || 0);
+        });
+      }
+
+      // 4. Products count
       const productsSnapshot = await db.collection(COLLECTIONS.PRODUCTS).get();
       totalProductsCount = productsSnapshot.size;
 
-      // 4. TV Configs count
+      // 5. TV Configs count
       const tvSnapshot = await db.collection(COLLECTIONS.TV_CONFIGS).get();
       activeTvsCount = tvSnapshot.docs.filter((doc) => doc.data()?.addonActive !== false).length;
 
-      // 5. Asaas Configs count
+      // 6. Asaas Configs count
       const asaasSnapshot = await db.collection(COLLECTIONS.ASAAS_CONFIGS).get();
       asaasWalletsConfigured = asaasSnapshot.docs.filter((doc) => doc.data()?.walletId).length;
     }
@@ -51,6 +76,9 @@ export async function GET() {
       success: true,
       analytics: {
         totalTenantsCount,
+        activeTenantsCount,
+        totalMrr,
+        totalLeadsCount,
         totalSalesCount,
         totalSalesVolume,
         platformCommission,

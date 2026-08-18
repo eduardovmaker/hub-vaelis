@@ -33,15 +33,29 @@ export async function GET() {
             });
           }
 
+          // Fetch users map for login emails
+          const usersSnapshot = await db.collection(COLLECTIONS.USERS).get();
+          const userEmailMap: Record<string, string> = {};
+          if (!usersSnapshot.empty) {
+            usersSnapshot.docs.forEach((uDoc) => {
+              const uData = uDoc.data();
+              if (uData.tenantId && uData.email) {
+                userEmailMap[uData.tenantId] = uData.email;
+              }
+            });
+          }
+
           return snapshot.docs.map((doc: any) => {
             const data = doc.data();
             const asaasConf = asaasMap[doc.id] || {};
             const platformFee = typeof asaasConf.platformFeePercentage === "number" ? asaasConf.platformFeePercentage : 10;
             const splitPct = typeof asaasConf.splitPercentage === "number" ? asaasConf.splitPercentage : (100 - platformFee);
+            const loginEmail = data.email || userEmailMap[doc.id] || `${doc.id.replace(/^tenant_/, "").replace(/_\d+$/, "")}@hub-vaelis.com`;
 
             return {
               tenantId: doc.id,
               tenantName: data.tenantName,
+              email: loginEmail,
               pairingCode: data.pairingCode,
               paymentStatus: data.paymentStatus || "PAID",
               subscriptionExpiresAt: data.subscriptionExpiresAt,
@@ -69,7 +83,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { tenantName, category, wifiSsid, primaryColor, pairingCode } = body;
+    const { tenantName, category, wifiSsid, primaryColor, pairingCode, email } = body;
 
     if (!tenantName) {
       return NextResponse.json(
@@ -80,24 +94,23 @@ export async function POST(request: Request) {
 
     const tenantId = `tenant_${tenantName.toLowerCase().replace(/[^a-z0-9]/g, "_")}_${Date.now().toString().slice(-4)}`;
     const finalPairingCode = pairingCode || `TV-${Math.floor(1000 + Math.random() * 9000)}`;
+    const tenantEmail = email || `${tenantName.toLowerCase().replace(/[^a-z0-9]/g, "")}@hub-vaelis.com`;
 
     const defaultAddonStates = {
       "checkin-qrcode": { active: false, paymentStatus: "PENDING" },
-      "captive-portal": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
       "midia-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
       "radio-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
       "google-reviews": { active: false, paymentStatus: "PENDING" },
       "whatsapp-bot": { active: false, paymentStatus: "PENDING" },
       "roleta-da-sorte": { active: false, paymentStatus: "PENDING" },
-      "loja-produtos": { active: false, paymentStatus: "PENDING" },
-      "web-guard": { active: false, paymentStatus: "PENDING" },
+      "loja-produtos": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
       "multi-unidades": { active: false, paymentStatus: "PENDING" },
-      "wifi-vip": { active: false, paymentStatus: "PENDING" },
     };
 
     const newTenantConfig: TenantTvConfig = {
       tenantId,
       tenantName,
+      email: tenantEmail,
       pairingCode: finalPairingCode,
       addonActive: true,
       showQrOverlay: true,
@@ -118,10 +131,6 @@ export async function POST(request: Request) {
 
     // Salvar na memória para apresentação instantânea
     memoryTenants[tenantId] = newTenantConfig;
-
-    // Provisionar Container MikroTik CHR no Docker
-    const { provisionTenantMikrotikChr } = await import("@/lib/docker-mikrotik");
-    const chrContainer = await provisionTenantMikrotikChr(tenantId, tenantName);
 
     // Persistir no Firebase Firestore se disponível
     try {
@@ -175,8 +184,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       tenant: newTenantConfig,
-      chrContainer,
-      message: "Tenant criado e Container MikroTik CHR Docker provisionado com sucesso!",
+      message: "Tenant cadastrado com sucesso no Hub Empresarial!",
     });
   } catch (error: any) {
     return NextResponse.json(
@@ -297,11 +305,6 @@ export async function DELETE(request: Request) {
     }
 
     delete memoryTenants[tenantId];
-
-    try {
-      const { stopTenantMikrotikChr } = await import("@/lib/docker-mikrotik");
-      await stopTenantMikrotikChr(tenantId);
-    } catch (e) {}
 
     if (db) {
       const batch = db.batch();

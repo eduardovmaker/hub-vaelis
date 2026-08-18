@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db, COLLECTIONS } from "@/lib/db";
+import { db, COLLECTIONS, prisma } from "@/lib/db";
 import { createOrGetAsaasCustomer, createAsaasPixPayment } from "@/lib/asaas";
 import { checkoutRatelimit, checkRateLimit } from "@/lib/ratelimit";
 
@@ -20,11 +20,22 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { tenantId, productId, customerName, customerEmail, customerCpf, quantity } = body;
+    const { tenantId, productId, customerName, customerEmail, cpfCnpj, customerCpf, quantity, couponCode } = body;
 
     if (!tenantId || !productId) {
       return NextResponse.json(
         { success: false, error: "tenantId e productId são obrigatórios." },
+        { status: 400 }
+      );
+    }
+
+    // Sanitizar CPF ou CNPJ (remover pontos, traços e barras)
+    const rawCpfCnpj = cpfCnpj || customerCpf || "";
+    const cleanCpfCnpj = String(rawCpfCnpj).replace(/\D/g, "");
+
+    if (!cleanCpfCnpj || (cleanCpfCnpj.length !== 11 && cleanCpfCnpj.length !== 14)) {
+      return NextResponse.json(
+        { success: false, error: "Para criar esta cobrança é necessário preencher o CPF ou CNPJ do cliente." },
         { status: 400 }
       );
     }
@@ -46,7 +57,89 @@ export async function POST(request: Request) {
     }
 
     const qty = Number(quantity) || 1;
-    const totalValue = product.price * qty;
+    const grossValue = product.price * qty;
+
+    // 🛡️ RECALCULAR DESCONTO DO CUPOM NO BACKEND (Anti-fraude)
+    let discountAmount = 0;
+    let finalValue = grossValue;
+    let appliedCouponId: string | null = null;
+    let appliedCouponCode: string | null = null;
+
+    if (couponCode && typeof couponCode === "string" && couponCode.trim()) {
+      const cleanCode = couponCode.trim().toUpperCase();
+      let couponDoc: any = null;
+
+      // 1. Buscar no Firestore
+      if (db) {
+        const couponSnapshot = await db
+          .collection(COLLECTIONS.COUPONS)
+          .where("tenantId", "==", tenantId)
+          .where("code", "==", cleanCode)
+          .get();
+
+        if (!couponSnapshot.empty) {
+          const doc = couponSnapshot.docs[0];
+          couponDoc = { id: doc.id, ...doc.data() };
+        }
+      }
+
+      // 2. Fallback Prisma
+      if (!couponDoc) {
+        try {
+          const pCoupon = await prisma.coupon.findFirst({
+            where: { tenantId, code: cleanCode },
+          });
+          if (pCoupon) couponDoc = pCoupon;
+        } catch (e) {}
+      }
+
+      // Validar regras do cupom no servidor
+      if (couponDoc && couponDoc.isActive) {
+        const notExpired = !couponDoc.expirationDate || new Date(couponDoc.expirationDate) >= new Date();
+        const notMaxed =
+          couponDoc.maxUses === null ||
+          couponDoc.maxUses === undefined ||
+          (couponDoc.usedCount || 0) < couponDoc.maxUses;
+
+        if (notExpired && notMaxed) {
+          if (couponDoc.discountType === "PERCENTAGE") {
+            discountAmount = (grossValue * couponDoc.discountValue) / 100;
+          } else {
+            discountAmount = couponDoc.discountValue;
+          }
+
+          discountAmount = Math.min(grossValue, Math.max(0, discountAmount));
+          finalValue = Math.max(0, grossValue - discountAmount);
+          appliedCouponId = couponDoc.id;
+          appliedCouponCode = couponDoc.code;
+
+          // 📈 Incrementar usedCount no banco de dados (Firestore + Prisma)
+          try {
+            if (db) {
+              const couponRef = db.collection(COLLECTIONS.COUPONS).doc(couponDoc.id);
+              const currentCount = couponDoc.usedCount || 0;
+              await couponRef.update({
+                usedCount: currentCount + 1,
+                updatedAt: new Date().toISOString(),
+              });
+            }
+          } catch (incErr) {
+            console.warn("Aviso ao incrementar usedCount no Firestore:", incErr);
+          }
+
+          try {
+            await prisma.coupon.update({
+              where: { id: couponDoc.id },
+              data: { usedCount: { increment: 1 } },
+            });
+          } catch (incPrismaErr) {
+            console.warn("Aviso ao incrementar usedCount no Prisma:", incPrismaErr);
+          }
+        }
+      }
+    }
+
+    const finalAmountToCharge = Number(finalValue.toFixed(2));
 
     // Buscar configuração de Split Asaas do Tenant (taxa da plataforma gerenciada via Admin)
     let splitRules = undefined;
@@ -73,14 +166,16 @@ export async function POST(request: Request) {
     const customer = await createOrGetAsaasCustomer({
       name: customerName || "Cliente Balcão",
       email: customerEmail || `cliente_${Date.now()}@vaelis.com.br`,
-      cpfCnpj: customerCpf || undefined,
+      cpfCnpj: cleanCpfCnpj,
     });
 
-    // Criar Pagamento Pix com Split no Asaas
+    // Criar Pagamento Pix com Split no Asaas (usando valor líquido recalculado)
     const payment = await createAsaasPixPayment({
       customerId: customer.id,
-      value: totalValue,
-      description: `Compra: ${product.name} (Qtd: ${qty}) - ${tenantId}`,
+      value: finalAmountToCharge,
+      description: appliedCouponCode
+        ? `Compra: ${product.name} (Qtd: ${qty}) - Cupom: ${appliedCouponCode} (-R$ ${discountAmount.toFixed(2)})`
+        : `Compra: ${product.name} (Qtd: ${qty}) - ${tenantId}`,
       externalReference: tenantId,
       split: splitRules,
     });
@@ -94,7 +189,10 @@ export async function POST(request: Request) {
         productId,
         productName: product.name,
         quantity: qty,
-        totalAmount: totalValue,
+        grossAmount: grossValue,
+        discountAmount: Number(discountAmount.toFixed(2)),
+        totalAmount: finalAmountToCharge,
+        couponCode: appliedCouponCode || null,
         customerName: customerName || "Cliente Balcão",
         paymentStatus: "PENDING",
         asaasPaymentId: payment.id,

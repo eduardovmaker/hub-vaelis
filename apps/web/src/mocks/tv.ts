@@ -18,11 +18,9 @@ export type AddonModuleId =
   | 'google-reviews' 
   | 'whatsapp-bot' 
   | 'roleta-da-sorte' 
-  | 'web-guard' 
   | 'multi-unidades' 
-  | 'captive-portal'
   | 'loja-produtos'
-  | 'wifi-vip';
+  | (string & {});
 
 export interface AddonConfigState {
   active: boolean;
@@ -67,6 +65,7 @@ export interface WebGuardConfig {
 export interface TenantTvConfig {
   tenantId: string;
   tenantName: string;
+  email?: string;
   primaryColor?: string;
   wifiSsid?: string;
   pairingCode: string;
@@ -169,6 +168,7 @@ export const INITIAL_TV_CONFIGS: Record<string, TenantTvConfig> = {
   tenant_martinelli_barbearia_8598: {
     tenantId: "tenant_martinelli_barbearia_8598",
     tenantName: "Martinelli Barbearia",
+    email: "martinelli@barbearia.com.br",
     pairingCode: "TV-8598",
     addonActive: true,
     showQrOverlay: true,
@@ -197,8 +197,6 @@ export const INITIAL_TV_CONFIGS: Record<string, TenantTvConfig> = {
       "whatsapp-bot": { active: true, paymentStatus: "PAID", planCycle: "ANUAL" },
       "roleta-da-sorte": { active: true, paymentStatus: "PAID", planCycle: "ANUAL" },
       "loja-produtos": { active: true, paymentStatus: "PAID", planCycle: "ANUAL" },
-      "web-guard": { active: true, paymentStatus: "PAID", planCycle: "ANUAL" },
-      "captive-portal": { active: true, paymentStatus: "PAID", planCycle: "ANUAL" },
     },
   },
 };

@@ -42,8 +42,6 @@ export async function POST(request: Request) {
       "whatsapp-bot": { active: selectedStarterModules.includes("whatsapp-bot"), paymentStatus: selectedStarterModules.includes("whatsapp-bot") ? "PAID" : "PENDING" },
       "roleta-da-sorte": { active: selectedStarterModules.includes("roleta-da-sorte"), paymentStatus: selectedStarterModules.includes("roleta-da-sorte") ? "PAID" : "PENDING" },
       "loja-produtos": { active: selectedStarterModules.includes("loja-produtos"), paymentStatus: selectedStarterModules.includes("loja-produtos") ? "PAID" : "PENDING" },
-      "web-guard": { active: selectedStarterModules.includes("web-guard"), paymentStatus: selectedStarterModules.includes("web-guard") ? "PAID" : "PENDING" },
-      "captive-portal": { active: selectedStarterModules.includes("captive-portal"), paymentStatus: selectedStarterModules.includes("captive-portal") ? "PAID" : "PENDING" },
       "multi-unidades": { active: selectedStarterModules.includes("multi-unidades"), paymentStatus: selectedStarterModules.includes("multi-unidades") ? "PAID" : "PENDING" },
     };
 
@@ -217,37 +215,6 @@ export async function POST(request: Request) {
       tenantName: companyName,
     };
 
-    // Provisionar Container MikroTik CHR no Docker para o novo Tenant
-    const { provisionTenantMikrotikChr } = await import("@/lib/docker-mikrotik");
-    const chrContainer = await provisionTenantMikrotikChr(tenantId, companyName);
-
-    // Script MikroTik RouterOS v7 pré-gerado para o cliente colar no terminal
-    const mikrotikScript = `# =========================================================
-# SCRIPT DE CONFIGURAÇÃO AUTOMÁTICA CAPTIVEHUB ROS v7
-# CLIENTE: ${companyName.toUpperCase()}
-# TENANT ID: ${tenantId}
-# =========================================================
-
-/interface bridge add name=bridge-hotspot
-/ip address add address=192.168.88.1/24 interface=bridge-hotspot
-/ip pool add name=hs-pool-1 ranges=192.168.88.10-192.168.88.254
-/ip dhcp-server add name=dhcp-hs interface=bridge-hotspot address-pool=hs-pool-1 disabled=no
-/ip dhcp-server network add address=192.168.88.0/24 gateway=192.168.88.1 dns-server=1.1.1.1,8.8.8.8
-
-/ip hotspot profile
-add name="hsprof-captivehub" hotspot-address=192.168.88.1 html-directory=hotspot login-by=http-chap,http-pap,cookie use-radius=yes
-
-/ip hotspot add name="hs-captivehub" interface=bridge-hotspot profile=hsprof-captivehub address-pool=hs-pool-1 disabled=no
-
-/radius
-add service=hotspot address=127.0.0.1 secret="vaelis-radius-secret" comment="Vaelis-HUB RADIUS Cloud"
-
-/ip hotspot walled-garden
-add comment="Vaelis-HUB Cloud Domain" dst-host="*.vaelis.com.br"
-add comment="Vaelis-HUB Local Dev" dst-host="*.ngrok-free.app"
-add comment="Asaas Payment Gateway" dst-host="*.asaas.com"
-`;
-
     // Integrar com o Gateway Asaas para Geração do Pix e QR Code
     const { createOrGetAsaasCustomer, createAsaasPixPayment, createAsaasPaymentLink } = await import("@/lib/asaas");
     
@@ -281,8 +248,6 @@ add comment="Asaas Payment Gateway" dst-host="*.asaas.com"
       success: true,
       tenantId,
       user: userPayload,
-      mikrotikScript,
-      chrContainer,
       asaas: {
         customerId: asaasCustomer.id,
         paymentId: asaasPayment.id,

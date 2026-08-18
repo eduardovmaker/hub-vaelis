@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { 
   ShoppingBag, 
   Search, 
@@ -12,7 +13,9 @@ import {
   CreditCard,
   Package,
   Sun,
-  Moon
+  Moon,
+  Tag,
+  Zap
 } from "lucide-react";
 
 interface Product {
@@ -32,6 +35,10 @@ export default function TenantPublicStorePage({
   params: Promise<{ tenantId: string }>;
 }) {
   const { tenantId } = use(params);
+  const searchParams = useSearchParams();
+
+  // Fase 3: Captura de cupom via Query Parameter (?coupon=ROLETA-XXXXX)
+  const urlCoupon = searchParams.get("coupon") || "";
 
   const [products, setProducts] = useState<Product[]>([]);
   const [tenantName, setTenantName] = useState<string>(
@@ -63,6 +70,18 @@ export default function TenantPublicStorePage({
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerCpf, setCustomerCpf] = useState("");
+
+  // Estado de Cupom de Desconto no Checkout
+  const [couponInput, setCouponInput] = useState(urlCoupon);
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    discountType: "PERCENTAGE" | "FIXED";
+    discountValue: number;
+    calculatedDiscount: number;
+    finalTotal: number;
+  } | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   
   const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
   const [pixResult, setPixResult] = useState<{
@@ -73,6 +92,7 @@ export default function TenantPublicStorePage({
   } | null>(null);
   const [copiedPix, setCopiedPix] = useState(false);
 
+  // Carregar dados da loja pública
   useEffect(() => {
     async function loadStoreData() {
       try {
@@ -101,6 +121,39 @@ export default function TenantPublicStorePage({
     loadStoreData();
   }, [tenantId]);
 
+  // FASE 3: Auto-Validação Instantânea do Cupom ao abrir modal ou alterar produto/quantidade
+  useEffect(() => {
+    if (!selectedProduct) return;
+
+    const targetCoupon = couponInput.trim() || urlCoupon.trim();
+    if (!targetCoupon) return;
+
+    const baseAmount = selectedProduct.price * quantity;
+    setIsValidatingCoupon(true);
+
+    fetch(
+      `/api/checkout/validate-coupon?tenantId=${tenantId}&code=${encodeURIComponent(targetCoupon)}&amount=${baseAmount}`
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.valid && data.coupon) {
+          setAppliedCoupon(data.coupon);
+          setCouponInput(targetCoupon);
+          setCouponError(null);
+        } else {
+          setAppliedCoupon(null);
+          setCouponError(data.message || "Cupom inválido.");
+        }
+      })
+      .catch((err) => {
+        console.error("Erro ao auto-validar cupom:", err);
+        setCouponError("Erro ao validar cupom.");
+      })
+      .finally(() => {
+        setIsValidatingCoupon(false);
+      });
+  }, [selectedProduct, quantity, urlCoupon, tenantId]);
+
   const categories = ["TODOS", ...Array.from(new Set(products.map((p) => p.category || "Geral")))];
 
   const filteredProducts = products.filter((p) => {
@@ -110,15 +163,68 @@ export default function TenantPublicStorePage({
     return matchesSearch && matchesCat;
   });
 
+  const formatCpfCnpj = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 14);
+    if (digits.length <= 11) {
+      return digits
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    }
+    return digits
+      .replace(/^(\d{2})(\d)/, "$1.$2")
+      .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/(\d{3})(\d)/, "$1/$2")
+      .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+  };
+
+  const cleanCpfDigits = customerCpf.replace(/\D/g, "");
+  const isCpfCnpjValid = cleanCpfDigits.length === 11 || cleanCpfDigits.length === 14;
+
   const handleOpenBuyModal = (product: Product) => {
     setSelectedProduct(product);
     setQuantity(1);
     setPixResult(null);
+    setCouponError(null);
+    if (urlCoupon) {
+      setCouponInput(urlCoupon);
+    }
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!selectedProduct || !couponInput.trim()) return;
+    setIsValidatingCoupon(true);
+    setCouponError(null);
+
+    const baseAmount = selectedProduct.price * quantity;
+
+    try {
+      const res = await fetch(
+        `/api/checkout/validate-coupon?tenantId=${tenantId}&code=${encodeURIComponent(couponInput)}&amount=${baseAmount}`
+      );
+      const data = await res.json();
+      if (data.valid && data.coupon) {
+        setAppliedCoupon(data.coupon);
+        setCouponError(null);
+      } else {
+        setAppliedCoupon(null);
+        setCouponError(data.message || "Cupom inválido.");
+      }
+    } catch (err) {
+      setCouponError("Erro ao validar cupom.");
+    } finally {
+      setIsValidatingCoupon(false);
+    }
   };
 
   const handleExecuteCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProduct) return;
+
+    if (!isCpfCnpjValid) {
+      alert("Por favor, preencha um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.");
+      return;
+    }
 
     setIsProcessingCheckout(true);
     try {
@@ -130,8 +236,10 @@ export default function TenantPublicStorePage({
           productId: selectedProduct.id,
           customerName: customerName || "Cliente Balcão",
           customerEmail: customerEmail || `cliente_${Date.now()}@loja.vaelis.com.br`,
-          customerCpf: customerCpf || undefined,
+          cpfCnpj: customerCpf,
+          customerCpf: customerCpf,
           quantity,
+          couponCode: appliedCoupon ? appliedCoupon.code : undefined,
         }),
       });
 
@@ -229,6 +337,29 @@ export default function TenantPublicStorePage({
 
       {/* CONTEÚDO PRINCIPAL */}
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 space-y-6">
+        
+        {/* BANNER FASE 3: AVISO DE CUPOM ATIVO DA ROLETA */}
+        {urlCoupon && (
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg flex items-center justify-between gap-3 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                <Tag className="w-5 h-5 text-amber-300" />
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider text-amber-300 flex items-center gap-1">
+                  <Zap className="w-3.5 h-3.5 fill-amber-300" /> Cupom de Desconto Ativado!
+                </p>
+                <p className="text-sm font-bold">
+                  Seu cupom <span className="font-mono underline text-amber-200">{urlCoupon}</span> será aplicado automaticamente no checkout!
+                </p>
+              </div>
+            </div>
+            <span className="hidden sm:inline-block px-3 py-1 rounded-full bg-white/20 text-xs font-extrabold uppercase">
+              Desconto Garantido
+            </span>
+          </div>
+        )}
+
         {/* BANNER DE BOAS VINDAS */}
         <div className={`p-6 rounded-3xl border shadow-xl relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-colors duration-200 ${
           theme === "dark"
@@ -461,6 +592,26 @@ export default function TenantPublicStorePage({
                         : "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400"
                     }`}
                   />
+                  <div>
+                    <input
+                      type="text"
+                      required
+                      value={customerCpf}
+                      onChange={(e) => setCustomerCpf(formatCpfCnpj(e.target.value))}
+                      placeholder="CPF ou CNPJ (Obrigatório) *"
+                      maxLength={18}
+                      className={`w-full p-3 rounded-xl border text-xs focus:border-emerald-500 focus:outline-none ${
+                        theme === "dark" 
+                          ? "bg-slate-950 border-slate-800 text-white placeholder:text-slate-500" 
+                          : "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400"
+                      } ${cleanCpfDigits.length > 0 && !isCpfCnpjValid ? "border-rose-500/80 focus:border-rose-500" : ""}`}
+                    />
+                    {cleanCpfDigits.length > 0 && !isCpfCnpjValid && (
+                      <span className="text-[10px] text-rose-500 mt-1 block font-semibold">
+                        Insira 11 números para CPF ou 14 para CNPJ ({cleanCpfDigits.length}/11 ou 14)
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="email"
                     value={customerEmail}
@@ -474,19 +625,73 @@ export default function TenantPublicStorePage({
                   />
                 </div>
 
-                <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
-                  <span className={`text-xs font-bold ${theme === "dark" ? "text-slate-300" : "text-slate-700"}`}>
-                    Total a Pagar via Pix:
-                  </span>
-                  <span className="text-lg font-black text-emerald-500">
-                    R$ {(selectedProduct.price * quantity).toFixed(2)}
-                  </span>
+                {/* CAMPO OPCIONAL / AUTO-PREENCHIDO DE CUPOM DE DESCONTO */}
+                <div className="space-y-1.5 pt-1">
+                  <label className={`block text-xs font-semibold ${theme === "dark" ? "text-slate-300" : "text-slate-700"}`}>
+                    Possui cupom de desconto?
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Ex: ROLETA-A8F9B"
+                      value={couponInput}
+                      onChange={(e) => {
+                        setCouponInput(e.target.value.toUpperCase());
+                        if (appliedCoupon) setAppliedCoupon(null);
+                      }}
+                      className={`flex-1 p-2.5 rounded-xl border text-xs font-mono uppercase tracking-wider focus:outline-none ${
+                        theme === "dark" 
+                          ? "bg-slate-950 border-slate-800 text-white placeholder:text-slate-500" 
+                          : "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400"
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyCoupon}
+                      disabled={isValidatingCoupon || !couponInput.trim()}
+                      className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-all disabled:opacity-50 flex items-center gap-1"
+                    >
+                      {isValidatingCoupon ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : "Aplicar"}
+                    </button>
+                  </div>
+                  {couponError && (
+                    <p className="text-[11px] text-rose-500 font-semibold">{couponError}</p>
+                  )}
+                  {appliedCoupon && (
+                    <p className="text-[11px] text-emerald-500 font-semibold flex items-center gap-1 animate-fade-in">
+                      <Check className="w-3.5 h-3.5 text-emerald-500" /> Cupom <strong className="font-mono bg-emerald-500/20 px-1.5 py-0.5 rounded text-emerald-400">{appliedCoupon.code}</strong> aplicado com sucesso!
+                    </p>
+                  )}
+                </div>
+
+                {/* RESUMO DO TOTAL COM DESCONTO (PREÇO RISCADO SE HOUVER DESCONTO) */}
+                <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className={theme === "dark" ? "text-slate-300" : "text-slate-700"}>Subtotal Original:</span>
+                    <span className={`font-semibold ${appliedCoupon ? "line-through text-slate-500" : "text-slate-400"}`}>
+                      R$ {(selectedProduct.price * quantity).toFixed(2)}
+                    </span>
+                  </div>
+                  {appliedCoupon && (
+                    <div className="flex items-center justify-between text-xs text-emerald-500 font-bold">
+                      <span>Desconto Aplicado ({appliedCoupon.code}):</span>
+                      <span>- R$ {appliedCoupon.calculatedDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between pt-1 border-t border-emerald-500/20">
+                    <span className={`text-xs font-bold ${theme === "dark" ? "text-slate-300" : "text-slate-700"}`}>
+                      Total a Pagar via Pix:
+                    </span>
+                    <span className="text-lg font-black text-emerald-500">
+                      R$ {(appliedCoupon ? appliedCoupon.finalTotal : selectedProduct.price * quantity).toFixed(2)}
+                    </span>
+                  </div>
                 </div>
 
                 <button
                   type="submit"
-                  disabled={isProcessingCheckout}
-                  className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2"
+                  disabled={isProcessingCheckout || !customerName.trim() || !isCpfCnpjValid}
+                  className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {isProcessingCheckout ? (
                     <>
@@ -536,6 +741,16 @@ export default function TenantPublicStorePage({
                     <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping inline-block" />
                     <span>Aguardando pagamento Pix no seu app do banco...</span>
                   </div>
+
+                  <a
+                    href={`/nps/${tenantId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-extrabold text-xs flex items-center justify-center gap-2 transition-all shadow-md mt-2"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 fill-black" />
+                    <span>⭐ Avalie nosso atendimento no Google</span>
+                  </a>
                 </div>
               </div>
             )}

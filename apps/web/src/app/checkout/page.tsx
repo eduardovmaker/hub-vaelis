@@ -50,7 +50,6 @@ export default function PublicCheckoutPage() {
     { id: "whatsapp-bot", label: "💬 WhatsApp Bot & CRM de Leads", badge: "CRM", priceMensal: 29.90 },
     { id: "roleta-da-sorte", label: "🎯 Roleta da Sorte & Gamificação", badge: "Engajamento", priceMensal: 19.90 },
     { id: "loja-produtos", label: "🛍️ Loja Virtual & Vendas Pix", badge: "Vendas", priceMensal: 29.90 },
-    { id: "captive-portal", label: "🌐 Hotspot Wi-Fi Captive Portal", badge: "Conectividade Enterprise", priceMensal: 29.90 },
   ];
 
   // Inicia com NADA SELECIONADO para o cliente escolher apenas o que desejar
@@ -603,27 +602,7 @@ export default function PublicCheckoutPage() {
               </div>
             </div>
 
-            {/* Script MikroTik ROS v7 */}
-            <div className="rounded-2xl border p-6 shadow-sm space-y-3" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3" style={{ borderColor: "var(--border-color)" }}>
-                <div className="flex items-center gap-2">
-                  <Terminal className="w-5 h-5 text-blue-600" />
-                  <h3 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>Script de Conectividade Cloud Gateway (RouterOS v7)</h3>
-                </div>
-                <button
-                  onClick={copyMikrotikScript}
-                  className="px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 hover:bg-slate-500/10 transition-all"
-                  style={{ borderColor: "var(--border-color)", color: "var(--text-primary)" }}
-                >
-                  {copiedScript ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                  <span>{copiedScript ? "Script Copiado!" : "Copiar Script MikroTik"}</span>
-                </button>
-              </div>
 
-              <pre className="p-4 rounded-xl bg-slate-950 text-emerald-400 font-mono text-[11px] overflow-x-auto border border-slate-800">
-                {createdTenantData.mikrotikScript}
-              </pre>
-            </div>
 
           </div>
         )}

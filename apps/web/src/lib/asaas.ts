@@ -90,7 +90,7 @@ export function validateSplitRules(split?: AsaasSplitRule[]): AsaasSplitRule[] |
 }
 
 /**
- * Cria ou busca um cliente existente no Asaas (com timeout de 10s)
+ * Cria ou busca um cliente existente no Asaas (com busca inteligente por CPF/CNPJ ou Email)
  */
 export async function createOrGetAsaasCustomer(input: AsaasCustomerInput): Promise<{ id: string }> {
   const { apiKey, apiUrl, isProduction } = getAsaasApiConfig();
@@ -107,43 +107,69 @@ export async function createOrGetAsaasCustomer(input: AsaasCustomerInput): Promi
   const cleanEmail = (input.email || "").trim().toLowerCase();
 
   try {
-    // 1. Tentar buscar cliente existente por email
-    const searchRes = await fetch(`${apiUrl}/customers?email=${encodeURIComponent(cleanEmail)}`, {
-      method: "GET",
-      headers: {
-        "access_token": apiKey,
-        "Content-Type": "application/json",
-      },
-      signal: AbortSignal.timeout(10000),
-    });
+    // 1. Tentar buscar cliente existente no Asaas prioritariamente por CPF/CNPJ (apenas números)
+    if (cleanCpfCnpj) {
+      const cpfSearchRes = await fetch(`${apiUrl}/customers?cpfCnpj=${cleanCpfCnpj}`, {
+        method: "GET",
+        headers: {
+          "access_token": apiKey,
+          "Content-Type": "application/json",
+        },
+        signal: AbortSignal.timeout(10000),
+      });
 
-    if (searchRes.ok) {
-      const searchData = await searchRes.json();
-      if (searchData?.data && searchData.data.length > 0) {
-        const existingCus = searchData.data[0];
-        // Se o cliente já existe no Asaas mas não tem CPF/CNPJ cadastrado e recebemos um CPF/CNPJ válido agora, atualizar no Asaas
-        if (!existingCus.cpfCnpj && cleanCpfCnpj) {
-          try {
-            await fetch(`${apiUrl}/customers/${existingCus.id}`, {
-              method: "PUT",
-              headers: {
-                "access_token": apiKey,
-                "Content-Type": "application/json",
-              },
-              signal: AbortSignal.timeout(10000),
-              body: JSON.stringify({
-                cpfCnpj: cleanCpfCnpj,
-              }),
-            });
-          } catch (e) {
-            console.warn("[Asaas SDK] Aviso ao atualizar CPF/CNPJ do cliente existente no Asaas:", e);
-          }
+      if (cpfSearchRes.ok) {
+        const cpfSearchData = await cpfSearchRes.json();
+        if (cpfSearchData?.data && cpfSearchData.data.length > 0) {
+          const existingCus = cpfSearchData.data[0];
+          console.log(`[Asaas SDK] Cliente existente encontrado por CPF/CNPJ (${cleanCpfCnpj}): ${existingCus.id}`);
+          return { id: existingCus.id };
         }
-        return { id: existingCus.id };
       }
     }
 
-    // 2. Se não encontrou, criar novo cliente
+    // 2. Se não encontrou por CPF/CNPJ, buscar cliente por email
+    if (cleanEmail) {
+      const emailSearchRes = await fetch(`${apiUrl}/customers?email=${encodeURIComponent(cleanEmail)}`, {
+        method: "GET",
+        headers: {
+          "access_token": apiKey,
+          "Content-Type": "application/json",
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (emailSearchRes.ok) {
+        const emailSearchData = await emailSearchRes.json();
+        if (emailSearchData?.data && emailSearchData.data.length > 0) {
+          const existingCus = emailSearchData.data[0];
+          console.log(`[Asaas SDK] Cliente existente encontrado por E-mail (${cleanEmail}): ${existingCus.id}`);
+
+          // Se o cliente existe no Asaas por e-mail mas não tinha CPF/CNPJ salvo e agora foi fornecido, atualizar no Asaas
+          if (!existingCus.cpfCnpj && cleanCpfCnpj) {
+            try {
+              await fetch(`${apiUrl}/customers/${existingCus.id}`, {
+                method: "PUT",
+                headers: {
+                  "access_token": apiKey,
+                  "Content-Type": "application/json",
+                },
+                signal: AbortSignal.timeout(10000),
+                body: JSON.stringify({
+                  cpfCnpj: cleanCpfCnpj,
+                }),
+              });
+            } catch (e) {
+              console.warn("[Asaas SDK] Aviso ao atualizar CPF/CNPJ do cliente existente no Asaas:", e);
+            }
+          }
+          return { id: existingCus.id };
+        }
+      }
+    }
+
+    // 3. Se NÃO existir: Crie o cliente no Asaas (POST /v3/customers)
+    console.log(`[Asaas SDK] Criando novo cliente no Asaas para ${input.name} (${cleanCpfCnpj || cleanEmail})...`);
     const createRes = await fetch(`${apiUrl}/customers`, {
       method: "POST",
       headers: {
@@ -153,7 +179,7 @@ export async function createOrGetAsaasCustomer(input: AsaasCustomerInput): Promi
       signal: AbortSignal.timeout(10000),
       body: JSON.stringify({
         name: input.name,
-        email: cleanEmail,
+        email: cleanEmail || undefined,
         cpfCnpj: cleanCpfCnpj,
         phone: input.phone || undefined,
         notificationDisabled: false,
@@ -162,6 +188,7 @@ export async function createOrGetAsaasCustomer(input: AsaasCustomerInput): Promi
 
     if (createRes.ok) {
       const createData = await createRes.json();
+      console.log(`[Asaas SDK] Novo cliente cadastrado com sucesso no Asaas: ${createData.id}`);
       return { id: createData.id };
     } else {
       const errJson = await createRes.json().catch(() => null);

@@ -188,8 +188,16 @@ export default function StandaloneCheckinPage({ params }: { params: Promise<{ te
                 onClick={handleSendWhatsapp}
                 className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all active:scale-95"
               >
-                <MessageSquare className="w-4 h-4" /> Notificar Barbearia pelo WhatsApp
+                <MessageSquare className="w-4 h-4" /> Notificar Estabelecimento pelo WhatsApp
               </button>
+
+              <a
+                href={`/roleta/${tenantId}?name=${encodeURIComponent(customerName)}&phone=${encodeURIComponent(customerWhatsapp)}`}
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-rose-600 to-amber-500 hover:from-rose-700 hover:to-amber-600 text-white font-extrabold text-xs shadow-lg shadow-rose-600/30 flex items-center justify-center gap-2 transition-all active:scale-95"
+              >
+                <Gift className="w-4 h-4" />
+                <span>🎯 Girar Roleta da Sorte Agora!</span>
+              </a>
             </div>
           </div>
         )}
