@@ -656,8 +656,14 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
 
   // Estados Avançados do Bot WhatsApp & CRM de Leads
   const [botWelcomeMessage, setBotWelcomeMessage] = useState(
-    "Seja bem-vindo ao {estabelecimento}! Seu Wi-Fi está liberado. Acesse nosso cardápio e novidades pelo link!"
+    "Seja bem-vindo ao {estabelecimento}! Seu cadastro foi concluído com sucesso. Confira nossas novidades e ofertas VIP pelo link!"
   );
+  const [botWelcomeEnabled, setBotWelcomeEnabled] = useState(true);
+  const [botReturnEnabled, setBotReturnEnabled] = useState(true);
+  const [botBirthdayEnabled, setBotBirthdayEnabled] = useState(true);
+  const [showQuickCaptureLinks, setShowQuickCaptureLinks] = useState(false);
+  const [activityFilter, setActivityFilter] = useState<"all" | "sales" | "coupons" | "leads">("all");
+  const [activitySearchTerm, setActivitySearchTerm] = useState("");
   const [botReturnReminderDays, setBotReturnReminderDays] = useState(20);
   const [botReturnMessage, setBotReturnMessage] = useState(
     "Fala {nome}! Já faz {dias} dias da sua última visita ao {estabelecimento}. Bora alinhar o visual essa semana?"
@@ -1710,7 +1716,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
         )}
         
         {/* ========================================================================= */}
-        {/* ABA 1: INÍCIO (DASHBOARD COMPLETO COM ESTATÍSTICAS E TABELA DE DISPOSITIVOS) */}
+        {/* ABA 1: INÍCIO (NOVA DASHBOARD DO HUB EMPRESARIAL — ATIVIDADE RECENTE)     */}
         {/* ========================================================================= */}
         {activeTab === "dashboard" && (
           <div className="space-y-6 animate-fade-in">
@@ -1720,7 +1726,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                   Central do Estabelecimento — Engajamento & Desempenho
                 </h2>
                 <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                  Acompanhe a interação dos seus clientes com a Mídia TV, Avaliações Google, Leads WhatsApp e Módulo Wi-Fi.
+                  Acompanhe a interação dos seus clientes com a Mídia TV, Avaliações Google e Leads WhatsApp.
                 </p>
               </div>
 
@@ -1735,18 +1741,16 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
               </a>
             </div>
 
-            {/* Grid de Cards Principais de Estatística do Estabelecimento (Apenas Módulos Ativos) */}
+            {/* Grid de Cards Principais de Estatística do Estabelecimento */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {(addonStates["whatsapp-bot"]?.active || addonStates["captive-portal"]?.active) && (
-                <div className="p-5 rounded-2xl border shadow-sm space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Leads & Contatos</span>
-                    <MessageSquare className="w-5 h-5 text-emerald-600" />
-                  </div>
-                  <p className="text-2xl font-extrabold text-emerald-600">{capturedLeadsList.length} Clientes</p>
-                  <p className="text-xs text-emerald-600 font-medium">{capturedLeadsList.length > 0 ? "Capturados via WhatsApp/Wi-Fi" : "Nenhum lead capturado ainda"}</p>
+              <div className="p-5 rounded-2xl border shadow-sm space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Leads & Contatos</span>
+                  <MessageSquare className="w-5 h-5 text-emerald-600" />
                 </div>
-              )}
+                <p className="text-2xl font-extrabold text-emerald-600">{capturedLeadsList.length} Clientes</p>
+                <p className="text-xs text-emerald-600 font-medium">{capturedLeadsList.length > 0 ? "Capturados via WhatsApp / Roleta" : "Nenhum lead capturado ainda"}</p>
+              </div>
 
               {addonStates["google-reviews"]?.active && (
                 <div className="p-5 rounded-2xl border shadow-sm space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
@@ -1770,16 +1774,14 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 </div>
               )}
 
-              {addonStates["captive-portal"]?.active && (
-                <div className="p-5 rounded-2xl border shadow-sm space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Módulo Wi-Fi Hotspot</span>
-                    <Wifi className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <p className="text-2xl font-extrabold text-blue-600">{connectedDevices.length} Online</p>
-                  <p className="text-xs font-medium text-blue-600">R$ 0,00 vendas Pix hoje</p>
+              <div className="p-5 rounded-2xl border shadow-sm space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Vendas Pix & Cupons</span>
+                  <ShoppingCart className="w-5 h-5 text-blue-600" />
                 </div>
-              )}
+                <p className="text-2xl font-extrabold text-blue-600">{productSalesList.length} Transações</p>
+                <p className="text-xs font-medium text-blue-600">Vendas Loja & Resgates Pix</p>
+              </div>
             </div>
 
             {/* BARRA DE AÇÕES RÁPIDAS DO ESTABELECIMENTO */}
@@ -1830,87 +1832,236 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                   </button>
                 )}
 
-                {addonStates["captive-portal"]?.active && (
+                {addonStates["whatsapp-bot"]?.active && (
                   <button
-                    onClick={() => setActiveTab("captive-portal")}
-                    className="p-3 rounded-xl border flex items-center gap-3 hover:border-blue-500 hover:bg-blue-500/5 transition-all text-left"
+                    onClick={() => setActiveTab("whatsapp-bot")}
+                    className="p-3 rounded-xl border flex items-center gap-3 hover:border-emerald-600 hover:bg-emerald-600/5 transition-all text-left"
                     style={{ borderColor: "var(--border-color)" }}
                   >
-                    <Wifi className="w-5 h-5 text-blue-600 shrink-0" />
+                    <MessageSquare className="w-5 h-5 text-emerald-600 shrink-0" />
                     <div>
-                      <p className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>Módulo Wi-Fi</p>
-                      <p className="text-[10px] text-slate-400">Planos Pix e Cortesia</p>
+                      <p className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>WhatsApp Bot</p>
+                      <p className="text-[10px] text-slate-400">Modelos & Retenção</p>
                     </div>
                   </button>
                 )}
               </div>
             </div>
 
-            {/* PAINEL COMPLETO DE DISPOSITIVOS CONECTADOS NO MIKROTIK */}
-            <div className="rounded-2xl border p-6 shadow-sm space-y-5" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+            {/* NOVA SEÇÃO: ATIVIDADE RECENTE DO HUB (SUBSTITUI TOTALMENTE O PAINEL MIKROTIK) */}
+            <div className="rounded-2xl border p-6 shadow-sm space-y-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4" style={{ borderColor: "var(--border-color)" }}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">
-                    <Wifi className="w-5 h-5" />
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold">
+                    <Activity className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>Dispositivos Conectados em Tempo Real</h3>
-                    <p className="text-xs text-slate-400">Clientes ativos no hotspot MikroTik da sua loja.</p>
+                    <h3 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>Atividade Recente do Hub</h3>
+                    <p className="text-xs text-slate-400">Vendas Pix aprovadas, cupons gerados/resgatados e novos leads capturados em tempo real.</p>
                   </div>
                 </div>
 
-                <div className="relative w-full sm:w-64">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    value={deviceSearchTerm}
-                    onChange={(e) => setDeviceSearchTerm(e.target.value)}
-                    placeholder="Buscar IP, MAC ou Nome..."
-                    className="w-full pl-9 pr-3 py-2 rounded-xl border text-xs"
-                    style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
-                  />
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  {/* Seletor de Abas de Atividade */}
+                  <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-semibold">
+                    <button
+                      onClick={() => setActivityFilter("all")}
+                      className={`px-3 py-1.5 rounded-lg transition-all ${
+                        activityFilter === "all" ? "bg-white dark:bg-slate-900 text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      Todas
+                    </button>
+                    <button
+                      onClick={() => setActivityFilter("sales")}
+                      className={`px-3 py-1.5 rounded-lg transition-all ${
+                        activityFilter === "sales" ? "bg-white dark:bg-slate-900 text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      Vendas Pix
+                    </button>
+                    <button
+                      onClick={() => setActivityFilter("coupons")}
+                      className={`px-3 py-1.5 rounded-lg transition-all ${
+                        activityFilter === "coupons" ? "bg-white dark:bg-slate-900 text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      Cupons
+                    </button>
+                    <button
+                      onClick={() => setActivityFilter("leads")}
+                      className={`px-3 py-1.5 rounded-lg transition-all ${
+                        activityFilter === "leads" ? "bg-white dark:bg-slate-900 text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      Leads
+                    </button>
+                  </div>
+
+                  <div className="relative w-full sm:w-56">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={activitySearchTerm}
+                      onChange={(e) => setActivitySearchTerm(e.target.value)}
+                      placeholder="Buscar por cliente, cupom..."
+                      className="w-full pl-9 pr-3 py-2 rounded-xl border text-xs"
+                      style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
+                    />
+                  </div>
                 </div>
               </div>
 
+              {/* FEED / TABELA UNIFICADA DE ATIVIDADES DO HUB */}
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b text-slate-400 font-semibold uppercase tracking-wider" style={{ borderColor: "var(--border-color)" }}>
-                      <th className="py-3 px-4">Dispositivo</th>
-                      <th className="py-3 px-4">IP & MAC</th>
-                      <th className="py-3 px-4">Sinal Wi-Fi</th>
-                      <th className="py-3 px-4">Plano</th>
-                      <th className="py-3 px-4">Velocidade / Consumo</th>
-                      <th className="py-3 px-4">Tempo Conectado</th>
-                      <th className="py-3 px-4 text-right">Ação</th>
+                      <th className="py-3 px-4">Tipo / Evento</th>
+                      <th className="py-3 px-4">Cliente / Origem</th>
+                      <th className="py-3 px-4">Detalhes / Produto</th>
+                      <th className="py-3 px-4">Valor / Cupom</th>
+                      <th className="py-3 px-4">Data & Horário</th>
+                      <th className="py-3 px-4 text-right">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y" style={{ borderColor: "var(--border-color)" }}>
-                    {filteredDevices.map((device) => (
-                      <tr key={device.id} className="hover:bg-slate-500/5 transition-colors">
-                        <td className="py-3.5 px-4 font-bold" style={{ color: "var(--text-primary)" }}>{device.hostname}</td>
-                        <td className="py-3.5 px-4 font-mono text-[11px] text-slate-400">{device.ip} • {device.mac}</td>
-                        <td className="py-3.5 px-4 text-emerald-600 font-bold">{device.signalRssi} dBm</td>
-                        <td className="py-3.5 px-4">
-                          <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 font-bold text-[10px]">
-                            {device.accessType}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 font-semibold" style={{ color: "var(--text-primary)" }}>
-                          {device.downloadSpeed} ({device.bytesUsed})
-                        </td>
-                        <td className="py-3.5 px-4 text-slate-400 font-mono">{device.connectedTime}</td>
-                        <td className="py-3.5 px-4 text-right">
-                          <button
-                            onClick={() => handleDisconnectDevice(device.id, device.hostname)}
-                            className="px-2.5 py-1.5 rounded-lg border text-red-500 hover:bg-red-500/10 text-[10px] font-bold transition-all"
-                            style={{ borderColor: "var(--border-color)" }}
-                          >
-                            Desconectar
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {/* Lista dinâmica com Fallback de Demonstração Minimalista */}
+                    {(() => {
+                      const allEvents = [
+                        ...productSalesList.map((s: any) => ({
+                          id: s.id || `sale_${Math.random()}`,
+                          type: "SALES",
+                          title: "Venda Pix Aprovada",
+                          client: s.customerName || "Cliente Loja",
+                          details: s.productName || s.title || "Produto / Serviço",
+                          value: `R$ ${(s.amount || s.totalPrice || 35.0).toFixed(2)}`,
+                          date: s.createdAt ? new Date(s.createdAt).toLocaleString("pt-BR") : "Hoje às 13:20",
+                          status: "APROVADO",
+                          icon: ShoppingCart,
+                          color: "emerald",
+                        })),
+                        ...capturedLeadsList.map((l: any) => ({
+                          id: l.id || `lead_${Math.random()}`,
+                          type: "LEADS",
+                          title: "Novo Lead Capturado",
+                          client: l.name || "Cliente sem nome",
+                          details: l.whatsapp || "WhatsApp validado",
+                          value: "Cadastro QR / Roleta",
+                          date: l.connectedAt || "Hoje às 12:45",
+                          status: "LEAD CAPTURADO",
+                          icon: Users,
+                          color: "blue",
+                        })),
+                        // Caso a lista esteja vazia no BD de teste, injeta dados reais de demonstração no padrão Minimal Kit
+                        ...(productSalesList.length === 0 && capturedLeadsList.length === 0 ? [
+                          {
+                            id: "demo_1",
+                            type: "SALES",
+                            title: "Venda Pix Aprovada",
+                            client: "Carlos Eduardo Silva",
+                            details: "Pomada Modeladora Matte (Loja)",
+                            value: "R$ 35,00",
+                            date: "Hoje às 13:25",
+                            status: "PIX APROVADO",
+                            icon: ShoppingCart,
+                            color: "emerald",
+                          },
+                          {
+                            id: "demo_2",
+                            type: "COUPONS",
+                            title: "Cupom Resgatado",
+                            client: "Mariana Souza Costa",
+                            details: "10% de Desconto na Conta",
+                            value: "CUPOM-ROLETAVIP",
+                            date: "Hoje às 12:50",
+                            status: "RESGATADO",
+                            icon: Tag,
+                            color: "amber",
+                          },
+                          {
+                            id: "demo_3",
+                            type: "LEADS",
+                            title: "Lead Capturado (Roleta)",
+                            client: "Lucas Mendes Santos",
+                            details: "(11) 98877-6655",
+                            value: "Roleta da Sorte Externa",
+                            date: "Hoje às 12:15",
+                            status: "LEAD CAPTURADO",
+                            icon: Users,
+                            color: "blue",
+                          },
+                          {
+                            id: "demo_4",
+                            type: "COUPONS",
+                            title: "Cupom Gerado (Check-in)",
+                            client: "Beatriz Lima Ribeiro",
+                            details: "Shot de Boas-Vindas Grátis",
+                            value: "CUPOM-CHECKIN100",
+                            date: "Hoje às 11:30",
+                            status: "GERADO",
+                            icon: Gift,
+                            color: "rose",
+                          },
+                        ] : [])
+                      ];
+
+                      const filtered = allEvents.filter((ev) => {
+                        if (activityFilter !== "all" && ev.type !== activityFilter.toUpperCase()) return false;
+                        if (activitySearchTerm) {
+                          const term = activitySearchTerm.toLowerCase();
+                          return (
+                            ev.client.toLowerCase().includes(term) ||
+                            ev.details.toLowerCase().includes(term) ||
+                            ev.value.toLowerCase().includes(term)
+                          );
+                        }
+                        return true;
+                      });
+
+                      if (filtered.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={6} className="py-8 text-center text-slate-400">
+                              Nenhuma atividade recente encontrada com os filtros selecionados.
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      return filtered.map((item) => {
+                        const IconComp = item.icon;
+                        return (
+                          <tr key={item.id} className="hover:bg-slate-500/5 transition-colors">
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold bg-${item.color}-500/10 text-${item.color}-600`}>
+                                  <IconComp className="w-4 h-4" />
+                                </div>
+                                <span className="font-bold text-xs" style={{ color: "var(--text-primary)" }}>{item.title}</span>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4 font-semibold text-xs" style={{ color: "var(--text-primary)" }}>
+                              {item.client}
+                            </td>
+                            <td className="py-3.5 px-4 text-xs text-slate-400">
+                              {item.details}
+                            </td>
+                            <td className="py-3.5 px-4 font-bold text-xs" style={{ color: "var(--text-primary)" }}>
+                              {item.value}
+                            </td>
+                            <td className="py-3.5 px-4 text-xs font-mono text-slate-400">
+                              {item.date}
+                            </td>
+                            <td className="py-3.5 px-4 text-right">
+                              <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 font-bold text-[10px] uppercase">
+                                {item.status}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })()}
                   </tbody>
                 </table>
               </div>
@@ -2657,229 +2808,268 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => showNotification("Arquivo CSV de leads exportado!")} className="px-3.5 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-emerald-600/20">
+                <button
+                  onClick={() => setShowQuickCaptureLinks(!showQuickCaptureLinks)}
+                  className={`px-3.5 py-2 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all shadow-sm ${
+                    showQuickCaptureLinks
+                      ? "bg-emerald-600 text-white border-emerald-600"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200"
+                  }`}
+                >
+                  <LinkIcon className="w-4 h-4 text-emerald-500" />
+                  <span>{showQuickCaptureLinks ? "Ocultar Acesso Rápido" : "Acesso Rápido (Links de Captura)"}</span>
+                </button>
+
+                <button onClick={() => showNotification("Arquivo CSV de leads exportado!")} className="px-3.5 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-emerald-600/20 hover:bg-emerald-700 transition-all">
                   <Download className="w-4 h-4" /> Baixar Lista em CSV
                 </button>
               </div>
             </div>
 
+            {/* BARRA EXPANSÍVEL DE ACESSO RÁPIDO (LINKS DE CAPTURA SIMPLIFICADOS) */}
+            {showQuickCaptureLinks && (
+              <div className="p-5 rounded-2xl border bg-white dark:bg-slate-900 shadow-minimal animate-fade-in space-y-4" style={{ borderColor: "var(--border-color)" }}>
+                <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "var(--border-color)" }}>
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-emerald-600 flex items-center gap-2">
+                    <Zap className="w-4 h-4" /> Links de Captura & Check-in Rápido
+                  </h3>
+                  <span className="text-[10px] text-slate-400">Compartilhe no Balcão ou Recepção</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Link 1: Check-in QR Balcão */}
+                  <div className="p-3.5 rounded-xl border bg-slate-50 dark:bg-slate-800/50 space-y-2" style={{ borderColor: "var(--border-color)" }}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <QrCode className="w-4 h-4 text-emerald-600" /> QR Code Balcão
+                      </span>
+                      <span className="px-2 py-0.5 rounded text-[9px] bg-emerald-500/10 text-emerald-600 font-extrabold uppercase">Check-in</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">Adesivo de mesa ou balcão para cadastro do WhatsApp.</p>
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={() => {
+                          const url = `${window.location.origin}/checkin/${tenantId}`;
+                          navigator.clipboard.writeText(url);
+                          setCopiedCheckinUrl(true);
+                          setTimeout(() => setCopiedCheckinUrl(false), 3000);
+                        }}
+                        className="flex-1 py-1.5 px-2 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1 hover:bg-emerald-500/10 transition-all"
+                        style={{ borderColor: "var(--border-color)", color: "var(--text-primary)" }}
+                      >
+                        {copiedCheckinUrl ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedCheckinUrl ? "Copiado!" : "Copiar"}</span>
+                      </button>
+                      <a
+                        href={`/checkin/${tenantId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-[11px] flex items-center gap-1 shadow-sm hover:bg-emerald-700 transition-all"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" /> Abrir
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Link 2: Roleta Externa */}
+                  <div className="p-3.5 rounded-xl border bg-slate-50 dark:bg-slate-800/50 space-y-2" style={{ borderColor: "var(--border-color)" }}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <Dices className="w-4 h-4 text-rose-600" /> Roleta da Sorte
+                      </span>
+                      <span className="px-2 py-0.5 rounded text-[9px] bg-rose-500/10 text-rose-600 font-extrabold uppercase">Gamificação</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">Roleta interativa para smartphone dos clientes na recepção.</p>
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={() => {
+                          const url = `${window.location.origin}/roleta/${tenantId}`;
+                          navigator.clipboard.writeText(url);
+                          setCopiedRoletaUrl(true);
+                          setTimeout(() => setCopiedRoletaUrl(false), 3000);
+                        }}
+                        className="flex-1 py-1.5 px-2 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1 hover:bg-rose-500/10 transition-all"
+                        style={{ borderColor: "var(--border-color)", color: "var(--text-primary)" }}
+                      >
+                        {copiedRoletaUrl ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedRoletaUrl ? "Copiado!" : "Copiar"}</span>
+                      </button>
+                      <a
+                        href={`/roleta/${tenantId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded-lg bg-rose-600 text-white font-bold text-[11px] flex items-center gap-1 shadow-sm hover:bg-rose-700 transition-all"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" /> Abrir
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Link 3: Cadastro Manual */}
+                  <div className="p-3.5 rounded-xl border bg-slate-50 dark:bg-slate-800/50 space-y-2" style={{ borderColor: "var(--border-color)" }}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <Users className="w-4 h-4 text-blue-600" /> Cadastro Balcão
+                      </span>
+                      <span className="px-2 py-0.5 rounded text-[9px] bg-blue-500/10 text-blue-600 font-extrabold uppercase">Manual</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">Formulário rápido para inserção manual de novos clientes.</p>
+                    <div className="pt-2 text-right">
+                      <span className="text-[11px] font-bold text-emerald-600 flex items-center justify-end gap-1">
+                        <Check className="w-3.5 h-3.5" /> Formulário Ativo Abaixo
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Grid de 3 Cards com Estatísticas do WhatsApp Bot */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-4 rounded-2xl border space-y-1" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-                <span className="text-[10px] font-extrabold uppercase text-slate-400">Leads no Banco de Dados</span>
+              <div className="p-5 rounded-2xl border space-y-1 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Leads no Banco de Dados</span>
                 <p className="text-2xl font-black text-emerald-600">{capturedLeadsList.length} Clientes</p>
-                <p className="text-[11px] text-slate-400">Contatos capturados no Wi-Fi e QR Code</p>
+                <p className="text-[11px] text-slate-400">Contatos capturados via QR Code e Roleta</p>
               </div>
 
-              <div className="p-4 rounded-2xl border space-y-1" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-                <span className="text-[10px] font-extrabold uppercase text-slate-400">Lembretes de Retorno Programados</span>
+              <div className="p-5 rounded-2xl border space-y-1 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Lembrete de Retorno</span>
                 <p className="text-2xl font-black text-blue-600">{botReturnReminderDays} Dias</p>
-                <p className="text-[11px] text-slate-400">Intervalo automático entre visitas</p>
+                <p className="text-[11px] text-slate-400">Disparo automático pós-visita</p>
               </div>
 
-              <div className="p-4 rounded-2xl border space-y-1" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
-                <span className="text-[10px] font-extrabold uppercase text-slate-400">Canaiscaptura Ativos (Sem Wi-Fi)</span>
-                <p className="text-2xl font-black text-amber-500">4 Canais</p>
-                <p className="text-[11px] text-slate-400">QR Code Balcão, Roleta & WhatsApp Direct</p>
-              </div>
-            </div>
-
-            {/* CARD DESTACADO: CANAIS DE CAPTURA SEM NECESSIDADE DE WI-FI DEDICADO */}
-            <div className="p-6 rounded-2xl border bg-emerald-500/10 border-emerald-500/20 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-md shadow-emerald-600/20">
-                    <HeartHandshake className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-                      Canaiscaptura de Leads (Funciona Sem Wi-Fi Dedicado / Roteador Compartilhado)
-                      <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-600 text-white font-extrabold uppercase">Multi-Canal</span>
-                    </h3>
-                    <p className="text-xs text-slate-400">
-                      Não consegue alterar as configurações do roteador? Imprima o QR Code do Balcão ou use a Roleta Externa para capturar o WhatsApp dos clientes sem depender de rede Wi-Fi!
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                {/* Canal 1: Check-in VIP Balcão */}
-                <div className="p-4 rounded-xl border bg-white dark:bg-slate-900 space-y-3" style={{ borderColor: "var(--border-color)" }}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5">
-                      <QrCode className="w-4 h-4" /> 1. QR Code no Balcão / Espelho
-                    </span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 font-bold uppercase">Check-in VIP</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400">
-                    Imprima o QR Code do Check-in na bancada. O cliente escaneia, cadastra o WhatsApp e ganha um cupom de boas-vindas.
-                  </p>
-                  <div className="flex items-center gap-2 pt-1">
-                    <button
-                      onClick={() => {
-                        const url = `${window.location.origin}/checkin/${tenantId}`;
-                        navigator.clipboard.writeText(url);
-                        setCopiedCheckinUrl(true);
-                        setTimeout(() => setCopiedCheckinUrl(false), 3000);
-                      }}
-                      className="flex-1 py-1.5 px-2 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1 hover:bg-emerald-500/10"
-                      style={{ borderColor: "var(--border-color)", color: "var(--text-primary)" }}
-                    >
-                      {copiedCheckinUrl ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedCheckinUrl ? "Copiado!" : "Copiar Link"}</span>
-                    </button>
-                    <a
-                      href={`/checkin/${tenantId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-[11px] flex items-center gap-1 shadow-sm"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" /> Testar
-                    </a>
-                  </div>
-                </div>
-
-                {/* Canal 2: Roleta Externa */}
-                <div className="p-4 rounded-xl border bg-white dark:bg-slate-900 space-y-3" style={{ borderColor: "var(--border-color)" }}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-rose-600 flex items-center gap-1.5">
-                      <Dices className="w-4 h-4" /> 2. Roleta da Sorte Externa
-                    </span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 font-bold uppercase">Gamificação</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400">
-                    Disponibilize o QR Code da Roleta na recepção ou sala de espera para os clientes girarem no smartphone.
-                  </p>
-                  <div className="flex items-center gap-2 pt-1">
-                    <button
-                      onClick={() => {
-                        const url = `${window.location.origin}/roleta/${tenantId}`;
-                        navigator.clipboard.writeText(url);
-                        setCopiedRoletaUrl(true);
-                        setTimeout(() => setCopiedRoletaUrl(false), 3000);
-                      }}
-                      className="flex-1 py-1.5 px-2 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1 hover:bg-rose-500/10"
-                      style={{ borderColor: "var(--border-color)", color: "var(--text-primary)" }}
-                    >
-                      {copiedRoletaUrl ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedRoletaUrl ? "Copiado!" : "Copiar Link"}</span>
-                    </button>
-                    <a
-                      href={`/roleta/${tenantId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1.5 rounded-lg bg-rose-600 text-white font-bold text-[11px] flex items-center gap-1 shadow-sm"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" /> Testar
-                    </a>
-                  </div>
-                </div>
-
-                {/* Canal 3: Cadastro Manual no Balcão */}
-                <div className="p-4 rounded-xl border bg-white dark:bg-slate-900 space-y-3" style={{ borderColor: "var(--border-color)" }}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-blue-600 flex items-center gap-1.5">
-                      <Users className="w-4 h-4" /> 3. Cadastro Rápido no Balcão
-                    </span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 font-bold uppercase">Manual</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400">
-                    O próprio barbeiro ou recepcionista digita o Nome + WhatsApp do cliente diretamente no formulário abaixo.
-                  </p>
-                  <div className="pt-1">
-                    <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
-                      <Check className="w-3.5 h-3.5" /> Formulário Ativo no Painel
-                    </span>
-                  </div>
-                </div>
-
+              <div className="p-5 rounded-2xl border space-y-1 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Status das Automações</span>
+                <p className="text-2xl font-black text-amber-500">
+                  {[botWelcomeEnabled, botReturnEnabled, botBirthdayEnabled].filter(Boolean).length} de 3 Ativas
+                </p>
+                <p className="text-[11px] text-slate-400">Modelos configurados e operacionais</p>
               </div>
             </div>
 
-            {/* SEÇÃO 1: CONFIGURAÇÃO DE MENSAGENS E REGRAS DO BOT */}
+            {/* SEÇÃO DE CONFIGURAÇÃO DOS MODELOS DE MENSAGENS — CARDS MINIMALISTAS COM SWITCH ELEGANTE */}
             <div className="rounded-2xl border p-6 shadow-sm space-y-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
               <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: "var(--border-color)" }}>
                 <div>
                   <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
                     <Settings className="w-5 h-5 text-emerald-600" />
-                    Configuração dos Modelos de Mensagens Automáticas
+                    Modelos de Mensagens Automáticas
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Utilize as tags dinâmicas <code className="text-emerald-500 font-bold">{`{nome}`}</code>, <code className="text-emerald-500 font-bold">{`{estabelecimento}`}</code> e <code className="text-emerald-500 font-bold">{`{dias}`}</code> para personalizar os disparos.
+                    Utilize as tags dinâmicas <code className="text-emerald-500 font-bold">{`{nome}`}</code>, <code className="text-emerald-500 font-bold">{`{estabelecimento}`}</code> e <code className="text-emerald-500 font-bold">{`{dias}`}</code>.
                   </p>
                 </div>
                 <button
-                  onClick={() => showNotification("Configurações do WhatsApp Bot salvas!")}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shrink-0"
+                  onClick={() => showNotification("Configurações do WhatsApp Bot salvas com sucesso!")}
+                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all active:scale-95"
                 >
-                  <Check className="w-4 h-4" /> Salvar Regras do Bot
+                  <Check className="w-4 h-4" /> Salvar Mensagens
                 </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
-                {/* Regra 1: Boas Vindas */}
-                <div className="p-4 rounded-xl border space-y-3" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)" }}>
+                {/* Card Minimalista 1: Boas-Vindas (Após Cadastro QR/Roleta) */}
+                <div className="p-5 rounded-2xl border space-y-3 transition-all hover:shadow-minimal" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)" }}>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                      <Zap className="w-3.5 h-3.5" /> 1. Boas-Vindas no Wi-Fi
+                    <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <Zap className="w-4 h-4 text-emerald-600" /> Boas-Vindas (Após Cadastro QR/Roleta)
                     </span>
-                    <span className="text-[9px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 font-extrabold uppercase">Ativo</span>
+
+                    {/* Switch ON/OFF Minimalista */}
+                    <button
+                      onClick={() => setBotWelcomeEnabled(!botWelcomeEnabled)}
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase transition-all flex items-center gap-1 ${
+                        botWelcomeEnabled ? "bg-emerald-600 text-white" : "bg-slate-300 dark:bg-slate-700 text-slate-500"
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${botWelcomeEnabled ? "bg-white animate-pulse" : "bg-slate-400"}`} />
+                      {botWelcomeEnabled ? "ON" : "OFF"}
+                    </button>
                   </div>
+
                   <textarea
                     rows={4}
                     value={botWelcomeMessage}
                     onChange={(e) => setBotWelcomeMessage(e.target.value)}
-                    className="w-full p-3 rounded-xl border text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    disabled={!botWelcomeEnabled}
+                    className="w-full p-3 rounded-xl border text-xs font-sans focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 transition-all"
                     style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
                   />
-                  <p className="text-[10px] text-slate-400">Disparado no momento exato em que o cliente se conecta ao hotspot.</p>
+                  <p className="text-[11px] text-slate-400">Disparado automaticamente assim que o cliente se cadastra pelo QR Code ou Roleta.</p>
                 </div>
 
-                {/* Regra 2: Lembrete de Retorno */}
-                <div className="p-4 rounded-xl border space-y-3" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)" }}>
+                {/* Card Minimalista 2: Lembrete de Retorno */}
+                <div className="p-5 rounded-2xl border space-y-3 transition-all hover:shadow-minimal" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)" }}>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-blue-600 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" /> 2. Lembrete de Retorno
+                    <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-blue-600" /> Lembrete de Retorno
                     </span>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        value={botReturnReminderDays}
-                        onChange={(e) => setBotReturnReminderDays(parseInt(e.target.value) || 15)}
-                        className="w-12 px-1.5 py-0.5 rounded border text-[11px] font-bold text-center"
-                        style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
-                      />
-                      <span className="text-[10px] font-bold text-slate-400">dias</span>
+
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          value={botReturnReminderDays}
+                          onChange={(e) => setBotReturnReminderDays(parseInt(e.target.value) || 15)}
+                          className="w-10 px-1 py-0.5 rounded border text-[11px] font-bold text-center"
+                          style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
+                        />
+                        <span className="text-[10px] font-bold text-slate-400">dias</span>
+                      </div>
+
+                      {/* Switch ON/OFF Minimalista */}
+                      <button
+                        onClick={() => setBotReturnEnabled(!botReturnEnabled)}
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase transition-all flex items-center gap-1 ${
+                          botReturnEnabled ? "bg-blue-600 text-white" : "bg-slate-300 dark:bg-slate-700 text-slate-500"
+                        }`}
+                      >
+                        <span className={`w-2 h-2 rounded-full ${botReturnEnabled ? "bg-white animate-pulse" : "bg-slate-400"}`} />
+                        {botReturnEnabled ? "ON" : "OFF"}
+                      </button>
                     </div>
                   </div>
+
                   <textarea
                     rows={4}
                     value={botReturnMessage}
                     onChange={(e) => setBotReturnMessage(e.target.value)}
-                    className="w-full p-3 rounded-xl border text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={!botReturnEnabled}
+                    className="w-full p-3 rounded-xl border text-xs font-sans focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 transition-all"
                     style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
                   />
-                  <p className="text-[10px] text-slate-400">Estimula o cliente a agendar o retorno após {botReturnReminderDays} dias sem visita.</p>
+                  <p className="text-[11px] text-slate-400">Estimula o cliente a agendar o retorno após {botReturnReminderDays} dias sem visita.</p>
                 </div>
 
-                {/* Regra 3: Aniversariantes */}
-                <div className="p-4 rounded-xl border space-y-3" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)" }}>
+                {/* Card Minimalista 3: Cupom de Aniversário */}
+                <div className="p-5 rounded-2xl border space-y-3 transition-all hover:shadow-minimal" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-color)" }}>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-amber-500 flex items-center gap-1">
-                      <Gift className="w-3.5 h-3.5" /> 3. Cupom de Aniversário
+                    <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <Gift className="w-4 h-4 text-amber-500" /> Cupom de Aniversário
                     </span>
-                    <span className="text-[9px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 font-extrabold uppercase">Ativo</span>
+
+                    {/* Switch ON/OFF Minimalista */}
+                    <button
+                      onClick={() => setBotBirthdayEnabled(!botBirthdayEnabled)}
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase transition-all flex items-center gap-1 ${
+                        botBirthdayEnabled ? "bg-amber-500 text-white" : "bg-slate-300 dark:bg-slate-700 text-slate-500"
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${botBirthdayEnabled ? "bg-white animate-pulse" : "bg-slate-400"}`} />
+                      {botBirthdayEnabled ? "ON" : "OFF"}
+                    </button>
                   </div>
+
                   <textarea
                     rows={4}
                     value={botBirthdayMessage}
                     onChange={(e) => setBotBirthdayMessage(e.target.value)}
-                    className="w-full p-3 rounded-xl border text-xs font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    disabled={!botBirthdayEnabled}
+                    className="w-full p-3 rounded-xl border text-xs font-sans focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50 transition-all"
                     style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)", color: "var(--text-primary)" }}
                   />
-                  <p className="text-[10px] text-slate-400">Enviado no dia do aniversário do cliente cadastrado no portal.</p>
+                  <p className="text-[11px] text-slate-400">Enviado automaticamente no dia do aniversário do cliente.</p>
                 </div>
 
               </div>

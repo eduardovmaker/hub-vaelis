@@ -62,6 +62,51 @@ body {
   letter-spacing: 0.2px;
 }
 
+/* Minimal Kit Input & Button Design Tokens */
+.minimal-input {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  transition: all 0.2s ease-in-out;
+}
+
+.minimal-input:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(0, 167, 111, 0.16);
+}
+
+.minimal-btn-primary {
+  background-color: var(--brand-primary);
+  color: #FFFFFF;
+  font-weight: 700;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px 0 rgba(0, 167, 111, 0.24);
+  transition: all 0.2s ease-in-out;
+}
+
+.minimal-btn-primary:hover {
+  background-color: #00885a;
+  box-shadow: 0 6px 16px 0 rgba(0, 167, 111, 0.32);
+}
+
+.minimal-btn-secondary {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  font-weight: 700;
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  transition: all 0.2s ease-in-out;
+}
+
+.minimal-btn-secondary:hover {
+  background-color: var(--bg-primary);
+  box-shadow: var(--card-shadow-hover);
+}
+
 /* Ocultar Barra de Rolagem Nativa mantendo a rolagem ativa */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

@@ -18,6 +18,10 @@ const config: Config = {
         "brand-main": "var(--brand-primary)",
         "brand-accent": "var(--brand-accent)",
       },
+      boxShadow: {
+        minimal: "0 0 2px 0 rgba(145, 158, 171, 0.2), 0 12px 24px -4px rgba(145, 158, 171, 0.12)",
+        "minimal-hover": "0 0 2px 0 rgba(145, 158, 171, 0.24), 0 20px 40px -4px rgba(145, 158, 171, 0.24)",
+      },
     },
   },
   plugins: [],
