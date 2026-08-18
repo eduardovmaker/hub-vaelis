@@ -1022,9 +1022,36 @@ export default function MasterAdminDashboard() {
                   Visão consolidada das vendas Pix realizadas em todas as lojas e estabelecimentos cadastrados no Vaelis-HUB Enterprise.
                 </p>
               </div>
-              <span className="px-3.5 py-1.5 rounded-full bg-[#00A76F]/10 text-[#00A76F] font-bold text-xs">
-                GMV em Tempo Real
-              </span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={async () => {
+                    if (confirm("Deseja realmente remover todas as vendas de teste da plataforma?")) {
+                      try {
+                        const res = await fetch("/api/admin/clear-test-sales", { method: "POST" });
+                        const data = await res.json();
+                        if (data.success) {
+                          setGlobalAnalytics((prev) => ({
+                            ...prev,
+                            totalSalesCount: 0,
+                            totalSalesVolume: 0,
+                            platformCommission: 0,
+                            recentSales: [],
+                          }));
+                          showToast("✅ Todas as vendas de teste foram removidas com sucesso!");
+                        }
+                      } catch (err) {
+                        showToast("❌ Erro ao remover vendas de teste.");
+                      }
+                    }
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-[#FF5630] hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
+                >
+                  <Trash2 className="w-4 h-4" /> Limpar Vendas de Teste
+                </button>
+                <span className="px-3.5 py-1.5 rounded-full bg-[#00A76F]/10 text-[#00A76F] font-bold text-xs">
+                  GMV em Tempo Real
+                </span>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
