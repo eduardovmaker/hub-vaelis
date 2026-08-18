@@ -606,7 +606,7 @@ export default function MasterAdminDashboard() {
         {/* ========================================================================= */}
         {activeTab === "tenants" && (
           <div className="space-y-6 animate-fade-in">
-            <div className="rounded-2xl border p-6 shadow-sm space-y-4" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+            <div className="rounded-2xl border-0 p-6 shadow-minimal space-y-4" style={{ backgroundColor: "var(--bg-surface)" }}>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4" style={{ borderColor: "var(--border-color)" }}>
                 <div>
                   <h3 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
@@ -925,7 +925,7 @@ export default function MasterAdminDashboard() {
             <div className="space-y-6 animate-fade-in">
               {/* GRID DE CARDS COM MÉTRICAS EXECUTIVAS DESMOCKADAS (FASE 3) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="p-5 rounded-2xl border space-y-2 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                <div className="p-5 rounded-2xl border-0 space-y-2 shadow-minimal" style={{ backgroundColor: "var(--bg-surface)" }}>
                   <div className="flex items-center justify-between text-xs font-bold text-slate-400">
                     <span>MRR (Receita Recorrente)</span>
                     <DollarSign className="w-4 h-4 text-emerald-500" />
@@ -938,7 +938,7 @@ export default function MasterAdminDashboard() {
                   </p>
                 </div>
 
-                <div className="p-5 rounded-2xl border space-y-2 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                <div className="p-5 rounded-2xl border-0 space-y-2 shadow-minimal" style={{ backgroundColor: "var(--bg-surface)" }}>
                   <div className="flex items-center justify-between text-xs font-bold text-slate-400">
                     <span>Clientes Ativos</span>
                     <Building2 className="w-4 h-4 text-blue-500" />
@@ -947,7 +947,7 @@ export default function MasterAdminDashboard() {
                   <p className="text-[11px] text-slate-400 font-medium">Barbearias, Bares e Lojas Adimplentes</p>
                 </div>
 
-                <div className="p-5 rounded-2xl border space-y-2 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                <div className="p-5 rounded-2xl border-0 space-y-2 shadow-minimal" style={{ backgroundColor: "var(--bg-surface)" }}>
                   <div className="flex items-center justify-between text-xs font-bold text-slate-400">
                     <span>Total Leads Capturados</span>
                     <Users className="w-4 h-4 text-purple-500" />
@@ -958,7 +958,7 @@ export default function MasterAdminDashboard() {
                   <p className="text-[11px] text-purple-500 font-medium">Contatos WhatsApp & QR Code Balcão</p>
                 </div>
 
-                <div className="p-5 rounded-2xl border space-y-2 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                <div className="p-5 rounded-2xl border-0 space-y-2 shadow-minimal" style={{ backgroundColor: "var(--bg-surface)" }}>
                   <div className="flex items-center justify-between text-xs font-bold text-slate-400">
                     <span>Vendas de Produtos Pix</span>
                     <ShoppingBag className="w-4 h-4 text-amber-500" />
@@ -971,7 +971,7 @@ export default function MasterAdminDashboard() {
               </div>
 
               {/* GRÁFICO DINÂMICO DE TAXA DE ADOÇÃO DOS MÓDULOS (FASE 4) */}
-              <div className="rounded-2xl border p-6 shadow-sm space-y-4" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+              <div className="rounded-2xl border-0 p-6 shadow-minimal space-y-4" style={{ backgroundColor: "var(--bg-surface)" }}>
                 <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
                   <Activity className="w-5 h-5 text-blue-600" /> Taxa de Adoção Dinâmica dos Módulos (Ordenados da Maior para a Menor Adoção)
                 </h3>
@@ -1015,7 +1015,7 @@ export default function MasterAdminDashboard() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-              <div className="p-5 rounded-2xl border space-y-1 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+              <div className="p-5 rounded-2xl border-0 space-y-1 shadow-minimal" style={{ backgroundColor: "var(--bg-surface)" }}>
                 <span className="text-[10px] font-extrabold uppercase text-slate-400">Volume Total de Vendas (GMV)</span>
                 <p className="text-2xl font-black text-emerald-600">
                   R$ {(globalAnalytics.totalSalesVolume || 0).toFixed(2)}
@@ -1023,7 +1023,7 @@ export default function MasterAdminDashboard() {
                 <p className="text-[11px] text-slate-400">{globalAnalytics.totalSalesCount || 0} pedido(s) via Pix</p>
               </div>
 
-              <div className="p-5 rounded-2xl border space-y-1 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+              <div className="p-5 rounded-2xl border-0 space-y-1 shadow-minimal" style={{ backgroundColor: "var(--bg-surface)" }}>
                 <span className="text-[10px] font-extrabold uppercase text-slate-400">Comissão da Plataforma (10%)</span>
                 <p className="text-2xl font-black text-blue-600">
                   R$ {(globalAnalytics.platformCommission || 0).toFixed(2)}
@@ -1031,20 +1031,20 @@ export default function MasterAdminDashboard() {
                 <p className="text-[11px] text-blue-500 font-medium">Retenção via Asaas Split</p>
               </div>
 
-              <div className="p-5 rounded-2xl border space-y-1 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+              <div className="p-5 rounded-2xl border-0 space-y-1 shadow-minimal" style={{ backgroundColor: "var(--bg-surface)" }}>
                 <span className="text-[10px] font-extrabold uppercase text-slate-400">Produtos no Catálogo Global</span>
                 <p className="text-2xl font-black" style={{ color: "var(--text-primary)" }}>{globalAnalytics.totalProductsCount || 0} Itens</p>
                 <p className="text-[11px] text-emerald-600 font-medium">Em todos os clientes</p>
               </div>
 
-              <div className="p-5 rounded-2xl border space-y-1 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+              <div className="p-5 rounded-2xl border-0 space-y-1 shadow-minimal" style={{ backgroundColor: "var(--bg-surface)" }}>
                 <span className="text-[10px] font-extrabold uppercase text-slate-400">Carteiras Asaas Conectadas</span>
                 <p className="text-2xl font-black text-purple-600">{globalAnalytics.asaasWalletsConfigured || 0} Wallet IDs</p>
                 <p className="text-[11px] text-purple-400 font-medium">Com Split Automático</p>
               </div>
             </div>
 
-            <div className="rounded-2xl border p-6 shadow-sm space-y-4" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+            <div className="rounded-2xl border-0 p-6 shadow-minimal space-y-4" style={{ backgroundColor: "var(--bg-surface)" }}>
               <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
                 <DollarSign className="w-5 h-5 text-emerald-600" />
                 Stream em Tempo Real de Vendas de Produtos (Todas as Lojas)

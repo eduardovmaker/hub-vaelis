@@ -444,8 +444,8 @@ export default function TenantPublicStorePage({
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className={`rounded-3xl border overflow-hidden flex flex-col justify-between hover:border-emerald-500/50 transition-all duration-300 shadow-md group ${
-                  theme === "dark" ? "bg-slate-900 border-slate-800/80" : "bg-white border-slate-200"
+                className={`rounded-3xl border-0 overflow-hidden flex flex-col justify-between transition-all duration-300 shadow-minimal hover:shadow-minimal-hover group ${
+                  theme === "dark" ? "bg-slate-900" : "bg-white"
                 }`}
               >
                 <div>

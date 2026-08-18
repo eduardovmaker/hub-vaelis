@@ -193,15 +193,15 @@ export function CouponManagement({ tenantId }: CouponManagementProps) {
   return (
     <div className="space-y-6">
       {/* Header com Design System Minimal Kit */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-zinc-900 p-6 rounded-2xl border-0 shadow-minimal">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-100 dark:border-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400">
+          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-[#00A76F] flex items-center justify-center">
             <Tag className="w-6 h-6" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
               Gerenciamento de Cupons
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800">
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-[#00A76F] font-semibold">
                 Marketing & Vendas
               </span>
             </h2>
@@ -213,7 +213,7 @@ export function CouponManagement({ tenantId }: CouponManagementProps) {
 
         <button
           onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-medium text-sm transition-all shadow-md shadow-blue-500/20"
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 minimal-btn-primary cursor-pointer active:scale-[0.98] text-sm"
         >
           <Plus className="w-4 h-4" />
           Criar Novo Cupom
@@ -222,7 +222,7 @@ export function CouponManagement({ tenantId }: CouponManagementProps) {
 
       {/* Cards de Estatísticas */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border-0 shadow-minimal">
           <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Total de Cupons</span>
             <Layers className="w-4 h-4 text-zinc-400" />
@@ -230,7 +230,7 @@ export function CouponManagement({ tenantId }: CouponManagementProps) {
           <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{totalCoupons}</p>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border-0 shadow-minimal">
           <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Cupons Ativos</span>
             <CheckCircle2 className="w-4 h-4" />
@@ -238,7 +238,7 @@ export function CouponManagement({ tenantId }: CouponManagementProps) {
           <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{activeCoupons}</p>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border-0 shadow-minimal">
           <div className="flex items-center justify-between text-blue-600 dark:text-blue-400 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Usos Totais</span>
             <Sparkles className="w-4 h-4" />
@@ -249,14 +249,14 @@ export function CouponManagement({ tenantId }: CouponManagementProps) {
 
       {/* Alertas de Notificação */}
       {successMsg && (
-        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 text-sm flex items-center gap-3">
+        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border-0 text-emerald-800 dark:text-emerald-300 text-sm flex items-center gap-3">
           <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
           <span>{successMsg}</span>
         </div>
       )}
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-300 text-sm flex items-center gap-3">
+        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border-0 text-rose-800 dark:text-rose-300 text-sm flex items-center gap-3">
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           <span>{error}</span>
         </div>
@@ -271,13 +271,13 @@ export function CouponManagement({ tenantId }: CouponManagementProps) {
             placeholder="Buscar por código (ex: VIP10)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 minimal-input"
           />
         </div>
         <button
           onClick={fetchCoupons}
           title="Atualizar lista"
-          className="p-2.5 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
+          className="p-2.5 bg-white dark:bg-zinc-900 border-0 shadow-minimal rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all cursor-pointer"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
         </button>
@@ -325,10 +325,10 @@ export function CouponManagement({ tenantId }: CouponManagementProps) {
             return (
               <div
                 key={coupon.id}
-                className={`bg-white dark:bg-zinc-900 rounded-2xl border p-5 transition-all relative flex flex-col justify-between ${
+                className={`bg-white dark:bg-zinc-900 rounded-2xl border-0 p-5 transition-all relative flex flex-col justify-between shadow-minimal ${
                   !coupon.isActive || isExpired || isMaxedOut
-                    ? "border-zinc-200 dark:border-zinc-800 opacity-75"
-                    : "border-zinc-200/90 dark:border-zinc-800 hover:border-blue-500/50 shadow-sm hover:shadow-md"
+                    ? "opacity-75"
+                    : "hover:shadow-minimal-hover"
                 }`}
               >
                 <div>

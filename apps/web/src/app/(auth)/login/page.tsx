@@ -50,15 +50,9 @@ export default function LoginPage() {
         <div className="w-full max-w-md space-y-6">
           
           {/* Card Principal */}
-          <div 
-            className="rounded-2xl border p-6 sm:p-8 shadow-xl transition-colors duration-200"
-            style={{
-              backgroundColor: "var(--bg-surface)",
-              borderColor: "var(--border-color)",
-            }}
-          >
+          <div className="minimal-card p-6 sm:p-8 transition-colors duration-200">
             <div className="space-y-2 text-center mb-6">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-[#00A76F] dark:text-emerald-400">
                 <Store className="w-3.5 h-3.5" /> Portal Administrativo
               </span>
               <h2 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
@@ -70,7 +64,7 @@ export default function LoginPage() {
             </div>
 
             {/* Banner de Cadastro Auto-Serviço (Inativo no momento) */}
-            <div className="mb-6 p-3.5 rounded-xl bg-slate-500/10 border border-slate-500/20 text-center space-y-1">
+            <div className="mb-6 p-3.5 rounded-xl bg-slate-500/10 border-0 text-center space-y-1">
               <span className="text-[11px] font-bold text-slate-400 block">
                 🔒 Cadastros de novos estabelecimentos fechados no momento
               </span>
@@ -80,7 +74,7 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm flex items-start gap-3 animate-fade-in">
+              <div className="mb-6 p-4 rounded-xl bg-red-500/10 border-0 text-red-600 dark:text-red-400 text-sm flex items-start gap-3 animate-fade-in">
                 <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
                 <div>
                   <p className="font-medium">{error}</p>
@@ -103,12 +97,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="seu.email@empresa.com"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-                    style={{
-                      backgroundColor: "var(--bg-primary)",
-                      borderColor: "var(--border-color)",
-                      color: "var(--text-primary)",
-                    }}
+                    className="w-full pl-10 pr-4 py-2.5 minimal-input"
                   />
                 </div>
               </div>
@@ -127,12 +116,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-                    style={{
-                      backgroundColor: "var(--bg-primary)",
-                      borderColor: "var(--border-color)",
-                      color: "var(--text-primary)",
-                    }}
+                    className="w-full pl-10 pr-4 py-2.5 minimal-input"
                   />
                 </div>
               </div>
@@ -140,8 +124,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-3 px-4 rounded-xl font-semibold text-white shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 transition-all hover:bg-blue-700 active:scale-[0.99] disabled:opacity-60"
-                style={{ backgroundColor: "var(--brand-primary)" }}
+                className="w-full py-3 px-4 minimal-btn-primary flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-60 cursor-pointer"
               >
                 {isSubmitting ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

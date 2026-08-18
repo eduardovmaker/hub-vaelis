@@ -92,7 +92,8 @@ import {
   Tag,
   UploadCloud,
   FileVideo,
-  Printer
+  Printer,
+  Inbox
 } from "lucide-react";
 
 interface ConnectedDevice {
@@ -664,6 +665,8 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
   const [showQuickCaptureLinks, setShowQuickCaptureLinks] = useState(false);
   const [activityFilter, setActivityFilter] = useState<"all" | "sales" | "coupons" | "leads">("all");
   const [activitySearchTerm, setActivitySearchTerm] = useState("");
+  const [recentActivitiesList, setRecentActivitiesList] = useState<any[]>([]);
+  const [loadingActivities, setLoadingActivities] = useState<boolean>(true);
   const [botReturnReminderDays, setBotReturnReminderDays] = useState(20);
   const [botReturnMessage, setBotReturnMessage] = useState(
     "Fala {nome}! Já faz {dias} dias da sua última visita ao {estabelecimento}. Bora alinhar o visual essa semana?"
@@ -742,6 +745,24 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
         }
       })
       .catch(() => {});
+
+    // 2b. Carregar Atividade Recente do Hub (Fase 2)
+    setLoadingActivities(true);
+    fetch(`/api/tenant/${tenantId}/recent-activity`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.activities)) {
+          setRecentActivitiesList(data.activities);
+        } else {
+          setRecentActivitiesList([]);
+        }
+      })
+      .catch(() => {
+        setRecentActivitiesList([]);
+      })
+      .finally(() => {
+        setLoadingActivities(false);
+      });
 
     // 3. Carregar Configuração do Asaas Split
     fetch(`/api/tenant/${tenantId}/asaas`)
@@ -1743,17 +1764,17 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
 
             {/* Grid de Cards Principais de Estatística do Estabelecimento */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-5 rounded-2xl border shadow-sm space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+              <div className="p-5 rounded-2xl border-0 shadow-minimal space-y-2" style={{ backgroundColor: "var(--bg-surface)" }}>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Leads & Contatos</span>
-                  <MessageSquare className="w-5 h-5 text-emerald-600" />
+                  <MessageSquare className="w-5 h-5 text-[#00A76F]" />
                 </div>
-                <p className="text-2xl font-extrabold text-emerald-600">{capturedLeadsList.length} Clientes</p>
-                <p className="text-xs text-emerald-600 font-medium">{capturedLeadsList.length > 0 ? "Capturados via WhatsApp / Roleta" : "Nenhum lead capturado ainda"}</p>
+                <p className="text-2xl font-extrabold text-[#00A76F]">{capturedLeadsList.length} Clientes</p>
+                <p className="text-xs text-[#00A76F] font-medium">{capturedLeadsList.length > 0 ? "Capturados via WhatsApp / Roleta" : "Nenhum lead capturado ainda"}</p>
               </div>
 
               {addonStates["google-reviews"]?.active && (
-                <div className="p-5 rounded-2xl border shadow-sm space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                <div className="p-5 rounded-2xl border-0 shadow-minimal space-y-2" style={{ backgroundColor: "var(--bg-surface)" }}>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Reputação Google</span>
                     <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
@@ -1764,7 +1785,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
               )}
 
               {addonStates["midia-indoor"]?.active && (
-                <div className="p-5 rounded-2xl border shadow-sm space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+                <div className="p-5 rounded-2xl border-0 shadow-minimal space-y-2" style={{ backgroundColor: "var(--bg-surface)" }}>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Mídia TV & Exibições</span>
                     <Tv className="w-5 h-5 text-purple-600" />
@@ -1774,18 +1795,18 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 </div>
               )}
 
-              <div className="p-5 rounded-2xl border shadow-sm space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+              <div className="p-5 rounded-2xl border-0 shadow-minimal space-y-2" style={{ backgroundColor: "var(--bg-surface)" }}>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Vendas Pix & Cupons</span>
-                  <ShoppingCart className="w-5 h-5 text-blue-600" />
+                  <ShoppingCart className="w-5 h-5 text-[#078DEE]" />
                 </div>
-                <p className="text-2xl font-extrabold text-blue-600">{productSalesList.length} Transações</p>
-                <p className="text-xs font-medium text-blue-600">Vendas Loja & Resgates Pix</p>
+                <p className="text-2xl font-extrabold text-[#078DEE]">{productSalesList.length} Transações</p>
+                <p className="text-xs font-medium text-[#078DEE]">Vendas Loja & Resgates Pix</p>
               </div>
             </div>
 
             {/* BARRA DE AÇÕES RÁPIDAS DO ESTABELECIMENTO */}
-            <div className="rounded-2xl border p-5 shadow-sm space-y-3" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+            <div className="rounded-2xl border-0 p-5 shadow-minimal space-y-3" style={{ backgroundColor: "var(--bg-surface)" }}>
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-400" /> Ações Rápidas do Estabelecimento
               </h3>
@@ -1793,8 +1814,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 {addonStates["midia-indoor"]?.active && (
                   <button
                     onClick={() => setActiveTab("midia-indoor")}
-                    className="p-3 rounded-xl border flex items-center gap-3 hover:border-purple-500 hover:bg-purple-500/5 transition-all text-left"
-                    style={{ borderColor: "var(--border-color)" }}
+                    className="p-3 rounded-xl border border-slate-500/10 flex items-center gap-3 hover:border-purple-500 hover:bg-purple-500/5 transition-all text-left cursor-pointer"
                   >
                     <Tv className="w-5 h-5 text-purple-600 shrink-0" />
                     <div>
@@ -1807,8 +1827,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 {addonStates["google-reviews"]?.active && (
                   <button
                     onClick={() => setActiveTab("google-reviews")}
-                    className="p-3 rounded-xl border flex items-center gap-3 hover:border-amber-500 hover:bg-amber-500/5 transition-all text-left"
-                    style={{ borderColor: "var(--border-color)" }}
+                    className="p-3 rounded-xl border border-slate-500/10 flex items-center gap-3 hover:border-amber-500 hover:bg-amber-500/5 transition-all text-left cursor-pointer"
                   >
                     <Star className="w-5 h-5 text-amber-500 shrink-0" />
                     <div>
@@ -1821,8 +1840,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 {addonStates["loja-produtos"]?.active && (
                   <button
                     onClick={() => setActiveTab("loja-produtos")}
-                    className="p-3 rounded-xl border flex items-center gap-3 hover:border-emerald-500 hover:bg-emerald-500/5 transition-all text-left"
-                    style={{ borderColor: "var(--border-color)" }}
+                    className="p-3 rounded-xl border border-slate-500/10 flex items-center gap-3 hover:border-emerald-500 hover:bg-emerald-500/5 transition-all text-left cursor-pointer"
                   >
                     <ShoppingBag className="w-5 h-5 text-emerald-600 shrink-0" />
                     <div>
@@ -1835,8 +1853,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                 {addonStates["whatsapp-bot"]?.active && (
                   <button
                     onClick={() => setActiveTab("whatsapp-bot")}
-                    className="p-3 rounded-xl border flex items-center gap-3 hover:border-emerald-600 hover:bg-emerald-600/5 transition-all text-left"
-                    style={{ borderColor: "var(--border-color)" }}
+                    className="p-3 rounded-xl border border-slate-500/10 flex items-center gap-3 hover:border-emerald-600 hover:bg-emerald-600/5 transition-all text-left cursor-pointer"
                   >
                     <MessageSquare className="w-5 h-5 text-emerald-600 shrink-0" />
                     <div>
@@ -1849,7 +1866,7 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
             </div>
 
             {/* NOVA SEÇÃO: ATIVIDADE RECENTE DO HUB (SUBSTITUI TOTALMENTE O PAINEL MIKROTIK) */}
-            <div className="rounded-2xl border p-6 shadow-sm space-y-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-color)" }}>
+            <div className="rounded-2xl border-0 p-6 shadow-minimal space-y-6" style={{ backgroundColor: "var(--bg-surface)" }}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4" style={{ borderColor: "var(--border-color)" }}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold">
@@ -1926,94 +1943,22 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                     </tr>
                   </thead>
                   <tbody className="divide-y" style={{ borderColor: "var(--border-color)" }}>
-                    {/* Lista dinâmica com Fallback de Demonstração Minimalista */}
-                    {(() => {
-                      const allEvents = [
-                        ...productSalesList.map((s: any) => ({
-                          id: s.id || `sale_${Math.random()}`,
-                          type: "SALES",
-                          title: "Venda Pix Aprovada",
-                          client: s.customerName || "Cliente Loja",
-                          details: s.productName || s.title || "Produto / Serviço",
-                          value: `R$ ${(s.amount || s.totalPrice || 35.0).toFixed(2)}`,
-                          date: s.createdAt ? new Date(s.createdAt).toLocaleString("pt-BR") : "Hoje às 13:20",
-                          status: "APROVADO",
-                          icon: ShoppingCart,
-                          color: "emerald",
-                        })),
-                        ...capturedLeadsList.map((l: any) => ({
-                          id: l.id || `lead_${Math.random()}`,
-                          type: "LEADS",
-                          title: "Novo Lead Capturado",
-                          client: l.name || "Cliente sem nome",
-                          details: l.whatsapp || "WhatsApp validado",
-                          value: "Cadastro QR / Roleta",
-                          date: l.connectedAt || "Hoje às 12:45",
-                          status: "LEAD CAPTURADO",
-                          icon: Users,
-                          color: "blue",
-                        })),
-                        // Caso a lista esteja vazia no BD de teste, injeta dados reais de demonstração no padrão Minimal Kit
-                        ...(productSalesList.length === 0 && capturedLeadsList.length === 0 ? [
-                          {
-                            id: "demo_1",
-                            type: "SALES",
-                            title: "Venda Pix Aprovada",
-                            client: "Carlos Eduardo Silva",
-                            details: "Pomada Modeladora Matte (Loja)",
-                            value: "R$ 35,00",
-                            date: "Hoje às 13:25",
-                            status: "PIX APROVADO",
-                            icon: ShoppingCart,
-                            color: "emerald",
-                          },
-                          {
-                            id: "demo_2",
-                            type: "COUPONS",
-                            title: "Cupom Resgatado",
-                            client: "Mariana Souza Costa",
-                            details: "10% de Desconto na Conta",
-                            value: "CUPOM-ROLETAVIP",
-                            date: "Hoje às 12:50",
-                            status: "RESGATADO",
-                            icon: Tag,
-                            color: "amber",
-                          },
-                          {
-                            id: "demo_3",
-                            type: "LEADS",
-                            title: "Lead Capturado (Roleta)",
-                            client: "Lucas Mendes Santos",
-                            details: "(11) 98877-6655",
-                            value: "Roleta da Sorte Externa",
-                            date: "Hoje às 12:15",
-                            status: "LEAD CAPTURADO",
-                            icon: Users,
-                            color: "blue",
-                          },
-                          {
-                            id: "demo_4",
-                            type: "COUPONS",
-                            title: "Cupom Gerado (Check-in)",
-                            client: "Beatriz Lima Ribeiro",
-                            details: "Shot de Boas-Vindas Grátis",
-                            value: "CUPOM-CHECKIN100",
-                            date: "Hoje às 11:30",
-                            status: "GERADO",
-                            icon: Gift,
-                            color: "rose",
-                          },
-                        ] : [])
-                      ];
-
-                      const filtered = allEvents.filter((ev) => {
+                    {loadingActivities ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-slate-400">
+                          <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-[#00A76F]" />
+                          Carregando atividades recentes...
+                        </td>
+                      </tr>
+                    ) : (() => {
+                      const filtered = recentActivitiesList.filter((ev) => {
                         if (activityFilter !== "all" && ev.type !== activityFilter.toUpperCase()) return false;
                         if (activitySearchTerm) {
                           const term = activitySearchTerm.toLowerCase();
                           return (
-                            ev.client.toLowerCase().includes(term) ||
-                            ev.details.toLowerCase().includes(term) ||
-                            ev.value.toLowerCase().includes(term)
+                            (ev.client && ev.client.toLowerCase().includes(term)) ||
+                            (ev.details && ev.details.toLowerCase().includes(term)) ||
+                            (ev.value && ev.value.toLowerCase().includes(term))
                           );
                         }
                         return true;
@@ -2022,20 +1967,36 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                       if (filtered.length === 0) {
                         return (
                           <tr>
-                            <td colSpan={6} className="py-8 text-center text-slate-400">
-                              Nenhuma atividade recente encontrada com os filtros selecionados.
+                            <td colSpan={6} className="py-12 text-center">
+                              <div className="flex flex-col items-center justify-center space-y-3">
+                                <div className="w-14 h-14 rounded-full bg-slate-500/10 text-slate-400 flex items-center justify-center">
+                                  <Inbox className="w-7 h-7" />
+                                </div>
+                                <h4 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
+                                  Nenhuma atividade recente registrada
+                                </h4>
+                                <p className="text-xs text-slate-400 max-w-sm">
+                                  As novas vendas Pix, cupons resgatados e leads capturados aparecerão aqui automaticamente em tempo real.
+                                </p>
+                              </div>
                             </td>
                           </tr>
                         );
                       }
 
                       return filtered.map((item) => {
-                        const IconComp = item.icon;
+                        const IconComp = item.iconType === "sales" ? ShoppingCart : item.iconType === "coupons" ? Tag : Users;
                         return (
                           <tr key={item.id} className="hover:bg-slate-500/5 transition-colors">
                             <td className="py-3.5 px-4">
                               <div className="flex items-center gap-2">
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold bg-${item.color}-500/10 text-${item.color}-600`}>
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold ${
+                                  item.color === "emerald"
+                                    ? "bg-emerald-500/10 text-emerald-600"
+                                    : item.color === "amber"
+                                    ? "bg-amber-500/10 text-amber-600"
+                                    : "bg-blue-500/10 text-blue-600"
+                                }`}>
                                   <IconComp className="w-4 h-4" />
                                 </div>
                                 <span className="font-bold text-xs" style={{ color: "var(--text-primary)" }}>{item.title}</span>
@@ -2054,7 +2015,13 @@ export default function TenantDashboard({ params }: { params: Promise<{ tenantId
                               {item.date}
                             </td>
                             <td className="py-3.5 px-4 text-right">
-                              <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 font-bold text-[10px] uppercase">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                                item.status.includes("APROVADO")
+                                  ? "bg-emerald-500/10 text-emerald-600"
+                                  : item.status.includes("RESGATADO")
+                                  ? "bg-amber-500/10 text-amber-600"
+                                  : "bg-blue-500/10 text-blue-600"
+                              }`}>
                                 {item.status}
                               </span>
                             </td>

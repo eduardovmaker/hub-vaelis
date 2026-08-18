@@ -4,9 +4,9 @@
 
 /* Light Mode (Minimal Kit React Palette) */
 :root {
-  --bg-primary: #F9FAFB;       /* Soft Light Gray / Minimal Neutral 100 */
+  --bg-primary: #F4F6F8;       /* Minimal Soft Light Gray (#F4F6F8) */
   --bg-surface: #FFFFFF;       /* Pure White Cards */
-  --border-color: rgba(145, 158, 171, 0.16); /* Subtle Grey Border */
+  --border-color: rgba(145, 158, 171, 0.12); /* Subtle Minimal Border */
   --text-primary: #212B36;    /* Dark Charcoal Text / Minimal Neutral 800 */
   --text-secondary: #637381;  /* Muted Grey Text / Minimal Neutral 600 */
   --brand-primary: #00A76F;   /* Iconic Minimal Green Primary */
@@ -41,7 +41,7 @@ body {
 /* Minimal Kit UI Helper Utilities */
 .minimal-card {
   background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
+  border: none;
   border-radius: var(--radius-minimal);
   box-shadow: var(--card-shadow);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
@@ -64,8 +64,8 @@ body {
 
 /* Minimal Kit Input & Button Design Tokens */
 .minimal-input {
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-color);
+  background-color: rgba(145, 158, 171, 0.08);
+  border: 1px solid transparent;
   border-radius: 12px;
   color: var(--text-primary);
   font-size: 0.875rem;
@@ -74,8 +74,9 @@ body {
 
 .minimal-input:focus {
   outline: none;
+  background-color: var(--bg-surface);
   border-color: var(--brand-primary);
-  box-shadow: 0 0 0 3px rgba(0, 167, 111, 0.16);
+  box-shadow: 0 0 0 2px rgba(0, 167, 111, 0.16);
 }
 
 .minimal-btn-primary {
@@ -95,11 +96,16 @@ body {
 .minimal-btn-secondary {
   background-color: var(--bg-surface);
   color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  border: none;
   font-weight: 700;
   border-radius: 12px;
   box-shadow: var(--card-shadow);
   transition: all 0.2s ease-in-out;
+}
+
+.minimal-btn-secondary:hover {
+  background-color: var(--bg-primary);
+  box-shadow: var(--card-shadow-hover);
 }
 
 .minimal-btn-secondary:hover {
