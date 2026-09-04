@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { db, COLLECTIONS } from "@/lib/db";
 import {
+  SPOTIFY_STATE_COOKIE,
   exchangeCodeForTokens,
   fetchSpotifyProfile,
   getSpotifyCredentials,
 } from "@/lib/spotify";
-import { SPOTIFY_STATE_COOKIE } from "../login/route";
 
 /** Playlist inicial só para a tela não ficar em silêncio antes da escolha. */
 const FALLBACK_CONTEXT_URI = "spotify:playlist:37i9dQZF1DXcBWIGoYBM5M";

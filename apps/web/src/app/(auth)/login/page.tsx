@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/context/AuthContext";
 import { Lock, Mail, ArrowRight, AlertCircle, Zap, HelpCircle } from "lucide-react";
@@ -99,16 +100,12 @@ export default function LoginPage() {
                 <label className="block text-xs font-semibold text-[#212B36] dark:text-gray-300">
                   Senha
                 </label>
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    alert("Por favor, contate o administrador da sua empresa para redefinir sua senha.");
-                  }}
+                <Link
+                  href="/esqueci-senha"
                   className="text-xs font-semibold text-[#2065D1] hover:underline"
                 >
                   Esqueceu a senha?
-                </a>
+                </Link>
               </div>
               <div className="relative">
                 <input

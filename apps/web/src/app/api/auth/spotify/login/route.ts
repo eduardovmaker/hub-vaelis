@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { buildAuthorizeUrl, getSpotifyCredentials } from "@/lib/spotify";
+import { SPOTIFY_STATE_COOKIE, buildAuthorizeUrl, getSpotifyCredentials } from "@/lib/spotify";
 import { requireTenantAccess } from "@/lib/session";
-
-export const SPOTIFY_STATE_COOKIE = "vaelis_spotify_state";
 
 /**
  * Inicia o OAuth do Spotify para um estabelecimento.

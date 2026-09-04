@@ -21,6 +21,9 @@ export const SPOTIFY_SCOPES = [
   "playlist-read-collaborative",
 ].join(" ");
 
+/** Cookie com o nonce que amarra o callback do OAuth a esta aplicação. */
+export const SPOTIFY_STATE_COOKIE = "vaelis_spotify_state";
+
 const SPOTIFY_ACCOUNTS_URL = "https://accounts.spotify.com";
 const SPOTIFY_API_URL = "https://api.spotify.com/v1";
 

@@ -20,6 +20,8 @@ export const COLLECTIONS = {
   MEDIA_ASSETS: "mediaAssets",
   /** Credenciais e preferências do Spotify, um documento por estabelecimento. */
   SPOTIFY_ACCOUNTS: "spotifyAccounts",
+  /** Tokens de redefinição de senha, indexados pelo hash do token. */
+  PASSWORD_RESETS: "passwordResets",
 } as const;
 
 /** Remove undefined recursivamente: o Firestore rejeita campos undefined. */

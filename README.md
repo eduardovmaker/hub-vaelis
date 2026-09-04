@@ -49,7 +49,7 @@ Cada item da playlist decide quem manda no som:
 apps/web/src/
 ├── app/
 │   ├── (admin)/admin/            # Painel da plataforma: clientes e telas
-│   ├── (auth)/login/             # Login
+│   ├── (auth)/                   # Login, esqueci-senha e redefinir-senha
 │   ├── (tenant)/tenant/[id]/     # Painel do estabelecimento (5 abas)
 │   ├── tv/                       # Pareamento da TV
 │   ├── tv/[screenId]/            # Player de exibição
@@ -75,6 +75,7 @@ apps/web/src/
 | `playlists`       | Programação, com os itens de mídia embutidos                   |
 | `mediaAssets`     | Biblioteca de arquivos enviados ao R2                          |
 | `spotifyAccounts` | Tokens e playlist escolhida, um documento por estabelecimento  |
+| `passwordResets`  | Tokens de redefinição de senha, guardados como hash SHA-256    |
 
 ---
 
@@ -95,6 +96,8 @@ cp apps/web/.env.example apps/web/.env   # preencha as variáveis
 - `CLOUDFLARE_R2_*` — conta, chaves, bucket e URL pública do bucket.
 - `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` / `SPOTIFY_REDIRECT_URI`.
 - `NEXT_PUBLIC_APP_URL` — URL pública da aplicação.
+- `EMAIL_FROM` mais `RESEND_API_KEY` **ou** `SMTP_*` — sem isso a redefinição de senha não sai
+  do servidor.
 
 ### Primeiro acesso
 
@@ -114,6 +117,18 @@ cd apps/web && npx ts-node --compiler-options '{"module":"CommonJS"}' scripts/co
 
 O script usa `NEXT_PUBLIC_APP_URL`; **rode de novo ao publicar em produção**, senão o navegador
 bloqueia o envio a partir do domínio novo.
+
+### E-mail (redefinição de senha)
+
+A tela de login tem "Esqueceu a senha?", que envia um link de uso único válido por 1 hora.
+Configure **um** dos dois caminhos em `.env`:
+
+- `RESEND_API_KEY` — API da [Resend](https://resend.com), sem servidor próprio.
+- `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` — SMTP comum.
+
+Em ambos os casos `EMAIL_FROM` precisa ser um remetente de domínio verificado, senão o e-mail
+cai em spam ou é recusado. Sem nenhum provedor configurado, o link é escrito no console do
+servidor — e, apenas em desenvolvimento, devolvido na própria tela para permitir testar o fluxo.
 
 ### Spotify
 
