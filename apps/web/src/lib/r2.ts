@@ -1,152 +1,173 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import fs from "fs";
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import path from "path";
+import { loadEnvFile } from "./env";
+import type { MediaType } from "./types";
 
-function loadEnvFile() {
-  if (process.env.CLOUDFLARE_R2_ACCOUNT_ID) return;
-  try {
-    const envPath = path.resolve(process.cwd(), ".env");
-    if (fs.existsSync(envPath)) {
-      const content = fs.readFileSync(envPath, "utf-8");
-      content.split(/\r?\n/).forEach((line) => {
-        const trimmed = line.trim();
-        if (trimmed && !trimmed.startsWith("#")) {
-          const match = trimmed.match(/^([^=]+)=(.*)$/);
-          if (match) {
-            const key = match[1].trim();
-            let value = match[2].trim();
-            if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-              value = value.slice(1, -1);
-            }
-            if (!process.env[key]) {
-              process.env[key] = value;
-            }
-          }
-        }
-      });
-    }
-  } catch (e) {}
-}
+/**
+ * Armazenamento das mídias no Cloudflare R2.
+ *
+ * Vídeos costumam passar do limite de corpo de requisição da Vercel, então o
+ * caminho principal é a URL presignada: o navegador envia o arquivo direto
+ * para o R2 e só a chave do objeto volta para o servidor.
+ */
 
 loadEnvFile();
 
-function getR2Client(): { client: S3Client | null; bucketName: string; publicUrlBase: string } {
+/** Tipos aceitos na biblioteca de mídia, com o tipo de exibição de cada um. */
+export const ALLOWED_MEDIA_TYPES: Record<string, MediaType> = {
+  "video/mp4": "video",
+  "video/webm": "video",
+  "video/quicktime": "video",
+  "image/jpeg": "image",
+  "image/png": "image",
+  "image/webp": "image",
+};
+
+/** Teto por arquivo. Vídeo de mídia indoor raramente passa disso. */
+export const MAX_UPLOAD_BYTES = 512 * 1024 * 1024;
+
+/** Upload via servidor: a Vercel limita o corpo da requisição a ~4.5 MB. */
+export const MAX_SERVER_UPLOAD_BYTES = 4 * 1024 * 1024;
+
+export function resolveMediaType(mimeType: string): MediaType | null {
+  return ALLOWED_MEDIA_TYPES[mimeType.toLowerCase()] || null;
+}
+
+interface R2Context {
+  client: S3Client;
+  bucketName: string;
+  publicUrlBase: string;
+}
+
+/**
+ * Monta o cliente do R2. Lança erro quando falta configuração — gravar mídia
+ * em um destino falso deixaria a tela exibindo conteúdo que ninguém enviou.
+ */
+function getR2Context(): R2Context {
   loadEnvFile();
+
   const accountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID;
   const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
   const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
-  const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME || "hub-vaelis";
-  const publicUrlBase = process.env.CLOUDFLARE_R2_PUBLIC_URL || "https://pub-1180f0e5896b408295d5ee7ccc556726.r2.dev";
+  const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+  const publicUrlBase = process.env.CLOUDFLARE_R2_PUBLIC_URL;
 
-  if (!accountId || !accessKeyId || !secretAccessKey) {
-    console.warn("[Cloudflare R2] Credenciais do R2 não foram fornecidas no .env. Modo de demonstração ativo.");
-    return { client: null, bucketName, publicUrlBase };
+  const missing = [
+    !accountId && "CLOUDFLARE_R2_ACCOUNT_ID",
+    !accessKeyId && "CLOUDFLARE_R2_ACCESS_KEY_ID",
+    !secretAccessKey && "CLOUDFLARE_R2_SECRET_ACCESS_KEY",
+    !bucketName && "CLOUDFLARE_R2_BUCKET_NAME",
+    !publicUrlBase && "CLOUDFLARE_R2_PUBLIC_URL",
+  ].filter(Boolean);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Cloudflare R2 não configurado. Defina no .env: ${missing.join(", ")}.`
+    );
   }
 
   const client = new S3Client({
     region: "auto",
     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId,
-      secretAccessKey,
-    },
+    credentials: { accessKeyId: accessKeyId!, secretAccessKey: secretAccessKey! },
   });
 
-  return { client, bucketName, publicUrlBase };
+  return {
+    client,
+    bucketName: bucketName!,
+    publicUrlBase: publicUrlBase!.replace(/\/$/, ""),
+  };
 }
 
-export interface UploadR2Params {
+export function isR2Configured(): boolean {
+  try {
+    getR2Context();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Chave previsível e isolada por estabelecimento: tenants/<id>/<pasta>/<arquivo>. */
+function buildObjectKey(tenantId: string, fileName: string, folder: string): string {
+  const extension = path.extname(fileName).toLowerCase();
+  const base = path
+    .basename(fileName, extension)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "midia";
+
+  const safeTenant = tenantId.replace(/[^\w-]/g, "") || "sem-tenant";
+  const safeFolder = folder.replace(/[^\w-]/g, "") || "midia";
+
+  return `tenants/${safeTenant}/${safeFolder}/${Date.now()}-${base}${extension}`;
+}
+
+export interface UploadResult {
+  url: string;
+  key: string;
+}
+
+/** Envio direto pelo servidor. Use só para arquivos pequenos (logos, imagens). */
+export async function uploadFileToR2(params: {
+  tenantId: string;
   fileBuffer: Buffer;
   fileName: string;
   mimeType: string;
   folder?: string;
-}
+}): Promise<UploadResult> {
+  const { client, bucketName, publicUrlBase } = getR2Context();
+  const key = buildObjectKey(params.tenantId, params.fileName, params.folder || "midia");
 
-export async function uploadFileToR2({
-  fileBuffer,
-  fileName,
-  mimeType,
-  folder = "midia",
-}: UploadR2Params): Promise<{ success: boolean; url: string; key: string; isMock?: boolean }> {
-  const extension = path.extname(fileName) || "";
-  const sanitizedBaseName = path.basename(fileName, extension).toLowerCase().replace(/[^a-z0-9]/g, "_");
-  const uniqueKey = `${folder}/${Date.now()}_${sanitizedBaseName}${extension}`;
-
-  const { client, bucketName, publicUrlBase } = getR2Client();
-
-  if (!client) {
-    // Fallback gracioso para apresentação sem R2 configurado
-    const mockUrl = `https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1920&q=80`;
-    return {
-      success: true,
-      url: mockUrl,
-      key: uniqueKey,
-      isMock: true,
-    };
-  }
-
-  try {
-    const command = new PutObjectCommand({
+  await client.send(
+    new PutObjectCommand({
       Bucket: bucketName,
-      Key: uniqueKey,
-      Body: fileBuffer,
-      ContentType: mimeType,
+      Key: key,
+      Body: params.fileBuffer,
+      ContentType: params.mimeType,
       CacheControl: "public, max-age=31536000, immutable",
-    });
+    })
+  );
 
-    await client.send(command);
-
-    const publicUrl = `${publicUrlBase.replace(/\/$/, "")}/${uniqueKey}`;
-    return {
-      success: true,
-      url: publicUrl,
-      key: uniqueKey,
-    };
-  } catch (error: any) {
-    console.error("[Cloudflare R2] Erro ao realizar upload para o R2:", error);
-    throw new Error(`Falha no upload para o Cloudflare R2: ${error.message || error}`);
-  }
+  return { url: `${publicUrlBase}/${key}`, key };
 }
 
-export async function getPresignedR2UploadUrl({
-  fileName,
-  mimeType,
-  folder = "midia",
-}: {
+export interface PresignedUpload extends UploadResult {
+  uploadUrl: string;
+}
+
+/**
+ * URL presignada para o navegador enviar o vídeo direto ao R2.
+ * O PUT do navegador precisa repetir exatamente o mesmo Content-Type.
+ */
+export async function getPresignedR2UploadUrl(params: {
+  tenantId: string;
   fileName: string;
   mimeType: string;
   folder?: string;
-}): Promise<{ uploadUrl: string; publicUrl: string; key: string; isMock?: boolean }> {
-  const extension = path.extname(fileName) || "";
-  const sanitizedBaseName = path.basename(fileName, extension).toLowerCase().replace(/[^a-z0-9]/g, "_");
-  const uniqueKey = `${folder}/${Date.now()}_${sanitizedBaseName}${extension}`;
+}): Promise<PresignedUpload> {
+  const { client, bucketName, publicUrlBase } = getR2Context();
+  const key = buildObjectKey(params.tenantId, params.fileName, params.folder || "midia");
 
-  const { client, bucketName, publicUrlBase } = getR2Client();
-
-  if (!client) {
-    return {
-      uploadUrl: "",
-      publicUrl: `https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1920&q=80`,
-      key: uniqueKey,
-      isMock: true,
-    };
-  }
-
-  try {
-    const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
-    const command = new PutObjectCommand({
+  const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
+  const uploadUrl = await getSignedUrl(
+    client,
+    new PutObjectCommand({
       Bucket: bucketName,
-      Key: uniqueKey,
-      ContentType: mimeType,
+      Key: key,
+      ContentType: params.mimeType,
       CacheControl: "public, max-age=31536000, immutable",
-    });
+    }),
+    { expiresIn: 3600 }
+  );
 
-    const uploadUrl = await getSignedUrl(client, command, { expiresIn: 3600 });
-    const publicUrl = `${publicUrlBase.replace(/\/$/, "")}/${uniqueKey}`;
+  return { uploadUrl, url: `${publicUrlBase}/${key}`, key };
+}
 
-    return { uploadUrl, publicUrl, key: uniqueKey };
-  } catch (err: any) {
-    console.error("[Cloudflare R2] Erro ao gerar URL presignada:", err);
-    throw new Error(`Falha ao gerar URL de upload presignada: ${err.message || err}`);
-  }
+/** Remove o objeto do bucket ao excluir uma mídia da biblioteca. */
+export async function deleteFileFromR2(key: string): Promise<void> {
+  if (!key) return;
+  const { client, bucketName } = getR2Context();
+  await client.send(new DeleteObjectCommand({ Bucket: bucketName, Key: key }));
 }

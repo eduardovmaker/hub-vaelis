@@ -1,5 +1,5 @@
 {
-  "name": "hub-vaelis",
+  "name": "vaelis-indoor",
   "private": true,
   "workspaces": [
     "apps/*"
@@ -7,15 +7,9 @@
   "scripts": {
     "build": "cd apps/web && npm run build",
     "dev": "cd apps/web && npm run dev",
-    "start": "cd apps/web && npm run start",
-    "postinstall": "cd apps/web && npm run postinstall"
+    "start": "cd apps/web && npm run start"
   },
   "dependencies": {
-    "next": "^15.1.6",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
-  },
-  "devDependencies": {
     "next": "^15.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

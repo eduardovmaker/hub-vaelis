@@ -1,83 +1,89 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { MockUser, validateCredentials } from '@/mocks/auth';
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import type { SessionUser } from "@/lib/types";
 
 interface AuthContextType {
-  user: MockUser | null;
+  user: SessionUser | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
-  setSessionUser: (user: MockUser) => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * Estado de sessão do painel.
+ *
+ * A autorização real vive no cookie httpOnly assinado pelo servidor; o que
+ * fica aqui serve apenas para desenhar a interface. Ao montar, confirmamos a
+ * sessão em /api/auth/session para não exibir um painel com sessão vencida.
+ */
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<MockUser | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    // Carregar sessão salva do localStorage se existir
-    const storedUser = localStorage.getItem('captive_hub_user');
-    if (storedUser) {
+    let active = true;
+
+    async function confirmSession() {
       try {
-        setUser(JSON.parse(storedUser));
-      } catch (err) {
-        console.error('Erro ao ler usuário salvo:', err);
-        localStorage.removeItem('captive_hub_user');
+        const res = await fetch("/api/auth/session", { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        if (active) setUser(res.ok && data.user ? data.user : null);
+      } catch {
+        if (active) setUser(null);
+      } finally {
+        if (active) setIsLoading(false);
       }
     }
-    setIsLoading(false);
+
+    confirmSession();
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const setSessionUser = (sessionUser: MockUser) => {
-    setUser(sessionUser);
-    localStorage.setItem('captive_hub_user', JSON.stringify(sessionUser));
-  };
-
-  const login = async (email: string, password: string) => {
+  const login: AuthContextType["login"] = async (email, password) => {
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
-        return { success: false, error: data.error || 'E-mail ou senha inválidos.' };
+        return { success: false, error: data.error || "E-mail ou senha inválidos." };
       }
 
-      const authenticatedUser: MockUser = data.user;
-      setUser(authenticatedUser);
-      localStorage.setItem('captive_hub_user', JSON.stringify(authenticatedUser));
+      const authenticated = data.user as SessionUser;
+      setUser(authenticated);
 
-      // Redirecionamento baseado na Role do Usuário
-      if (authenticatedUser.role === 'SUPER_ADMIN') {
-        router.push('/admin');
-      } else if (authenticatedUser.role === 'TENANT_ADMIN' && authenticatedUser.tenantId) {
-        router.push(`/tenant/${authenticatedUser.tenantId}`);
+      if (authenticated.role === "SUPER_ADMIN") {
+        router.push("/admin");
+      } else if (authenticated.tenantId) {
+        router.push(`/tenant/${authenticated.tenantId}`);
       } else {
-        router.push('/');
+        router.push("/login");
       }
 
       return { success: true };
-    } catch (error: any) {
-      return { success: false, error: 'Erro de conexão com o servidor de banco de dados.' };
+    } catch {
+      return { success: false, error: "Erro de conexão com o servidor." };
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await fetch("/api/auth/session", { method: "DELETE" }).catch(() => {});
     setUser(null);
-    localStorage.removeItem('captive_hub_user');
-    router.push('/login');
+    router.push("/login");
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, setSessionUser }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -86,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth deve ser utilizado dentro de um AuthProvider');
+    throw new Error("useAuth deve ser utilizado dentro de um AuthProvider");
   }
   return context;
 };

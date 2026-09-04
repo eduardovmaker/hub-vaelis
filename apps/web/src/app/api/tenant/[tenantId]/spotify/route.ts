@@ -1,102 +1,123 @@
 import { NextResponse } from "next/server";
 import { db, COLLECTIONS } from "@/lib/db";
-import { parseSpotifyEmbedUrl } from "@/mocks/tv";
+import { requireTenantAccess } from "@/lib/session";
+import {
+  getSpotifyAccount,
+  getValidAccessToken,
+  listUserPlaylists,
+  parseSpotifyContextUri,
+} from "@/lib/spotify";
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ tenantId: string }> }
-) {
+type Params = { params: Promise<{ tenantId: string }> };
+
+/** Estado da conexão com o Spotify e playlists disponíveis na conta. */
+export async function GET(request: Request, { params }: Params) {
   const { tenantId } = await params;
+  const auth = requireTenantAccess(request, tenantId);
+  if ("response" in auth) return auth.response;
 
+  const account = await getSpotifyAccount(tenantId);
+  if (!account?.connected) {
+    return NextResponse.json({
+      success: true,
+      connected: false,
+      needsPremium: false,
+      playlists: [],
+    });
+  }
+
+  let playlists: Awaited<ReturnType<typeof listUserPlaylists>> = [];
+  let tokenError: string | null = null;
   try {
-    if (db) {
-      const doc = await db.collection(COLLECTIONS.RADIO_INDOOR_CONFIGS).doc(tenantId).get();
-      if (doc.exists) {
-        const data = doc.data() || {};
-        return NextResponse.json({
-          success: true,
-          connected: !!data.spotifyConnected,
-          spotifyUser: data.spotifyUser || "",
-          playlistUrl: data.playlistUrl || "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M",
-          playlistName: data.playlistName || "Hits da Boêmia & Sertanejo",
-          provider: data.provider || "spotify",
-        });
-      }
-    }
-  } catch (err) {}
+    const accessToken = await getValidAccessToken(tenantId);
+    if (accessToken) playlists = await listUserPlaylists(accessToken);
+  } catch (error) {
+    // Refresh token revogado no app do Spotify: o painel precisa pedir reconexão.
+    tokenError = "A autorização do Spotify expirou. Reconecte a conta.";
+    console.error("Erro ao renovar token do Spotify:", error);
+  }
 
   return NextResponse.json({
     success: true,
-    connected: false,
-    spotifyUser: "",
-    playlistUrl: "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M",
-    playlistName: "Hits da Boêmia & Sertanejo",
-    provider: "spotify",
+    connected: true,
+    displayName: account.displayName,
+    product: account.product,
+    needsPremium: account.product !== "premium",
+    contextUri: account.contextUri || "",
+    playlistName: account.playlistName || "",
+    shuffle: account.shuffle !== false,
+    playlists,
+    tokenError,
   });
 }
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ tenantId: string }> }
-) {
+/** Escolhe a playlist da rádio, alterna o shuffle ou desconecta a conta. */
+export async function POST(request: Request, { params }: Params) {
   const { tenantId } = await params;
+  const auth = requireTenantAccess(request, tenantId);
+  if ("response" in auth) return auth.response;
 
-  try {
-    const body = await request.json();
-    const { action, playlistUrl, playlistName, provider } = body;
+  if (!db) {
+    return NextResponse.json(
+      { success: false, error: "Banco de dados indisponível." },
+      { status: 503 }
+    );
+  }
 
-    if (action === "disconnect") {
-      if (db) {
-        await db.collection(COLLECTIONS.RADIO_INDOOR_CONFIGS).doc(tenantId).set(
-          {
-            spotifyConnected: false,
-            spotifyUser: "",
-            spotifyAccessToken: null,
-            spotifyRefreshToken: null,
-            updatedAt: new Date().toISOString(),
-          },
-          { merge: true }
-        );
-      }
-      return NextResponse.json({ success: true, connected: false, message: "Conta do Spotify desconectada com sucesso." });
-    }
+  const body = await request.json().catch(() => ({}));
+  const action = body.action as string | undefined;
+  const docRef = db.collection(COLLECTIONS.SPOTIFY_ACCOUNTS).doc(tenantId);
 
-    // Se ação for salvar playlist ou conectar manualmente
-    const isSpotify = (provider || "").toLowerCase() === "spotify" || (playlistUrl || "").includes("spotify");
-    const cleanProvider = isSpotify ? "spotify" : "youtube";
-    const formattedEmbedUrl = isSpotify ? parseSpotifyEmbedUrl(playlistUrl) : playlistUrl;
+  if (action === "disconnect") {
+    // Apaga os tokens: nada de credencial órfã guardada no banco.
+    await docRef.set(
+      {
+        connected: false,
+        displayName: "",
+        product: "unknown",
+        accessToken: "",
+        refreshToken: "",
+        expiresAt: new Date(0).toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+    return NextResponse.json({ success: true, connected: false, message: "Spotify desconectado." });
+  }
 
-    const updatedData = {
-      tenantId,
-      provider: cleanProvider,
-      playlistUrl: playlistUrl || "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M",
-      playlistName: playlistName || (isSpotify ? "Playlist do Spotify" : "Playlist do YouTube"),
-      embedUrl: formattedEmbedUrl,
-      updatedAt: new Date().toISOString(),
-    };
-
-    if (db) {
-      await db.collection(COLLECTIONS.RADIO_INDOOR_CONFIGS).doc(tenantId).set(updatedData, { merge: true });
-      
-      // Também sincroniza com TV Config
-      await db.collection(COLLECTIONS.TV_CONFIGS).doc(tenantId).set(
+  if (action === "set-playlist") {
+    const contextUri = parseSpotifyContextUri(String(body.contextUri || body.playlistUrl || ""));
+    if (!contextUri) {
+      return NextResponse.json(
         {
-          radioIndoorConfig: updatedData,
-          updatedAt: new Date().toISOString(),
+          success: false,
+          error: "Link do Spotify não reconhecido. Cole o link de uma playlist, álbum ou artista.",
         },
-        { merge: true }
+        { status: 400 }
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      config: updatedData,
-      message: "Configuração de Rádio Indoor atualizada com sucesso!",
-    });
-  } catch (err: any) {
-    return NextResponse.json(
-      { success: false, error: err.message || "Erro ao atualizar Spotify." },
-      { status: 500 }
+    await docRef.set(
+      {
+        contextUri,
+        playlistName: String(body.playlistName || "").slice(0, 120) || "Playlist do Spotify",
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
     );
+    return NextResponse.json({ success: true, contextUri, message: "Playlist da rádio atualizada." });
   }
+
+  if (action === "set-shuffle") {
+    await docRef.set(
+      { shuffle: !!body.shuffle, updatedAt: new Date().toISOString() },
+      { merge: true }
+    );
+    return NextResponse.json({ success: true, shuffle: !!body.shuffle });
+  }
+
+  return NextResponse.json(
+    { success: false, error: "Ação inválida." },
+    { status: 400 }
+  );
 }

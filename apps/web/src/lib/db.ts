@@ -1,36 +1,54 @@
 import { getFirestoreDb } from "./firebase-admin";
-import { PrismaClient } from "@prisma/client";
 
-// Firebase Firestore Database Instance
+/**
+ * Instância única do Firestore. É o banco de dados da plataforma:
+ * não há Postgres/Prisma neste projeto.
+ */
 export const db = getFirestoreDb();
 
-// Constantes de Coleções do Firestore
+/** Coleções do Firestore utilizadas pela plataforma de mídia indoor. */
 export const COLLECTIONS = {
+  /** Usuários do painel (super admin e administradores de estabelecimento). */
   USERS: "users",
+  /** Estabelecimentos clientes (barbearias, restaurantes, clínicas...). */
   TENANTS: "tenants",
-  ADDON_STATES: "addonStates",
-  PORTAL_CONFIGS: "portalConfigs",
-  TV_CONFIGS: "tvConfigs",
-  RADIO_INDOOR_CONFIGS: "radioIndoorConfigs",
-  GOOGLE_REVIEWS_CONFIGS: "googleReviewsConfigs",
-  WHATSAPP_BOT_CONFIGS: "whatsappBotConfigs",
-  ROLETA_SORTE_CONFIGS: "roletaSorteConfigs",
-  WEB_GUARD_CONFIGS: "webGuardConfigs",
-  PRODUCTS: "products",
-  SALES: "sales",
-  ASAAS_CONFIGS: "asaasConfigs",
-  NOTIFICATIONS: "notifications",
-  COUPONS: "coupons",
+  /** Telas físicas pareadas — uma por TV/player instalado. */
+  SCREENS: "screens",
+  /** Playlists de exibição, com os itens de mídia embutidos. */
+  PLAYLISTS: "playlists",
+  /** Biblioteca de mídias enviadas ao Cloudflare R2. */
+  MEDIA_ASSETS: "mediaAssets",
+  /** Credenciais e preferências do Spotify, um documento por estabelecimento. */
+  SPOTIFY_ACCOUNTS: "spotifyAccounts",
 } as const;
 
-// Prisma Singleton Instance para Vercel Serverless (evita estourar o Connection Pool)
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+/** Remove undefined recursivamente: o Firestore rejeita campos undefined. */
+export function sanitizeForFirestore<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeForFirestore(item)) as unknown as T;
+  }
+  if (value && typeof value === "object" && !(value instanceof Date)) {
+    const result: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+      if (item !== undefined) result[key] = sanitizeForFirestore(item);
+    }
+    return result as T;
+  }
+  return value;
+}
 
-export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    log: ["error"],
+/**
+ * Protege as rotas contra travamento quando o Firestore está lento ou sem
+ * credenciais configuradas: melhor devolver o fallback do que pendurar a TV.
+ */
+export async function withDbTimeout<T>(promise: Promise<T>, timeoutMs = 4000): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("Firestore timeout")), timeoutMs);
   });
-
-globalForPrisma.prisma = prisma;
-
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}

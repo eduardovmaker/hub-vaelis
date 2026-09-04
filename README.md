@@ -1,159 +1,153 @@
-# 🌐 Vaelis-HUB — Plataforma Omnichannel de Engajamento, Mídia Indoor & Captive Portal
+# Vaelis Indoor — Mídia Indoor para Smart TVs
 
-**Vaelis-HUB** é uma solução enterprise em nuvem (SaaS Multi-Tenant) para gestão de **Mídia Indoor para Smart TVs (Digital Signage)**, **Rádio Commercial sem Anúncios**, **Automação de Avaliações 5★ no Google**, **Hotspot Wi-Fi com Captive Portal**, **Bot WhatsApp** e **Web Guard (Filtro de Conteúdo)** integrada a roteadores **MikroTik RouterOS / CHR**.
-
----
-
-## 📸 Funcionalidades Principais
-
-### 📶 Captive Portal & Hotspot Wi-Fi
-- **Acesso Gratuito com Anúncios:** Liberação de tempo configurável (ex: 30 min) mediante visualização de anúncios (vídeo/imagem).
-- **Venda de Planos Wi-Fi via PIX:** Integração com Gateway de Pagamento (**Asaas**) para compra automatizada de passes de acesso de alta velocidade.
-- **Cardápio Digital Integrado:** Exibição dinâmica de menu de produtos ou direcionamento automatizado após o login.
-- **Personalização de Marca:** Logo, cores primárias, banners promocionais e regras de acesso por estabelecimento.
-
-### 📺 Smart TV Mídia Indoor (Digital Signage)
-- **Playlist de Mídia:** Exibição sequencial de imagens e vídeos promocionais.
-- **Overlays Inteligentes:** Exibição em tempo real de QR Code para Wi-Fi/Cardápio, Relógio, Badge da Rádio Indoor e chamadas promocionais (CTAs para Instagram/Redes Sociais).
-- **Pareamento Simples por Código:** Conexão de Smart TVs ao painel do tenant via código de 4 dígitos (ex: `TV-1234`).
-- **Suporte a Domínio Customizado:** Exibição via subdomínio do cliente (ex: `tv.restaurante.com.br`).
-
-### 🎵 Rádio Indoor & Spots Comerciais
-- Synchronized streaming para ambiente comercial com inserção programada de vinhetas e chamadas promocionais em áudio em intervalos configuráveis.
-
-### 🧩 Módulos Add-ons & Gamificação
-- **⭐ Google Reviews Automation:** Captura avaliações do cliente. Avaliações 4-5 estrelas são direcionadas ao Google Maps; críticas são enviadas diretamente ao WhatsApp do gerente.
-- **🎰 Roleta da Sorte:** Roleta interativa de prêmios e cupons de desconto para retenção de clientes.
-- **💬 Bot de WhatsApp:** Validação de cadastro e envio de OTP para captura de leads qualificados.
-- **🛡️ WebGuard:** Filtro de navegação contra conteúdo adulto, torrents, sites de apostas e limitação de banda.
-
-### 🐳 MikroTik CHR Auto-Provisioning (Docker)
-- Provisionamento automatizado de contêineres **MikroTik RouterOS CHR v7** dedicados por tenant.
-- Mapeamento dinâmico de portas para acesso via Winbox, Web, ROS API e SSH.
+Plataforma SaaS multi-tenant de **mídia indoor (digital signage)**: cada estabelecimento monta
+playlists de vídeos e imagens hospedadas no **Cloudflare R2**, e a TV toca essa programação com
+uma **trilha sonora do Spotify** por cima, controlada remotamente pelo painel.
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
+## Como funciona
 
-- **Front-end / Back-end:** [Next.js 15.1](https://nextjs.org/) (App Router, [React 19.0](https://react.dev/), [TypeScript 5.7](https://www.typescriptlang.org/))
-- **Estilização & Ícones:** [Tailwind CSS 3.4](https://tailwindcss.com/) & [Lucide React 0.474](https://lucide.dev/)
-- **Banco de Dados & ORM:** [PostgreSQL 16](https://www.postgresql.org/) & [Prisma ORM 6.4](https://www.prisma.io/)
-- **Containers & Redes:** [Docker](https://www.docker.com/) & Docker Compose
-- **Roteadores Virtuais:** MikroTik RouterOS CHR (`vantuil/mikrotik-chr:v7`)
-- **Integração Financeira:** API Asaas (Pix, Assinaturas e Webhooks)
+```
+Painel do cliente ──> Firestore ──> Player na TV ──> Cloudflare R2 (vídeos/imagens)
+       │                                  │
+       └──── comandos de música ──────────┴──> Spotify Web Playback SDK (áudio)
+```
+
+1. O super admin cadastra o estabelecimento. O sistema cria o acesso ao painel, uma playlist
+   padrão e a primeira tela, com um **código de pareamento** de 6 caracteres.
+2. No dispositivo ligado à TV, abre-se `/tv` e digita-se o código **uma única vez**. A tela guarda
+   um segredo de dispositivo no navegador e passa a se autenticar sozinha.
+3. O cliente envia vídeos pelo painel. O arquivo vai **direto do navegador para o R2** por URL
+   presignada, sem passar pelo servidor.
+4. A tela busca a programação a cada minuto, reporta presença e se registra como um **dispositivo
+   Spotify**. O painel manda tocar, pausar, pular faixa e ajustar volume naquela TV específica.
+
+### Áudio: vídeo x música
+
+Cada item da playlist decide quem manda no som:
+
+- **Vídeo mudo** (padrão): a música do Spotify segue tocando por cima.
+- **Vídeo com áudio**: a música pausa enquanto o vídeo toca e volta ao terminar.
 
 ---
 
-## 📂 Estrutura do Projeto
+## Stack
+
+- **Next.js 15** (App Router) + **React 19** + **TypeScript 5.7**
+- **Tailwind CSS 3.4** e **lucide-react**
+- **Firebase Firestore** — único banco de dados da plataforma
+- **Cloudflare R2** (SDK S3) — armazenamento das mídias
+- **Spotify Web Playback SDK** + Web API — trilha sonora
+- **Upstash Redis** — rate limit de login e pareamento (opcional)
+
+---
+
+## Estrutura
 
 ```text
-.
-├── apps/
-│   └── web/
-│       ├── prisma/
-│       │   ├── schema.prisma   # Modelos do Banco de Dados (Tenants, Portais, TVs, Addons)
-│       │   └── seed.ts         # Dados de inicialização (Seeders)
-│       ├── src/
-│       │   ├── app/
-│       │   │   ├── (admin)/    # Painel Super Admin (Gestão Global & CHR Provisioning)
-│       │   │   ├── (tenant)/   # Painel Administrativo do Estabelecimento
-│       │   │   ├── (auth)/     # Autenticação e Login
-│       │   │   ├── portal/     # Interface do Captive Portal (Client View)
-│       │   │   ├── tv/         # Interface Mídia Indoor para Smart TV
-│       │   │   ├── checkin/    # Fluxo de Login / Check-in Wi-Fi
-│       │   │   └── api/        # API Routes (Auth, Webhooks, CHR, Asaas)
-│       │   ├── lib/
-│       │   │   ├── asaas.ts           # Cliente API de Pagamentos Asaas
-│       │   │   ├── db.ts              # Instância Singleton do Prisma Client
-│       │   │   └── docker-mikrotik.ts # Provisionamento de Containers MikroTik CHR
-│       │   └── middleware.ts   # Roteamento de Subdomínios e Domínios Customizados
-│       ├── .env.example
-│       └── package.json
-├── docker-compose.yml          # Serviço do PostgreSQL 16 para Desenvolvimento
-└── README.md
+apps/web/src/
+├── app/
+│   ├── (admin)/admin/            # Painel da plataforma: clientes e telas
+│   ├── (auth)/login/             # Login
+│   ├── (tenant)/tenant/[id]/     # Painel do estabelecimento (5 abas)
+│   ├── tv/                       # Pareamento da TV
+│   ├── tv/[screenId]/            # Player de exibição
+│   └── api/
+│       ├── auth/                 # Login, sessão e OAuth do Spotify
+│       ├── screen/               # Rotas consumidas pelo player da TV
+│       ├── tenant/[id]/          # Telas, playlists, biblioteca, música
+│       ├── tenants/              # CRUD de clientes (super admin)
+│       └── upload/               # URLs presignadas do R2
+├── components/panel/             # Abas do painel do estabelecimento
+├── components/tv/                # Overlays da tela
+├── hooks/useSpotifyPlayer.ts     # Web Playback SDK
+└── lib/                          # Domínio, Firestore, R2, Spotify, sessão
 ```
+
+### Coleções no Firestore
+
+| Coleção           | Conteúdo                                                      |
+| ----------------- | ------------------------------------------------------------- |
+| `users`           | Acessos ao painel (`SUPER_ADMIN` e `TENANT_ADMIN`)            |
+| `tenants`         | Estabelecimentos: nome, cor, logo, fuso horário                |
+| `screens`         | Telas: código de pareamento, segredo, overlays, volume         |
+| `playlists`       | Programação, com os itens de mídia embutidos                   |
+| `mediaAssets`     | Biblioteca de arquivos enviados ao R2                          |
+| `spotifyAccounts` | Tokens e playlist escolhida, um documento por estabelecimento  |
 
 ---
 
-## ⚡ Pré-requisitos e Instalação
-
-### 1. Pré-requisitos
-- **Node.js**: v20.x ou v22.x (LTS recomendado)
-- **Docker & Docker Compose**: Instalados e em execução
-- **npm**, **pnpm** ou **yarn**
-
-### 2. Clonar o Repositório e Instalar Dependências
+## Configuração
 
 ```bash
-# Clonar o repositório
-git clone https://github.com/eduardovmaker/hub-vaelis.git
-cd hub-vaelis
-
-# Entrar na pasta do aplicativo web
-cd apps/web
-
-# Instalar dependências
 npm install
+cp apps/web/.env.example apps/web/.env   # preencha as variáveis
 ```
 
-### 3. Configurar Variáveis de Ambiente
+### Variáveis obrigatórias
 
-Crie um arquivo `.env` na pasta `apps/web` baseado no `.env.example`:
+- `AUTH_SECRET` — assina o cookie de sessão. Gere uma chave nova:
+  ```bash
+  node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+  ```
+- `FIREBASE_*` — credenciais da service account do Firestore.
+- `CLOUDFLARE_R2_*` — conta, chaves, bucket e URL pública do bucket.
+- `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` / `SPOTIFY_REDIRECT_URI`.
+- `NEXT_PUBLIC_APP_URL` — URL pública da aplicação.
 
-```env
-DATABASE_URL="postgresql://admin:secretpassword@localhost:5432/captivehub?schema=public"
-JWT_SECRET="captivehub_secret_key_qa_2026"
+### Primeiro acesso
+
+```bash
+cd apps/web && npm run seed
 ```
+
+Cria (ou atualiza a senha do) super admin definido em `ADMIN_EMAIL` / `ADMIN_INITIAL_PASSWORD`.
+
+### CORS do bucket R2
+
+O upload direto do navegador exige CORS liberando `PUT` a partir da origem da aplicação:
+
+```bash
+cd apps/web && npx ts-node --compiler-options '{"module":"CommonJS"}' scripts/configure-r2-cors.ts
+```
+
+O script usa `NEXT_PUBLIC_APP_URL`; **rode de novo ao publicar em produção**, senão o navegador
+bloqueia o envio a partir do domínio novo.
+
+### Spotify
+
+1. Crie um app em [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard).
+2. Cadastre o Redirect URI exatamente igual a `SPOTIFY_REDIRECT_URI`.
+3. No painel do cliente, aba **Música**, conecte a conta do estabelecimento.
+
+> **A conta precisa ser Spotify Premium.** O Web Playback SDK não reproduz faixas completas em
+> contas gratuitas — é limitação do Spotify, não da plataforma. O painel avisa quando a conta
+> conectada não é Premium.
 
 ---
 
-## 🚀 Executando o Projeto
-
-### Step 1: Subir o Banco de Dados PostgreSQL via Docker
-
-Na raiz do projeto (`hub-vaelis`), execute:
-
-```bash
-docker-compose up -d
-```
-
-### Step 2: Gerar o Prisma Client e Aplicar as Migrações
-
-No diretório `apps/web`:
-
-```bash
-# Gerar o cliente Prisma
-npx prisma generate
-
-# Sincronizar o esquema com o banco PostgreSQL
-npx prisma db push
-
-# (Opcional) Popular o banco com dados de teste
-npm run db:seed
-```
-
-### Step 3: Iniciar o Servidor de Desenvolvimento
-
-No diretório `apps/web`:
+## Rodando
 
 ```bash
 npm run dev
 ```
 
-A aplicação estará acessível em `http://localhost:3000`.
+- Painel do super admin: `/admin`
+- Painel do estabelecimento: `/tenant/<tenantId>`
+- Player da TV: `/tv`
 
 ---
 
-## 🖥️ Acesso aos Painéis
+## Instalação na TV
 
-- **Super Admin:** `http://localhost:3000/admin`
-- **Painel do Tenant:** `http://localhost:3000/tenant/[tenantId]`
-- **Mídia Indoor Smart TV:** `http://localhost:3000/tv`
-- **Captive Portal:** `http://localhost:3000/portal`
+O player roda em navegador **Chrome/Chromium**. O Web Playback SDK exige suporte a Widevine, que
+navegadores nativos de Smart TV costumam não ter. O caminho confiável é um dispositivo Android TV,
+mini PC ou Chromebox rodando Chrome em modo quiosque apontado para `/tv`.
 
----
+Depois do pareamento, a exibição precisa de **um toque em "Iniciar exibição"** (pressionar OK no
+controle). Isso é exigência de autoplay dos navegadores: sem um gesto do usuário, nenhum som toca.
+O toque é necessário apenas quando a página é recarregada.
 
-## 📄 Licença
-
-Este projeto é de uso privado e proprietário. Todos os direitos reservados.
-
+Para um endereço fixo por cliente, aponte um subdomínio (ex: `tv.barbearia.com.br`) para a
+aplicação — o middleware entrega a tela de pareamento na raiz desse host.

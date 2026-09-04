@@ -62,7 +62,7 @@ export default function LoginPage() {
               Acesse sua conta
             </h2>
             <p className="text-xs font-medium text-[#637381] dark:text-gray-400">
-              Plataforma Omnichannel & Mídia Indoor
+              Mídia indoor para Smart TVs
             </p>
           </div>
 
@@ -156,7 +156,7 @@ export default function LoginPage() {
 
       {/* Footer Minimal */}
       <footer className="py-6 text-center text-xs font-medium text-[#637381] dark:text-gray-500 z-10">
-        Vaelis-HUB © {new Date().getFullYear()} — Todos os direitos reservados.
+        Vaelis Indoor © {new Date().getFullYear()} — Todos os direitos reservados.
       </footer>
     </div>
   );

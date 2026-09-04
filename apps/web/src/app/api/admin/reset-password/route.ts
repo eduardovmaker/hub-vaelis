@@ -1,61 +1,55 @@
 import { NextResponse } from "next/server";
-import { db, COLLECTIONS } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { db, COLLECTIONS } from "@/lib/db";
+import { requireSuperAdmin } from "@/lib/session";
 
+/** Redefine a senha de acesso de um estabelecimento. Restrito ao super admin. */
 export async function POST(request: Request) {
-  try {
-    const { tenantId, email, newPassword } = await request.json();
+  const auth = requireSuperAdmin(request);
+  if ("response" in auth) return auth.response;
 
-    if (!newPassword || newPassword.length < 4) {
-      return NextResponse.json(
-        { success: false, error: "A nova senha deve ter no mínimo 4 caracteres." },
-        { status: 400 }
-      );
-    }
+  if (!db) {
+    return NextResponse.json({ success: false, error: "Banco de dados indisponível." }, { status: 503 });
+  }
 
-    if (!email && !tenantId) {
-      return NextResponse.json(
-        { success: false, error: "E-mail ou ID do Tenant é obrigatório para redefinir a senha." },
-        { status: 400 }
-      );
-    }
+  const { tenantId, email, newPassword } = await request.json().catch(() => ({}));
 
-    const newPasswordHash = await bcrypt.hash(newPassword, 10);
-    let updatedCount = 0;
-
-    if (db) {
-      const usersRef = db.collection(COLLECTIONS.USERS);
-      let querySnapshot;
-
-      if (email) {
-        querySnapshot = await usersRef.where("email", "==", email.toLowerCase().trim()).get();
-      } else {
-        querySnapshot = await usersRef.where("tenantId", "==", tenantId).get();
-      }
-
-      if (!querySnapshot.empty) {
-        const batch = db.batch();
-        querySnapshot.docs.forEach((doc: any) => {
-          batch.update(doc.ref, {
-            passwordHash: newPasswordHash,
-            updatedAt: new Date().toISOString(),
-          });
-          updatedCount++;
-        });
-        await batch.commit();
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: `Senha redefinida com sucesso para ${updatedCount > 0 ? updatedCount + " usuário(s)" : "o estabelecimento"}!`,
-      updatedCount,
-    });
-  } catch (error: any) {
-    console.error("Erro na rota /api/admin/reset-password:", error);
+  if (!newPassword || String(newPassword).length < 8) {
     return NextResponse.json(
-      { success: false, error: "Erro interno no servidor ao redefinir senha." },
-      { status: 500 }
+      { success: false, error: "A nova senha deve ter no mínimo 8 caracteres." },
+      { status: 400 }
     );
   }
+
+  if (!email && !tenantId) {
+    return NextResponse.json(
+      { success: false, error: "Informe o e-mail do usuário ou o ID do estabelecimento." },
+      { status: 400 }
+    );
+  }
+
+  const usersRef = db.collection(COLLECTIONS.USERS);
+  const snapshot = email
+    ? await usersRef.where("email", "==", String(email).toLowerCase().trim()).get()
+    : await usersRef.where("tenantId", "==", String(tenantId)).get();
+
+  if (snapshot.empty) {
+    return NextResponse.json(
+      { success: false, error: "Nenhum usuário encontrado com esses dados." },
+      { status: 404 }
+    );
+  }
+
+  const passwordHash = await bcrypt.hash(String(newPassword), 10);
+  const batch = db.batch();
+  snapshot.docs.forEach((doc) =>
+    batch.update(doc.ref, { passwordHash, updatedAt: new Date().toISOString() })
+  );
+  await batch.commit();
+
+  return NextResponse.json({
+    success: true,
+    updatedCount: snapshot.size,
+    message: `Senha redefinida para ${snapshot.size} usuário(s).`,
+  });
 }

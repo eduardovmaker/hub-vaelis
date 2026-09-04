@@ -1,327 +1,171 @@
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
 import { NextResponse } from "next/server";
-import { db, COLLECTIONS } from "@/lib/db";
-import { INITIAL_TV_CONFIGS, TenantTvConfig } from "@/mocks/tv";
+import bcrypt from "bcryptjs";
+import { db, COLLECTIONS, sanitizeForFirestore } from "@/lib/db";
+import { requireSuperAdmin } from "@/lib/session";
+import { generateDeviceSecret, generateUniquePairingCode } from "@/lib/screens";
+import {
+  DEFAULT_OVERLAYS,
+  isScreenOnline,
+  type Playlist,
+  type Screen,
+  type Tenant,
+  type TenantCategory,
+} from "@/lib/types";
 
-// Helper para timeout resiliente do banco de dados Firebase Firestore (5000ms)
-async function withDbTimeout<T>(promise: Promise<T>, timeoutMs = 5000): Promise<T> {
-  let timer: NodeJS.Timeout;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error("DB Timeout")), timeoutMs);
+const CATEGORIES: TenantCategory[] = [
+  "BARBEARIA",
+  "RESTAURANTE",
+  "CLINICA",
+  "ACADEMIA",
+  "VAREJO",
+  "OUTRO",
+];
+
+function slugifyTenantId(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 40) || "cliente";
+  return `tenant_${slug}_${Date.now().toString().slice(-4)}`;
+}
+
+/** Lista os estabelecimentos com a contagem de telas e quantas estão online. */
+export async function GET(request: Request) {
+  const auth = requireSuperAdmin(request);
+  if ("response" in auth) return auth.response;
+
+  if (!db) return NextResponse.json({ success: true, tenants: [] });
+
+  const [tenantsSnapshot, screensSnapshot] = await Promise.all([
+    db.collection(COLLECTIONS.TENANTS).get(),
+    db.collection(COLLECTIONS.SCREENS).get(),
+  ]);
+
+  const screensByTenant = new Map<string, { total: number; online: number }>();
+  screensSnapshot.docs.forEach((doc) => {
+    const screen = doc.data() as Screen;
+    const entry = screensByTenant.get(screen.tenantId) || { total: 0, online: 0 };
+    entry.total += 1;
+    if (isScreenOnline(screen.lastSeenAt)) entry.online += 1;
+    screensByTenant.set(screen.tenantId, entry);
   });
-  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
+
+  const tenants = tenantsSnapshot.docs
+    .map((doc) => {
+      const data = doc.data() as Omit<Tenant, "id">;
+      const counts = screensByTenant.get(doc.id) || { total: 0, online: 0 };
+      return { id: doc.id, ...data, screenCount: counts.total, screensOnline: counts.online };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+
+  return NextResponse.json({ success: true, tenants });
 }
 
-// In-memory fallback para novos tenants criados no modo apresentação sem banco
-const memoryTenants: Record<string, TenantTvConfig> = { ...INITIAL_TV_CONFIGS };
-
-
-export async function GET() {
-  try {
-    if (db) {
-      const getTenantsPromise = (async () => {
-        const snapshot = await db.collection(COLLECTIONS.TENANTS).get();
-        if (!snapshot.empty) {
-          // Fetch asaas configs map
-          const asaasSnapshot = await db.collection(COLLECTIONS.ASAAS_CONFIGS).get();
-          const asaasMap: Record<string, any> = {};
-          if (!asaasSnapshot.empty) {
-            asaasSnapshot.docs.forEach((doc) => {
-              asaasMap[doc.id] = doc.data();
-            });
-          }
-
-          // Fetch users map for login emails
-          const usersSnapshot = await db.collection(COLLECTIONS.USERS).get();
-          const userEmailMap: Record<string, string> = {};
-          if (!usersSnapshot.empty) {
-            usersSnapshot.docs.forEach((uDoc) => {
-              const uData = uDoc.data();
-              if (uData.tenantId && uData.email) {
-                userEmailMap[uData.tenantId] = uData.email;
-              }
-            });
-          }
-
-          return snapshot.docs.map((doc: any) => {
-            const data = doc.data();
-            const asaasConf = asaasMap[doc.id] || {};
-            const platformFee = typeof asaasConf.platformFeePercentage === "number" ? asaasConf.platformFeePercentage : 10;
-            const splitPct = typeof asaasConf.splitPercentage === "number" ? asaasConf.splitPercentage : (100 - platformFee);
-            const loginEmail = data.email || userEmailMap[doc.id] || `${doc.id.replace(/^tenant_/, "").replace(/_\d+$/, "")}@hub-vaelis.com`;
-
-            return {
-              tenantId: doc.id,
-              tenantName: data.tenantName,
-              email: loginEmail,
-              pairingCode: data.pairingCode,
-              paymentStatus: data.paymentStatus || "PAID",
-              subscriptionExpiresAt: data.subscriptionExpiresAt,
-              addonActive: data.addonStates?.["midia-indoor"]?.active || false,
-              addonStates: data.addonStates || {},
-              walletId: asaasConf.walletId || "",
-              platformFeePercentage: platformFee,
-              splitPercentage: splitPct,
-            };
-          });
-        }
-        return null;
-      })();
-
-      const tenants = await withDbTimeout(getTenantsPromise, 5000);
-      if (tenants && tenants.length > 0) {
-        return NextResponse.json({ success: true, tenants });
-      }
-    }
-  } catch (error: any) {}
-
-  return NextResponse.json({ success: true, tenants: Object.values(memoryTenants) });
-}
-
+/**
+ * Cadastra um estabelecimento e já entrega o kit inicial: usuário
+ * administrador, playlist padrão e a primeira tela com código de pareamento.
+ */
 export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const { tenantName, category, wifiSsid, primaryColor, pairingCode, email } = body;
+  const auth = requireSuperAdmin(request);
+  if ("response" in auth) return auth.response;
 
-    if (!tenantName) {
-      return NextResponse.json(
-        { success: false, error: "Nome do estabelecimento é obrigatório." },
-        { status: 400 }
-      );
-    }
-
-    const tenantId = `tenant_${tenantName.toLowerCase().replace(/[^a-z0-9]/g, "_")}_${Date.now().toString().slice(-4)}`;
-    const finalPairingCode = pairingCode || `TV-${Math.floor(1000 + Math.random() * 9000)}`;
-    const tenantEmail = email || `${tenantName.toLowerCase().replace(/[^a-z0-9]/g, "")}@hub-vaelis.com`;
-
-    const defaultAddonStates = {
-      "checkin-qrcode": { active: false, paymentStatus: "PENDING" },
-      "midia-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
-      "radio-indoor": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
-      "google-reviews": { active: false, paymentStatus: "PENDING" },
-      "whatsapp-bot": { active: false, paymentStatus: "PENDING" },
-      "roleta-da-sorte": { active: false, paymentStatus: "PENDING" },
-      "loja-produtos": { active: true, paymentStatus: "PAID", planCycle: "MENSAL" },
-      "multi-unidades": { active: false, paymentStatus: "PENDING" },
-    };
-
-    const newTenantConfig: TenantTvConfig = {
-      tenantId,
-      tenantName,
-      email: tenantEmail,
-      pairingCode: finalPairingCode,
-      addonActive: true,
-      showQrOverlay: true,
-      showClockOverlay: true,
-      autoRenew: true,
-      addonStates: defaultAddonStates as any,
-      playlist: [
-        {
-          id: `tv_${tenantId}_1`,
-          title: `Boas-vindas ao ${tenantName}`,
-          type: "image",
-          url: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1920&q=80",
-          durationSeconds: 10,
-          active: true,
-        },
-      ],
-    };
-
-    // Salvar na memória para apresentação instantânea
-    memoryTenants[tenantId] = newTenantConfig;
-
-    // Persistir no Firebase Firestore se disponível
-    try {
-      if (db) {
-        const batch = db.batch();
-
-        const tenantRef = db.collection(COLLECTIONS.TENANTS).doc(tenantId);
-        batch.set(tenantRef, {
-          tenantName,
-          category: category || "FOOD",
-          wifiSsid: wifiSsid || `${tenantName}_WiFi`,
-          primaryColor: primaryColor || "#2563EB",
-          pairingCode: finalPairingCode,
-          addonStates: defaultAddonStates,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-
-        const tvRef = db.collection(COLLECTIONS.TV_CONFIGS).doc(tenantId);
-        batch.set(tvRef, newTenantConfig);
-
-        const portalRef = db.collection(COLLECTIONS.PORTAL_CONFIGS).doc(tenantId);
-        batch.set(portalRef, {
-          tenantId,
-          tenantName,
-          tenantCategory: category || "FOOD",
-          wifiSsid: wifiSsid || `${tenantName}_WiFi`,
-          primaryColor: primaryColor || "#2563EB",
-          banners: [],
-          pixPlans: [
-            { id: "p_1", title: "Acesso Rápido (2 Horas)", durationText: "2 Horas de Wi-Fi • 20 Mbps", price: 5.00, speedLimit: "20 Mbps", recommended: true },
-            { id: "p_2", title: "Passaporte Noite Toda (6 Horas)", durationText: "6 Horas de Alta Velocidade • 50 Mbps", price: 10.00, speedLimit: "50 Mbps", recommended: false },
-          ],
-          freeAccessEnabled: true,
-          freeAccessDurationMinutes: 30,
-          adWatchSeconds: 15,
-          digitalMenuEnabled: true,
-          digitalMenuUrl: "",
-          digitalMenuTitle: "Cardápio & Serviços",
-          digitalMenuButtonText: "Ver Cardápio & Serviços",
-          digitalMenuIcon: "utensils",
-          autoRedirectToMenu: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-
-        await withDbTimeout(batch.commit(), 5000);
-      }
-    } catch (e) {}
-
-    return NextResponse.json({
-      success: true,
-      tenant: newTenantConfig,
-      message: "Tenant cadastrado com sucesso no Hub Empresarial!",
-    });
-  } catch (error: any) {
-    return NextResponse.json(
-      { success: false, error: "Erro ao cadastrar novo tenant." },
-      { status: 500 }
-    );
+  if (!db) {
+    return NextResponse.json({ success: false, error: "Banco de dados indisponível." }, { status: 503 });
   }
-}
 
-export async function PATCH(request: Request) {
-  try {
-    const body = await request.json();
-    const { tenantId, addonId, active } = body;
+  const body = await request.json().catch(() => ({}));
+  const name = String(body.name || "").trim();
+  const email = String(body.email || "").toLowerCase().trim();
+  const password = String(body.password || "");
 
-    if (!tenantId || !addonId || typeof active !== "boolean") {
-      return NextResponse.json(
-        { success: false, error: "Parâmetros 'tenantId', 'addonId' e 'active' são obrigatórios." },
-        { status: 400 }
-      );
-    }
-
-    if (memoryTenants[tenantId]) {
-      if (!memoryTenants[tenantId].addonStates) {
-        memoryTenants[tenantId].addonStates = {} as any;
-      }
-      (memoryTenants[tenantId].addonStates as Record<string, any>)[addonId] = {
-        active,
-        paymentStatus: active ? "PAID" : "OVERDUE",
-        planCycle: "MENSAL",
-      };
-    }
-
-    try {
-      if (db) {
-        const tenantRef = db.collection(COLLECTIONS.TENANTS).doc(tenantId);
-        await withDbTimeout(
-          tenantRef.set(
-            {
-              addonStates: {
-                [addonId]: {
-                  active,
-                  paymentStatus: active ? "PAID" : "OVERDUE",
-                  planCycle: "MENSAL",
-                  updatedAt: new Date().toISOString(),
-                },
-              },
-            },
-            { merge: true }
-          ),
-          5000
-        );
-      }
-    } catch (dbErr) {}
-
-    return NextResponse.json({
-      success: true,
-      message: `Add-on [${addonId}] atualizado para ${active ? "LIBERADO" : "BLOQUEADO"}.`,
-    });
-  } catch (error: any) {
+  if (!name || !email || password.length < 8) {
     return NextResponse.json(
-      { success: false, error: "Erro ao atualizar status do add-on." },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PUT(request: Request) {
-  try {
-    const body = await request.json();
-    const { tenantId, addonStates, paymentStatus, subscriptionExpiresAt } = body;
-
-    if (!tenantId) {
-      return NextResponse.json({ success: false, error: "tenantId é obrigatório." }, { status: 400 });
-    }
-
-    memoryTenants[tenantId] = {
-      ...(memoryTenants[tenantId] || { tenantId, tenantName: tenantId, pairingCode: `TV-${Math.floor(1000 + Math.random() * 9000)}`, addonActive: true, showQrOverlay: true, showClockOverlay: true, planCycle: "MENSAL", paymentStatus: "PAID", playlist: [] }),
-      ...body,
-      addonStates: {
-        ...(memoryTenants[tenantId]?.addonStates || {}),
-        ...(addonStates || {}),
+      {
+        success: false,
+        error: "Informe nome do estabelecimento, e-mail de acesso e senha com 8+ caracteres.",
       },
-    };
-
-    if (db) {
-      const updateData: Record<string, any> = { updatedAt: new Date().toISOString() };
-      if (addonStates) updateData.addonStates = addonStates;
-      if (paymentStatus) updateData.paymentStatus = paymentStatus;
-      if (subscriptionExpiresAt) updateData.subscriptionExpiresAt = subscriptionExpiresAt;
-
-      const batch = db.batch();
-      const tenantRef = db.collection(COLLECTIONS.TENANTS).doc(tenantId);
-      const tvRef = db.collection(COLLECTIONS.TV_CONFIGS).doc(tenantId);
-
-      batch.set(tenantRef, updateData, { merge: true });
-      batch.set(tvRef, updateData, { merge: true });
-
-      await withDbTimeout(batch.commit(), 500);
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Configurações do tenant atualizadas com sucesso no Firestore!",
-    });
-  } catch (error: any) {
-    console.error("Erro na rota PUT /api/tenants:", error);
-    return NextResponse.json({ success: false, error: "Erro ao atualizar tenant." }, { status: 500 });
+      { status: 400 }
+    );
   }
-}
 
-export async function DELETE(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get("tenantId");
+  const existingUser = await db
+    .collection(COLLECTIONS.USERS)
+    .where("email", "==", email)
+    .limit(1)
+    .get();
 
-    if (!tenantId) {
-      return NextResponse.json({ success: false, error: "tenantId é obrigatório." }, { status: 400 });
-    }
-
-    delete memoryTenants[tenantId];
-
-    if (db) {
-      const batch = db.batch();
-      batch.delete(db.collection(COLLECTIONS.TENANTS).doc(tenantId));
-      batch.delete(db.collection(COLLECTIONS.TV_CONFIGS).doc(tenantId));
-      batch.delete(db.collection(COLLECTIONS.PORTAL_CONFIGS).doc(tenantId));
-      batch.delete(db.collection(COLLECTIONS.ASAAS_CONFIGS).doc(tenantId));
-      batch.delete(db.collection(COLLECTIONS.RADIO_INDOOR_CONFIGS).doc(tenantId));
-      await withDbTimeout(batch.commit(), 500);
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: `Estabelecimento [${tenantId}] e todos os seus dados foram excluídos com sucesso!`,
-    });
-  } catch (error: any) {
-    console.error("Erro na rota DELETE /api/tenants:", error);
-    return NextResponse.json({ success: false, error: "Erro ao excluir tenant." }, { status: 500 });
+  if (!existingUser.empty) {
+    return NextResponse.json(
+      { success: false, error: "Este e-mail já está em uso por outro acesso." },
+      { status: 409 }
+    );
   }
+
+  const tenantId = slugifyTenantId(name);
+  const now = new Date().toISOString();
+
+  const tenant: Omit<Tenant, "id"> = {
+    name: name.slice(0, 100),
+    category: CATEGORIES.includes(body.category) ? body.category : "OUTRO",
+    primaryColor: /^#[0-9a-fA-F]{6}$/.test(String(body.primaryColor)) ? body.primaryColor : "#2563EB",
+    logoUrl: body.logoUrl ? String(body.logoUrl) : undefined,
+    timezone: String(body.timezone || "America/Sao_Paulo"),
+    contactWhatsapp: body.contactWhatsapp ? String(body.contactWhatsapp) : undefined,
+    active: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const playlist: Omit<Playlist, "id"> = {
+    tenantId,
+    name: "Playlist principal",
+    isDefault: true,
+    items: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const playlistRef = db.collection(COLLECTIONS.PLAYLISTS).doc();
+  const screenRef = db.collection(COLLECTIONS.SCREENS).doc();
+
+  const screen: Omit<Screen, "id"> = {
+    tenantId,
+    name: "TV principal",
+    orientation: "LANDSCAPE",
+    pairingCode: await generateUniquePairingCode(),
+    paired: false,
+    deviceSecret: generateDeviceSecret(),
+    playlistId: playlistRef.id,
+    overlays: { ...DEFAULT_OVERLAYS },
+    musicEnabled: true,
+    volumePercent: 45,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const batch = db.batch();
+  batch.set(db.collection(COLLECTIONS.TENANTS).doc(tenantId), sanitizeForFirestore(tenant));
+  batch.set(playlistRef, sanitizeForFirestore(playlist));
+  batch.set(screenRef, sanitizeForFirestore(screen));
+  batch.set(db.collection(COLLECTIONS.USERS).doc(), {
+    name: `Administrador ${tenant.name}`,
+    email,
+    passwordHash: await bcrypt.hash(password, 10),
+    role: "TENANT_ADMIN",
+    tenantId,
+    tenantName: tenant.name,
+    createdAt: now,
+    updatedAt: now,
+  });
+  await batch.commit();
+
+  return NextResponse.json({
+    success: true,
+    tenant: { id: tenantId, ...tenant },
+    screen: { id: screenRef.id, name: screen.name, pairingCode: screen.pairingCode },
+    message: `Estabelecimento criado. Código da primeira tela: ${screen.pairingCode}.`,
+  });
 }

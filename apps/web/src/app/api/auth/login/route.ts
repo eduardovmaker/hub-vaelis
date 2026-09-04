@@ -1,26 +1,22 @@
 import { NextResponse } from "next/server";
-import { db, COLLECTIONS } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { db, COLLECTIONS, withDbTimeout } from "@/lib/db";
 import { authRatelimit, checkRateLimit } from "@/lib/ratelimit";
+import { attachSessionCookie } from "@/lib/session";
+import type { SessionUser } from "@/lib/types";
 
 export async function POST(request: Request) {
   try {
-    // 🛡️ Rate limit por IP (5 req/min)
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
     const rl = await checkRateLimit(authRatelimit, `login_${ip}`);
-
     if (!rl.success) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Muitas tentativas de login. Por favor, aguarde 1 minuto antes de tentar novamente.",
-        },
+        { success: false, error: "Muitas tentativas de login. Aguarde 1 minuto e tente novamente." },
         { status: 429 }
       );
     }
 
     const { email, password } = await request.json();
-
     if (!email || !password) {
       return NextResponse.json(
         { success: false, error: "E-mail e senha são obrigatórios." },
@@ -28,52 +24,49 @@ export async function POST(request: Request) {
       );
     }
 
-    // Consulta exclusiva no Firebase Firestore
-    try {
-      if (db) {
-        const usersRef = db.collection(COLLECTIONS.USERS);
-        const snapshot = await usersRef.where("email", "==", email.toLowerCase().trim()).limit(1).get();
-
-        if (!snapshot.empty) {
-          const userDoc = snapshot.docs[0];
-          const userData = userDoc.data();
-
-          if (userData && userData.passwordHash) {
-            const isPasswordValid = await bcrypt.compare(password, userData.passwordHash);
-            if (isPasswordValid) {
-              const userPayload = {
-                id: userDoc.id,
-                name: userData.name,
-                email: userData.email,
-                role: userData.role,
-                tenantId: userData.tenantId || undefined,
-                tenantName: userData.tenantName || undefined,
-              };
-
-              return NextResponse.json({
-                success: true,
-                user: userPayload,
-              });
-            }
-          }
-        }
-      }
-    } catch (dbError: any) {
-      console.error("Erro de consulta no Firebase Firestore:", dbError);
+    if (!db) {
       return NextResponse.json(
-        { success: false, error: "Erro ao conectar ao Firebase Firestore. Verifique suas credenciais no .env." },
-        { status: 500 }
+        { success: false, error: "Banco de dados indisponível. Verifique as credenciais do Firebase." },
+        { status: 503 }
       );
     }
 
-    return NextResponse.json(
+    const snapshot = await withDbTimeout(
+      db
+        .collection(COLLECTIONS.USERS)
+        .where("email", "==", String(email).toLowerCase().trim())
+        .limit(1)
+        .get()
+    );
+
+    const invalidCredentials = NextResponse.json(
       { success: false, error: "Credenciais inválidas. Verifique o e-mail e a senha." },
       { status: 401 }
     );
-  } catch (error: any) {
+
+    if (snapshot.empty) return invalidCredentials;
+
+    const userDoc = snapshot.docs[0];
+    const userData = userDoc.data();
+    if (!userData?.passwordHash) return invalidCredentials;
+
+    const passwordMatches = await bcrypt.compare(password, userData.passwordHash);
+    if (!passwordMatches) return invalidCredentials;
+
+    const user: SessionUser = {
+      id: userDoc.id,
+      name: userData.name,
+      email: userData.email,
+      role: userData.role,
+      tenantId: userData.tenantId || undefined,
+      tenantName: userData.tenantName || undefined,
+    };
+
+    return attachSessionCookie(NextResponse.json({ success: true, user }), user);
+  } catch (error) {
     console.error("Erro na rota /api/auth/login:", error);
     return NextResponse.json(
-      { success: false, error: "Erro interno no servidor ao realizar autenticação." },
+      { success: false, error: "Erro interno ao autenticar." },
       { status: 500 }
     );
   }

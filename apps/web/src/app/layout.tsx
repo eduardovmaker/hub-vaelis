@@ -3,8 +3,9 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata: Metadata = {
-  title: "Vaelis-HUB — Plataforma Omnichannel de Engajamento, Mídia Indoor & Captive Portal",
-  description: "Solução enterprise para estabelecimentos comércios e redes: Mídia Indoor TV, Rádio Comercial sem anúncios, Automação de Avaliações 5★ no Google e Captive Portal Wi-Fi de Alta Performance.",
+  title: "Vaelis Indoor — Mídia Indoor para Smart TVs",
+  description:
+    "Plataforma de mídia indoor: playlists de vídeo hospedadas no Cloudflare R2 e trilha sonora do Spotify tocando direto na tela do estabelecimento.",
 };
 
 export default function RootLayout({

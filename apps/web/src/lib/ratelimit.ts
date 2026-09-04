@@ -1,22 +1,12 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
-// Inicialização do Redis com checagem de variáveis de ambiente
 const url = process.env.UPSTASH_REDIS_REST_URL;
 const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-const redis =
-  url && token
-    ? new Redis({
-        url,
-        token,
-      })
-    : null;
+const redis = url && token ? new Redis({ url, token }) : null;
 
-/**
- * Rate limit para rotas sensíveis de Autenticação / Login
- * 5 requisições por janela de 1 minuto por IP
- */
+/** Login do painel: 5 tentativas por minuto por IP. */
 export const authRatelimit = redis
   ? new Ratelimit({
       redis,
@@ -27,41 +17,34 @@ export const authRatelimit = redis
   : null;
 
 /**
- * Rate limit para rotas de Checkout / Vendas
- * 10 requisições por janela de 1 minuto por IP
+ * Pareamento de tela: 10 tentativas por minuto por IP.
+ * O código tem 6 caracteres, então o limite é o que impede força bruta.
  */
-export const checkoutRatelimit = redis
+export const pairingRatelimit = redis
   ? new Ratelimit({
       redis,
       limiter: Ratelimit.slidingWindow(10, "1 m"),
       analytics: true,
-      prefix: "@ratelimit/checkout",
+      prefix: "@ratelimit/pairing",
     })
   : null;
 
 /**
- * Função helper para checar o Rate Limit em rotas da API.
- * Retorna { success: true/false, limit, remaining, reset } com fallback gracioso.
+ * Consulta o limite com degradação graciosa: se o Redis não estiver
+ * configurado ou estiver fora, a requisição passa em vez de derrubar a tela.
  */
-export async function checkRateLimit(
-  limiter: Ratelimit | null,
-  identifier: string
-) {
+export async function checkRateLimit(limiter: Ratelimit | null, identifier: string) {
   if (!limiter) {
     if (process.env.NODE_ENV === "development") {
-      console.warn(
-        `[RateLimit Bypass] Upstash Redis não configurado para: ${identifier}`
-      );
+      console.warn(`[RateLimit] Upstash Redis não configurado, liberando: ${identifier}`);
     }
     return { success: true, limit: 0, remaining: 0, reset: 0 };
   }
 
   try {
-    const result = await limiter.limit(identifier);
-    return result;
+    return await limiter.limit(identifier);
   } catch (error) {
-    console.error("[RateLimit Error] Falha ao consultar Upstash Redis:", error);
-    // Em caso de indisponibilidade do Redis, libera a requisição em fallback seguro
+    console.error("[RateLimit] Falha ao consultar o Upstash Redis:", error);
     return { success: true, limit: 0, remaining: 0, reset: 0 };
   }
 }
