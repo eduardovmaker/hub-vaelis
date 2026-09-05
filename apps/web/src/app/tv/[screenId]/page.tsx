@@ -34,6 +34,7 @@ export default function ScreenPlayerPage({ params }: { params: Promise<{ screenI
   const [isOffline, setIsOffline] = useState(false);
   const [started, setStarted] = useState(false);
   const [index, setIndex] = useState(0);
+  const [precisaFundoDesfocado, setPrecisaFundoDesfocado] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const secretRef = useRef<string | null>(null);
@@ -121,6 +122,29 @@ export default function ScreenPlayerPage({ params }: { params: Promise<{ screenI
   const overlays = { ...DEFAULT_OVERLAYS, ...(bootstrap?.screen.overlays || {}) };
   const musicEnabled = !!bootstrap?.music.enabled && !!bootstrap?.music.connected;
   const isPortrait = bootstrap?.screen.orientation === "PORTRAIT";
+
+  /**
+   * Compara a proporção da mídia com a da área de exibição para saber se
+   * sobraria tarja. Só nesse caso vale montar o fundo desfocado.
+   *
+   * A medida sai do próprio elemento, não da janela: assim já considera a
+   * rotação aplicada em telas verticais.
+   */
+  const avaliarProporcao = useCallback(
+    (larguraMidia: number, alturaMidia: number, elemento: HTMLElement) => {
+      const larguraArea = elemento.clientWidth;
+      const alturaArea = elemento.clientHeight;
+
+      if (!larguraMidia || !alturaMidia || !larguraArea || !alturaArea) return;
+
+      const proporcaoMidia = larguraMidia / alturaMidia;
+      const proporcaoArea = larguraArea / alturaArea;
+
+      // Diferença mínima não gera tarja perceptível.
+      setPrecisaFundoDesfocado(Math.abs(proporcaoMidia - proporcaoArea) > 0.05);
+    },
+    []
+  );
 
   const fetchSpotifyToken = useCallback(async () => {
     try {
@@ -246,7 +270,8 @@ export default function ScreenPlayerPage({ params }: { params: Promise<{ screenI
     <main className="relative h-screen w-screen overflow-hidden bg-black">
       {/*
         Camada de mídia. `object-contain` nunca corta o quadro — conteúdo
-        vertical em TV horizontal aparece inteiro, com tarja preta nas laterais.
+        vertical em TV horizontal aparece inteiro, e a sobra fica preenchida
+        pelo fundo desfocado logo abaixo em vez de tarja preta.
         Telas marcadas como PORTRAIT giram 90°, para o caso de a TV estar
         montada na vertical sem o sistema operacional rotacionar a imagem.
       */}
@@ -258,16 +283,52 @@ export default function ScreenPlayerPage({ params }: { params: Promise<{ screenI
             : { width: "100vw", height: "100vh" }
         }
       >
+        {/*
+          Fundo desfocado: a própria mídia ampliada e borrada preenche a sobra
+          quando a proporção não bate com a da tela — vídeo vertical de
+          Reels/Stories em TV horizontal, por exemplo. Só é montado quando
+          haveria tarja, para não decodificar o vídeo duas vezes à toa.
+        */}
+        {precisaFundoDesfocado && currentItem && (
+          <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
+            {currentItem.type === "video" ? (
+              <video
+                key={`fundo_${currentItem.id}`}
+                src={currentItem.url}
+                className="h-full w-full scale-110 object-cover blur-2xl brightness-[0.55]"
+                autoPlay
+                loop
+                playsInline
+                muted
+              />
+            ) : (
+              <img
+                key={`fundo_${currentItem.id}`}
+                src={currentItem.url}
+                alt=""
+                className="h-full w-full scale-110 object-cover blur-2xl brightness-[0.55]"
+              />
+            )}
+          </div>
+        )}
+
         {currentItem ? (
           currentItem.type === "video" ? (
             <video
               ref={videoRef}
               key={currentItem.id}
               src={currentItem.url}
-              className="h-full w-full object-contain"
+              className="relative h-full w-full object-contain"
               autoPlay
               playsInline
               muted={currentItem.muteAudio !== false}
+              onLoadedMetadata={(event) =>
+                avaliarProporcao(
+                  event.currentTarget.videoWidth,
+                  event.currentTarget.videoHeight,
+                  event.currentTarget
+                )
+              }
               onEnded={advance}
               onError={advance}
             />
@@ -276,7 +337,14 @@ export default function ScreenPlayerPage({ params }: { params: Promise<{ screenI
               key={currentItem.id}
               src={currentItem.url}
               alt={currentItem.title}
-              className="h-full w-full object-contain"
+              className="relative h-full w-full object-contain"
+              onLoad={(event) =>
+                avaliarProporcao(
+                  event.currentTarget.naturalWidth,
+                  event.currentTarget.naturalHeight,
+                  event.currentTarget
+                )
+              }
             />
           )
         ) : (

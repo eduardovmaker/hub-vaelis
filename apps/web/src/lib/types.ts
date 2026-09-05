@@ -99,9 +99,13 @@ export interface ScreenOverlays {
   ctaDurationSeconds: number;
 }
 
+/**
+ * Padrão é a tela limpa: relógio e nome do estabelecimento poluem a peça e
+ * competem com a mídia. Continuam disponíveis nos ajustes de cada tela.
+ */
 export const DEFAULT_OVERLAYS: ScreenOverlays = {
-  showClock: true,
-  showLogo: true,
+  showClock: false,
+  showLogo: false,
   showNowPlaying: true,
   ctaEnabled: false,
   ctaTitle: "Siga nosso Instagram",

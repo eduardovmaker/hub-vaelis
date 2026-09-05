@@ -43,10 +43,34 @@ export default function TenantPanelPage({ params }: { params: Promise<{ tenantId
   }, [searchParams]);
 
   const [activeTab, setActiveTab] = useState<TabId>(initialTab);
+  const [tenantName, setTenantName] = useState("");
 
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+
+  /**
+   * Nome do estabelecimento vem do cadastro, não da sessão: o super admin não
+   * tem tenant vinculado e cairia no id cru (tenant_nome_1234) no cabeçalho.
+   */
+  useEffect(() => {
+    let active = true;
+
+    async function loadTenant() {
+      try {
+        const res = await fetch(`/api/tenant/${tenantId}`, { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        if (active && data.success) setTenantName(data.tenant.name || "");
+      } catch {
+        // Cabeçalho cai para o nome da sessão; o resto do painel segue normal.
+      }
+    }
+
+    loadTenant();
+    return () => {
+      active = false;
+    };
+  }, [tenantId]);
 
   // Guarda de navegação; a autorização real acontece nas rotas de API.
   useEffect(() => {
@@ -76,7 +100,9 @@ export default function TenantPanelPage({ params }: { params: Promise<{ tenantId
             <p className="text-xs font-bold uppercase tracking-widest text-[var(--brand-primary)]">
               Vaelis Indoor
             </p>
-            <h1 className="mt-0.5 text-xl font-extrabold">{user.tenantName || tenantId}</h1>
+            <h1 className="mt-0.5 text-xl font-extrabold">
+              {tenantName || user.tenantName || "Carregando..."}
+            </h1>
           </div>
 
           <div className="flex items-center gap-3">
