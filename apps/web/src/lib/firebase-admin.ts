@@ -1,30 +1,38 @@
 import { initializeApp, getApps, cert, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
-import { loadEnvFile } from "./env";
+import { loadEnvFile, readEnv } from "./env";
 
 loadEnvFile();
 
+/**
+ * Nenhum caminho aqui pode lançar durante o import: este módulo é carregado
+ * quando o Next monta as rotas, e uma credencial malformada derrubaria o build
+ * em vez de apenas deixar o banco indisponível em tempo de execução.
+ */
 function getFirebaseAdminApp() {
   const apps = getApps();
   if (apps.length > 0) return apps[0]!;
 
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const projectId = readEnv("FIREBASE_PROJECT_ID");
+  const clientEmail = readEnv("FIREBASE_CLIENT_EMAIL");
   // A chave vem do .env com \n escapado; o SDK espera quebras reais.
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  const privateKey = readEnv("FIREBASE_PRIVATE_KEY").replace(/\\n/g, "\n");
 
-  if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+  const serviceAccountJson = readEnv("FIREBASE_SERVICE_ACCOUNT_KEY");
+  if (serviceAccountJson) {
     try {
-      return initializeApp({
-        credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)),
-      });
+      return initializeApp({ credential: cert(JSON.parse(serviceAccountJson)) });
     } catch (error) {
-      console.warn("[Firebase Admin] FIREBASE_SERVICE_ACCOUNT_KEY não é um JSON válido:", error);
+      console.warn("[Firebase Admin] FIREBASE_SERVICE_ACCOUNT_KEY inválida:", error);
     }
   }
 
   if (projectId && clientEmail && privateKey) {
-    return initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
+    try {
+      return initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
+    } catch (error) {
+      console.warn("[Firebase Admin] Credenciais FIREBASE_* inválidas:", error);
+    }
   }
 
   // Ambientes Google (Cloud Run, GCE) resolvem a credencial sozinhos.
@@ -37,9 +45,18 @@ function getFirebaseAdminApp() {
   }
 }
 
-export const firebaseAdminApp = getFirebaseAdminApp();
+let cachedApp: ReturnType<typeof initializeApp> | null = null;
+
+try {
+  cachedApp = getFirebaseAdminApp();
+} catch (error) {
+  console.error("[Firebase Admin] Não foi possível inicializar o SDK:", error);
+}
+
+export const firebaseAdminApp = cachedApp;
 
 export const getFirestoreDb = () => {
+  if (!firebaseAdminApp) return null;
   try {
     return getFirestore(firebaseAdminApp);
   } catch (error) {

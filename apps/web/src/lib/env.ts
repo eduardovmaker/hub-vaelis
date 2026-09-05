@@ -38,3 +38,26 @@ export function loadEnvFile(): void {
     // Ausência ou erro de leitura do .env não deve derrubar o processo.
   }
 }
+
+/**
+ * Lê uma variável de ambiente já higienizada.
+ *
+ * Painéis como o da Vercel importam o valor exatamente como foi colado, então
+ * `CHAVE=""` chega aqui como a string de dois caracteres `""` — que é truthy e
+ * passa despercebida por qualquer checagem simples. Removemos aspas externas e
+ * espaços para que um campo "vazio" se comporte como vazio de verdade.
+ */
+export function readEnv(name: string): string {
+  const raw = process.env[name];
+  if (raw === undefined || raw === null) return "";
+
+  let value = String(raw).trim();
+  const aspasExternas =
+    value.length >= 2 &&
+    ((value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'")));
+
+  if (aspasExternas) value = value.slice(1, -1).trim();
+
+  return value;
+}

@@ -1,33 +1,63 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { loadEnvFile, readEnv } from "./env";
 
-const url = process.env.UPSTASH_REDIS_REST_URL;
-const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+loadEnvFile();
 
-const redis = url && token ? new Redis({ url, token }) : null;
+/**
+ * Rate limit opcional via Upstash.
+ *
+ * Nada aqui pode lançar durante o import: estes módulos são carregados quando
+ * o Next monta as rotas, e uma variável mal preenchida derrubaria o build
+ * inteiro em vez de apenas desligar o limite.
+ */
+function createRedis(): Redis | null {
+  const url = readEnv("UPSTASH_REDIS_REST_URL");
+  const token = readEnv("UPSTASH_REDIS_REST_TOKEN");
 
-/** Login do painel: 5 tentativas por minuto por IP. */
-export const authRatelimit = redis
-  ? new Ratelimit({
+  if (!url || !token) return null;
+
+  // O cliente do Upstash recusa qualquer URL que não seja https.
+  if (!url.startsWith("https://")) {
+    console.warn(
+      `[RateLimit] UPSTASH_REDIS_REST_URL inválida (${url}). Rate limit desativado.`
+    );
+    return null;
+  }
+
+  try {
+    return new Redis({ url, token });
+  } catch (error) {
+    console.warn("[RateLimit] Falha ao criar o cliente Upstash. Rate limit desativado.", error);
+    return null;
+  }
+}
+
+function createLimiter(requisicoes: number, prefix: string): Ratelimit | null {
+  const redis = createRedis();
+  if (!redis) return null;
+
+  try {
+    return new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(5, "1 m"),
+      limiter: Ratelimit.slidingWindow(requisicoes, "1 m"),
       analytics: true,
-      prefix: "@ratelimit/auth",
-    })
-  : null;
+      prefix,
+    });
+  } catch (error) {
+    console.warn(`[RateLimit] Falha ao configurar ${prefix}. Rate limit desativado.`, error);
+    return null;
+  }
+}
+
+/** Login e redefinição de senha: 5 tentativas por minuto por IP. */
+export const authRatelimit = createLimiter(5, "@ratelimit/auth");
 
 /**
  * Pareamento de tela: 10 tentativas por minuto por IP.
  * O código tem 6 caracteres, então o limite é o que impede força bruta.
  */
-export const pairingRatelimit = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(10, "1 m"),
-      analytics: true,
-      prefix: "@ratelimit/pairing",
-    })
-  : null;
+export const pairingRatelimit = createLimiter(10, "@ratelimit/pairing");
 
 /**
  * Consulta o limite com degradação graciosa: se o Redis não estiver

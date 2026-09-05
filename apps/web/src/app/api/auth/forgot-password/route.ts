@@ -3,6 +3,7 @@ import { db, COLLECTIONS, withDbTimeout } from "@/lib/db";
 import { authRatelimit, checkRateLimit } from "@/lib/ratelimit";
 import { buildPasswordResetEmail, getMailProvider, sendEmail } from "@/lib/mailer";
 import { RESET_TOKEN_TTL_MINUTES, createPasswordResetToken } from "@/lib/passwordReset";
+import { readEnv } from "@/lib/env";
 
 /**
  * Pedido de redefinição de senha.
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
     const token = await createPasswordResetToken({ userId: userDoc.id, email: normalizado });
     if (!token) return respostaGenerica;
 
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin).replace(/\/$/, "");
+    const appUrl = (readEnv("NEXT_PUBLIC_APP_URL") || new URL(request.url).origin).replace(/\/$/, "");
     const resetUrl = `${appUrl}/redefinir-senha?token=${token}`;
 
     const conteudo = buildPasswordResetEmail({

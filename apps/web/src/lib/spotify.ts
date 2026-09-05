@@ -1,4 +1,5 @@
 import { db, COLLECTIONS } from "./db";
+import { readEnv } from "./env";
 import type { SpotifyAccount } from "./types";
 
 /**
@@ -34,13 +35,13 @@ export interface SpotifyCredentials {
 }
 
 export function getSpotifyCredentials(): SpotifyCredentials | null {
-  const clientId = process.env.SPOTIFY_CLIENT_ID;
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+  const clientId = readEnv("SPOTIFY_CLIENT_ID");
+  const clientSecret = readEnv("SPOTIFY_CLIENT_SECRET");
   if (!clientId || !clientSecret) return null;
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = readEnv("NEXT_PUBLIC_APP_URL") || "http://localhost:3000";
   const redirectUri =
-    process.env.SPOTIFY_REDIRECT_URI || `${appUrl}/api/auth/spotify/callback`;
+    readEnv("SPOTIFY_REDIRECT_URI") || `${appUrl}/api/auth/spotify/callback`;
 
   return { clientId, clientSecret, redirectUri };
 }

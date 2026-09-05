@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { loadEnvFile } from "./env";
+import { loadEnvFile, readEnv } from "./env";
 import { getFirestoreDb } from "./firebase-admin";
 import { COLLECTIONS } from "./db";
 
@@ -20,8 +20,8 @@ async function seed() {
     process.exit(1);
   }
 
-  const email = (process.env.ADMIN_EMAIL || "").toLowerCase().trim();
-  const password = process.env.ADMIN_INITIAL_PASSWORD || "";
+  const email = readEnv("ADMIN_EMAIL").toLowerCase();
+  const password = readEnv("ADMIN_INITIAL_PASSWORD");
 
   if (!email || password.length < 8) {
     console.error(

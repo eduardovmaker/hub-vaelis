@@ -1,6 +1,6 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import path from "path";
-import { loadEnvFile } from "./env";
+import { loadEnvFile, readEnv } from "./env";
 import type { MediaType } from "./types";
 
 /**
@@ -46,11 +46,11 @@ interface R2Context {
 function getR2Context(): R2Context {
   loadEnvFile();
 
-  const accountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID;
-  const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
-  const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
-  const publicUrlBase = process.env.CLOUDFLARE_R2_PUBLIC_URL;
+  const accountId = readEnv("CLOUDFLARE_R2_ACCOUNT_ID");
+  const accessKeyId = readEnv("CLOUDFLARE_R2_ACCESS_KEY_ID");
+  const secretAccessKey = readEnv("CLOUDFLARE_R2_SECRET_ACCESS_KEY");
+  const bucketName = readEnv("CLOUDFLARE_R2_BUCKET_NAME");
+  const publicUrlBase = readEnv("CLOUDFLARE_R2_PUBLIC_URL");
 
   const missing = [
     !accountId && "CLOUDFLARE_R2_ACCOUNT_ID",

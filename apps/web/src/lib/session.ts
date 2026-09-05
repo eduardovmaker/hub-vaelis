@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
-import { loadEnvFile } from "./env";
+import { loadEnvFile, readEnv } from "./env";
 import type { SessionUser } from "./types";
 
 /**
@@ -16,7 +16,7 @@ export const SESSION_COOKIE = "vaelis_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
 
 function getSecret(): string {
-  const secret = process.env.AUTH_SECRET;
+  const secret = readEnv("AUTH_SECRET");
   if (!secret || secret.length < 32) {
     throw new Error(
       "AUTH_SECRET ausente ou curta. Defina no .env uma chave aleatória de 32+ caracteres."

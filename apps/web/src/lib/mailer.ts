@@ -1,4 +1,4 @@
-import { loadEnvFile } from "./env";
+import { loadEnvFile, readEnv } from "./env";
 
 /**
  * Envio de e-mail transacional.
@@ -28,12 +28,12 @@ export interface SendResult {
 
 function getSender(): string {
   // Precisa ser um remetente autorizado no domínio verificado do provedor.
-  return process.env.EMAIL_FROM || "Vaelis Indoor <onboarding@resend.dev>";
+  return readEnv("EMAIL_FROM") || "Vaelis Indoor <onboarding@resend.dev>";
 }
 
 export function getMailProvider(): MailProvider {
-  if (process.env.RESEND_API_KEY) return "resend";
-  if (process.env.SMTP_HOST) return "smtp";
+  if (readEnv("RESEND_API_KEY")) return "resend";
+  if (readEnv("SMTP_HOST")) return "smtp";
   return "console";
 }
 
@@ -41,7 +41,7 @@ async function sendWithResend(message: EmailMessage): Promise<SendResult> {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      Authorization: `Bearer ${readEnv("RESEND_API_KEY")}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -61,16 +61,16 @@ async function sendWithResend(message: EmailMessage): Promise<SendResult> {
 
 async function sendWithSmtp(message: EmailMessage): Promise<SendResult> {
   const nodemailer = await import("nodemailer");
-  const port = Number(process.env.SMTP_PORT) || 587;
+  const port = Number(readEnv("SMTP_PORT")) || 587;
 
   const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
+    host: readEnv("SMTP_HOST"),
     port,
     // 465 é TLS implícito; 587 sobe para TLS via STARTTLS.
     secure: port === 465,
     auth:
-      process.env.SMTP_USER && process.env.SMTP_PASSWORD
-        ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD }
+      readEnv("SMTP_USER") && readEnv("SMTP_PASSWORD")
+        ? { user: readEnv("SMTP_USER"), pass: readEnv("SMTP_PASSWORD") }
         : undefined,
   });
 
